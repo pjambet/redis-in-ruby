@@ -1,0 +1,4 @@
+baseURL = "http://example.org/"
+languageCode = "en-us"
+title = "Redis in Ruby"
+theme = "hyde-hyde"
