@@ -12,12 +12,13 @@
     
     
     <item>
-      <title>My First Post</title>
+      <title>A basic TCP server</title>
       <link>http://example.org/posts/my-first-post/</link>
       <pubDate>Sat, 16 May 2020 15:54:30 -0400</pubDate>
       
       <guid>http://example.org/posts/my-first-post/</guid>
-      <description>Intro Foo de fafa</description>
+      <description>A basic TCP server What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+Introduction The goal of this series of posts is to re-implement a Redis server, &amp;ldquo;from scratch&amp;rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability.</description>
     </item>
     
   </channel>

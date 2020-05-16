@@ -17,15 +17,17 @@
     
     
 
-<title>My First Post • Redis in Ruby</title>
+<title>A basic TCP server • Redis in Ruby</title>
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="My First Post"/>
-<meta name="twitter:description" content="Intro Foo de fafa"/>
+<meta name="twitter:title" content="A basic TCP server"/>
+<meta name="twitter:description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability."/>
 
-<meta property="og:title" content="My First Post" />
-<meta property="og:description" content="Intro Foo de fafa" />
+<meta property="og:title" content="A basic TCP server" />
+<meta property="og:description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="http://example.org/posts/my-first-post/" />
 <meta property="article:published_time" content="2020-05-16T15:54:30-04:00" />
@@ -118,7 +120,7 @@
     
 <article>
   <header>
-    <h1>My First Post</h1>
+    <h1>A basic TCP server</h1>
     
     
 <div class="post__meta">
@@ -131,7 +133,7 @@
     
     
     <br/>
-    <i class="fas fa-clock"></i> 1 min read
+    <i class="fas fa-clock"></i> 15 min read
 </div>
 
 
@@ -139,8 +141,372 @@
   
   
   <div class="post">
-    <h1 id="intro">Intro</h1>
-<p>Foo de fafa</p>
+    <h2 id="a-basic-tcp-server">A basic TCP server</h2>
+<h3 id="what-well-cover">What we&rsquo;ll cover</h3>
+<p>This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with <code>netcat</code> (<code>nc</code>), a
+utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior
+of our server.</p>
+<h3 id="introduction">Introduction</h3>
+<p>The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis
+supports 9 different <a href="TODO">data types</a>, dozens of commands related to those data types as well as many features in the
+<a href="https://redis.io/documentation#administration">Administration</a> category, such Redis Sentinel for High Availability.
+I will start with a heavily simplified version of Redis, and slowly add more features, trying to get as close as
+possible to what Redis supports today.
+I&rsquo;m choosing Ruby for this language for no other reasons that I like it, and I find it fun to play with. Ruby is often
+caracterized as a &ldquo;slow language&rdquo; but performance is not a big concern here. While I will make sure to make sound
+implementation choices, the goal is to learn more about Redis, Ruby, networking, OS signals and so so and not to produce
+a production ready software.</p>
+<h3 id="a-note-about-from-scratch">A note about &ldquo;from scratch&rdquo;</h3>
+<p>&ldquo;From scratch&rdquo; can be a an ambiguous term, especially with a languate like Ruby that provides so many features out of
+the box.
+So, my goal with this series will be to rely exclusively on the Ruby standard library. At the time of this writing,
+April 2020, the latest Ruby version is 2.7.1.</p>
+<h3 id="lets-write-some-code">Let&rsquo;s write some code</h3>
+<p>The main Redis component is <code>redis-server</code>, which is an executable that starts a TCP server. When experimenting with
+Redis, it is common to use <code>redis-cli</code>, which is an executable that starts a REPL client that connects to a redis server.
+By default Redis runs on port 6379 locally.</p>
+<p>The official Ruby documentation shows the following example for the <a href="http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html">TCPServer
+class</a>:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby"><span style="color:#a2f">require</span> <span style="color:#b44">&#39;socket&#39;</span>
+
+server <span style="color:#666">=</span> <span style="color:#800">TCPServer</span><span style="color:#666">.</span>new <span style="color:#666">2000</span> <span style="color:#080;font-style:italic"># Server bind to port 2000</span>
+<span style="color:#a2f">loop</span> <span style="color:#a2f;font-weight:bold">do</span>
+  client <span style="color:#666">=</span> server<span style="color:#666">.</span>accept    <span style="color:#080;font-style:italic"># Wait for a client to connect</span>
+  client<span style="color:#666">.</span>puts <span style="color:#b44">&#34;Hello !&#34;</span>
+  client<span style="color:#666">.</span>puts <span style="color:#b44">&#34;Time is </span><span style="color:#b68;font-weight:bold">#{</span><span style="color:#800">Time</span><span style="color:#666">.</span>now<span style="color:#b68;font-weight:bold">}</span><span style="color:#b44">&#34;</span>
+  client<span style="color:#666">.</span>close
+<span style="color:#a2f;font-weight:bold">end</span></code></pre></div>
+<p>Followed by the following example and comment: &ldquo;A more usable server (serving multiple clients)&rdquo;</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby"><span style="color:#a2f">require</span> <span style="color:#b44">&#39;socket&#39;</span>
+
+server <span style="color:#666">=</span> <span style="color:#800">TCPServer</span><span style="color:#666">.</span>new <span style="color:#666">2000</span>
+<span style="color:#a2f">loop</span> <span style="color:#a2f;font-weight:bold">do</span>
+  <span style="color:#800">Thread</span><span style="color:#666">.</span>start(server<span style="color:#666">.</span>accept) <span style="color:#a2f;font-weight:bold">do</span> <span style="color:#666">|</span>client<span style="color:#666">|</span>
+    client<span style="color:#666">.</span>puts <span style="color:#b44">&#34;Hello !&#34;</span>
+    client<span style="color:#666">.</span>puts <span style="color:#b44">&#34;Time is </span><span style="color:#b68;font-weight:bold">#{</span><span style="color:#800">Time</span><span style="color:#666">.</span>now<span style="color:#b68;font-weight:bold">}</span><span style="color:#b44">&#34;</span>
+    client<span style="color:#666">.</span>close
+  <span style="color:#a2f;font-weight:bold">end</span>
+<span style="color:#a2f;font-weight:bold">end</span>
+</code></pre></div><p>I will ignore the second example for now because concurrency/parallelism is a complicated topic and I want to address it
+in depth in a later post.
+So, for now, let&rsquo;s focus on the first example, line by line:</p>
+<p>First, we require <code>'socket'</code>. Ruby&rsquo;s require syntax has always been weird to me, especially compared to more explicit
+ones like Python&rsquo;s for instance.
+After a bit of browsing the Ruby source code, my guess is that this require will add all the constants defined in the c
+files <a href="https://github.com/ruby/ruby/tree/v2_7_1/ext/socket">in this folder</a> to <code>$LOAD_PATH</code>, making a bunch of classes
+such as <a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/raddrinfo.c#L2689"><code>Addrinfo</code></a>,
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixserver.c#L118"><code>UnixServer</code></a>,
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixsocket.c#L584"><code>UNIXSocket</code></a>,
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/udpsocket.c#L238"><code>UDPSocket</code></a>,
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpsocket.c#L88"><code>TCPSocket</code></a>,
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpserver.c#L139"><code>TCPServer</code></a> &amp;
+<a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/sockssocket.c#L68"><code>SOCKSocket</code></a>.
+You can try this on your own in an <code>irb</code> shell, requiring any of these constants would fail before calling <code>require 'socket'</code> and would work afterwards:</p>
+<pre><code>irb(main):001:0&gt; TCPSocket.new
+Traceback (most recent call last):
+[truncated]
+NameError (uninitialized constant TCPSocket)
+irb(main):002:0&gt; UNIXServer.new
+Traceback (most recent call last):
+[truncated]
+NameError (uninitialized constant UNIXServer)
+irb(main):003:0&gt; require 'socket'
+=&gt; true
+irb(main):004:0&gt; TCPSocket.new
+Traceback (most recent call last):
+[truncated]
+ArgumentError (wrong number of arguments (given 0, expected 2..4))
+irb(main):005:0&gt; UNIXServer.new
+Traceback (most recent call last):
+[truncated]
+ArgumentError (wrong number of arguments (given 0, expected 1))
+</code></pre><p>The next line creates a new <code>TCPServer</code> instance, listening on port 2000. The documentation for new is the following:</p>
+<p><code>new([hostname], port) =&gt; tcpserver</code></p>
+<blockquote>
+<p>Creates a new server socket bound to port.
+If hostname is given, the socket is bound to it.
+Internally, ::new calls getaddrinfo() function to obtain addresses. If getaddrinfo() returns multiple addresses, ::new tries to create a server socket for each address and returns first one that is successful.</p>
+</blockquote>
+<p>What the documentation implies is that the <code>hostname</code> argument is optional and that omitting it runs on <code>localhost</code> by default.
+Great, so now we have a TCP server running on <code>localhost:2000</code>, but is it actually doing anything? Let&rsquo;s see.</p>
+<p>We can run a server in an <code>irb</code> shell:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby">irb(main):<span style="color:#666">001</span>:<span style="color:#666">0</span><span style="color:#666">&gt;</span> <span style="color:#a2f">require</span> <span style="color:#b44">&#39;socket&#39;</span>
+<span style="color:#666">=&gt;</span> <span style="color:#a2f">true</span>
+irb(main):<span style="color:#666">002</span>:<span style="color:#666">0</span><span style="color:#666">&gt;</span> <span style="color:#800">TCPServer</span><span style="color:#666">.</span>new <span style="color:#666">2000</span>
+<span style="color:#666">=&gt;</span> <span style="color:#080;font-style:italic">#&lt;TCPServer:fd 10, AF_INET6, ::, 2000&gt; # Note that fd value might be different on your system.</span>
+</code></pre></div><p>We&rsquo;ll spend more time digging into what these values mean, but for now let&rsquo;s just very briefly look at what that means:</p>
+<p><code>fd 10</code>: <code>fd</code> stands for File Descriptor, if you&rsquo;re interested you can see all the descriptors used by a process on macOS with the <code>lsof</code> tool: <code>lsof -p &lt;process id&gt;</code>, on my machine, this is what the last line look like:</p>
+<pre><code>...
+ruby    86096 pierre   10u   IPv6 0x80d76e9380eb855d      0t0     TCP *:callbook (LISTEN)
+</code></pre><p><code>2000</code>: This is the port value, which we passed as an argument to the constructor</p>
+<p>I wasn&rsquo;t exactly sure what the two values in the middle were, <code>AF_INET6</code> &amp; <code>::</code>, so I first tried to figure out how this
+string was built by looking at where the <code>inspect</code> method came from on the <code>TCPServer</code> instance:</p>
+<pre><code>irb(main):001:0&gt; TCPServer.new(2003).method(:inspect)
+=&gt; #&lt;Method: TCPServer(IPSocket)#inspect()&gt;
+</code></pre><p>This makes sense, <code>TCPServer</code> inherits from <code>TCPSocket</code>, which in turn inherits from <code>IPSocket</code>. This is a C function
+defined in <a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/ipsocket.c#L206"><code>ipsocket.c</code></a>.  It looks like the
+values come from the <code>addr</code> function, which according the docs: &ldquo;Returns the local address as an array which contains
+address_family, port, hostname and numeric_address.&rdquo;  A bit of Gooling about <code>AF_INET6</code> <a href="https://stackoverflow.com/a/1594039/919641">confirmed
+this</a>, <code>AF</code> stands for Address Family, and INET mean Internet Protocol v4,
+and INET6 means Internet Protocol v6. <code>::</code> has a special meaning for IPv6 addresses, equivalent to 0.0.0.0 for IPv4.</p>
+<p>Back to our server, if you still have a terminal open, where you ran <code>TCPServer.new 2000</code> in an <code>irb</code> shell, now open a
+new terminal and run <code>nc localhost 2000</code>. <code>nc</code> or <code>netcat</code>, from its <code>man</code> page: &ldquo;is used for just about anything under
+the sun involving TCP or UDP&rdquo;. <code>telnet</code> is another similar tool, but it does come with macOS, that being said, it is
+only a <code>brew install</code> away.</p>
+<p>Running <code>nc localhost 2000</code> should &ldquo;hang&rdquo;, nothing is happening. Feel free to exit with Ctrl-C. You can confirm that it
+did indeed do something, because if you try it with an unused port, such as 2001, it should return right away, with an
+exit code of 1, aka, an error. If it hangs, it might be because you have something running on port 2001 on your machine.</p>
+<p>Let&rsquo;s dive a bit deeper by passing the verbose flag, <code>-v</code>: <code>nc -v localhost 2000</code>:</p>
+<pre><code>found 0 associations
+found 1 connections:
+     1: flags=82&lt;CONNECTED,PREFERRED&gt;
+        outif lo0
+        src 127.0.0.1 port 53022
+        dst 127.0.0.1 port 2000
+        rank info not available
+        TCP aux info available
+
+Connection to localhost port 2000 [tcp/callbook] succeeded!
+</code></pre><p>So it did connect, and it does nothing, because our server was just started, but it wasn&rsquo;t instructed to do anything
+with the incoming connection.</p>
+<p><code>loop</code> in Ruby starts an infinite loop, nothing special here, it is common for a server to start and never end. Think
+about Redis for a minute, once the server is running, we want to run pretty much forever, we don&rsquo;t expect it to stop
+unless told to do so. An inifinite loop makes perfect sense for a use case like that.</p>
+<p>The next line is really interesting, and probably one of the most interesting ones in this small snippet: <code>server.accept</code>.
+Let&rsquo;s go back to <code>irb</code> for a moment, because it makes it easier to experiment with these methods, one at a time.</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby">irb(main):<span style="color:#666">001</span>:<span style="color:#666">0</span><span style="color:#666">&gt;</span> <span style="color:#a2f">require</span> <span style="color:#b44">&#39;socket&#39;</span>
+<span style="color:#666">=&gt;</span> <span style="color:#a2f">true</span>
+irb(main):<span style="color:#666">002</span>:<span style="color:#666">0</span><span style="color:#666">&gt;</span> s <span style="color:#666">=</span> <span style="color:#800">TCPServer</span><span style="color:#666">.</span>new <span style="color:#666">2000</span>
+irb(main):<span style="color:#666">003</span>:<span style="color:#666">0</span><span style="color:#666">&gt;</span> s<span style="color:#666">.</span>accept
+</code></pre></div><p>The <code>accept</code> method does not return. The documentation is sadly very succint:</p>
+<blockquote>
+<p>Accepts an incoming connection. It returns a new TCPSocket object.</p>
+</blockquote>
+<p>What it doesn&rsquo;t tell us is that it effectively a &ldquo;blocking&rdquo; method. This can technically be inferred by the presence of
+another method on <code>TCPServer</code>, <code>accept_nonblock</code>, which, according to the documentation:</p>
+<blockquote>
+<p>Accepts an incoming connection using accept(2) after O_NONBLOCK is set for the underlying file descriptor. It returns an accepted TCPSocket for the incoming connection.</p>
+</blockquote>
+<p>We&rsquo;ll look closer at <code>accept_nonblock</code> in a later chapter. Let&rsquo;s go back to our second shell, note that the hanging <code>nc localhost 2000</code> ended if you close your <code>irb</code> shell. What happened is that the server closed the connection, and the
+client, <code>nc</code>, stopped as well. Let&rsquo;s re-run the same command, <code>nc localhost 2000</code>. We&rsquo;ll see a very similar output we
+saw above, saying that the connection succeeded.
+The main difference is that that hanging <code>accept</code> call in <code>irb</code> now
+returned, with a <code>TCPSocket</code> instance. Let&rsquo;s get a reference to this socket with <code>socket = _</code> (<code>_</code> is a reference to the
+last value returned in <code>irb</code>) and send something to our client: <code>socket.puts &quot;Hey!&quot;</code>. If you go back to the terminal
+where you ran <code>nc</code>, you should see &ldquo;Hey!&quot;. Let&rsquo;s now close the connection with <code>socket.close</code> and we can observer that
+the <code>nc</code> calls returned, with an exit code of 0, aka, success.</p>
+<p>And that&rsquo;s it, we went through the official example of <code>TCPServer</code>. The example starts a TCP server on port 2000, and
+then enters an infinite loop, it first wait for an incoming connection, and does nothing else until a client connects,
+once a client connects, it writes &ldquo;Hello !&rdquo; first and then the current time and finally closes the connection, and start
+the same process again.</p>
+<p>If you remember, at the beginning we briefly looked at the second example in the documentation, using
+<code>Thread.start</code>. The justification for this example was that it was more usable by being able to serve multiple clients.
+There is indeed a major issue with the initial example, it can only serve one client at a time. If you were to put the
+example in a file, say, <code>server.rb</code> and run it with <code>ruby server.rb</code>, it would start one process, one thread and start
+executing the loop.
+The second example improves the situation by passing the result of the blocking operation, <code>server.accept</code>, to a new
+thread and letting it handle the client.</p>
+<p>There are a few important things to note here. First, ruby does not support lazy arguments, so when we write
+<code>Thread.start(server.accept)</code>, we first need to evaluate the argument, and only then will <code>start</code> be called, with the
+result of the evaluation.
+What that means for our example is that the loop starts, then blocks until a client connects, and once the client is
+connected, the resulting socket is passed to <code>Thread.start</code>.</p>
+<p>Let&rsquo;s illustrate this with an example, we&rsquo;ll simulate a slow server by adding a <code>sleep</code> call. Still in <code>irb</code>, run the
+following:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby"><span style="color:#a2f">loop</span> { socket <span style="color:#666">=</span> server<span style="color:#666">.</span>accept; socket<span style="color:#666">.</span>write <span style="color:#b44">&#34;Hello&#34;</span>; <span style="color:#a2f">sleep</span> <span style="color:#666">5</span>; socket<span style="color:#666">.</span>close }
+</code></pre></div><p>This is almost identical to the first example, except that the main thread sleeps for five seconds before closing the
+socket.  Back to the other terminal, run <code>nc localhost 2000</code> again, and you&rsquo;ll see &ldquo;Hello&rdquo; being printed almost
+instantly, followed by the process hanging for five seconds and then exiting. While it is hanging, open a terminal and
+run the same command, <code>nc localhost 2000</code>, if you see &ldquo;Hello&rdquo; right away, it might because the five seconds elapsed in
+the previous terminal. Feel free to close the inifinite loop in <code>irb</code> with Ctrl-C and increase the value to 10 seconds
+or more.
+What this shows us is that while the server is busy dealing with a client, if it doesn&rsquo;t do anything and just sleeps,
+all other incomint clients are effectively waiting to be served.
+The second example improves on this as can be seen in <code>irb</code> if you run the following instead:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby"><span style="color:#a2f">loop</span> { <span style="color:#800">Thread</span><span style="color:#666">.</span>start(server<span style="color:#666">.</span>accept) { <span style="color:#666">|</span>socket<span style="color:#666">|</span> socket<span style="color:#666">.</span>write <span style="color:#b44">&#34;Hello&#34;</span>; <span style="color:#a2f">sleep</span> <span style="color:#666">5</span>; socket<span style="color:#666">.</span>close } }
+</code></pre></div><p>Running the same manual test, we should see that both <code>nc localhost 2000</code> calls get the &ldquo;Hello&rdquo; response, and then they
+proceed to both wait for five seconds until the server closes the socket.
+This is because each client is being handled by a different thread. The first client will trigger the first
+<code>server.accept</code> call to return, resulting in a second thread being started (second thread because the initial program is
+itself running in a thread as well). While the second thread is sleeping, the main thread is not blocked anymore, it
+passed the socket to the second thread and is back at being blocked on <code>server.accept</code>. When the second client connects,
+the same thing happens, a new thread is started, and it&rsquo;s being given the newly created socket.
+We have a server that can server multiple clients at one, which is great. That being said, there is a big problem with
+this approach. Threads are not an unlimited, if we were to create more and more threads, we could be at risk of slowing
+down the whole system. Using multiple threads is something that needs to be done very carefully and it can easily lead
+to race conditions. As mentioned earlier, concurrency and parallelism are both complicated topics and we&rsquo;ll try to cover
+them in future chapters.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>We now know how to run a basic TCP server, which doesn&rsquo;t do much, it can write strings to its clients and then close the
+connection, that&rsquo;s about it. That being said, as we&rsquo;ll see in future chapters, we can do a lot with that.
+We also looked at the limitiation of a single threaded approach, and while we could use threads to improve the
+situation, we are purposefully not doing it for now, to keep our example simple and improve it one step at a time.</p>
+<p>In the next chapter we&rsquo;ll create a server class and make it read input from clients, and respond to <code>GET</code> and <code>SET</code>, in
+their most basic forms, we won&rsquo;t implement things like TTL or other options,</p>
+<h3 id="appendix---a-c-implementation-of-the-server">Appendix - A C implementation of the server</h3>
+<p>I was interested to see what a lower level implementation looks like, so I tried to put together an example, of a server,
+listening on port 2000, and writing data back to clients when they connect. Here is the code.</p>
+<p>You can test it yourself, first you need to compile it with the following command:</p>
+<p>Note: If you do not have <code>gcc</code> installed your machine, you can install in on macOS with the following command:
+<code>xcode-select --install</code>, if you&rsquo;re on a different OS, I&rsquo;ll let you search, this should be a fairly common questions and
+have lots of answers on stackoverflow and the likes.</p>
+<p>The code I&rsquo;m sharing here is a simplified version of the client/server code available on
+<a href="https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/">GeeksforGeeks</a>:</p>
+<p>Server:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#080">#include</span> <span style="color:#080">&lt;stdio.h&gt; // For printf</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;netdb.h&gt; // For bind, listen, AF_INET, SOCK_STREAM, socklen_t, sockaddr_in, INADDR_ANY</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;stdlib.h&gt; // For exit</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;string.h&gt; // For bzero</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;unistd.h&gt; // For close &amp; write</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;errno.h&gt; // For errno, duh!</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;arpa/inet.h&gt; // For inet_ntop</span><span style="color:#080">
+</span><span style="color:#080"></span>
+<span style="color:#080">#define MAX 80
+</span><span style="color:#080">#define PORT 2000
+</span><span style="color:#080">#define SA struct sockaddr
+</span><span style="color:#080"></span>
+<span style="color:#0b0;font-weight:bold">int</span> <span style="color:#00a000">main</span>()
+{
+    socklen_t client_address_length;
+    <span style="color:#0b0;font-weight:bold">int</span> server_socket_file_descriptor, client_socket_file_descriptor;
+    <span style="color:#a2f;font-weight:bold">struct</span> sockaddr_in server_address, client_address;
+
+    <span style="color:#080;font-style:italic">// socket create and verification
+</span><span style="color:#080;font-style:italic"></span>    server_socket_file_descriptor <span style="color:#666">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#666">0</span>);
+    <span style="color:#a2f;font-weight:bold">if</span> (server_socket_file_descriptor <span style="color:#666">==</span> <span style="color:#666">-</span><span style="color:#666">1</span>) {
+        printf(<span style="color:#b44">&#34;socket creation failed...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;Socket successfully created..</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    }
+    bzero(<span style="color:#666">&amp;</span>server_address, <span style="color:#a2f;font-weight:bold">sizeof</span>(server_address));
+
+    <span style="color:#080;font-style:italic">// assign IP, PORT
+</span><span style="color:#080;font-style:italic"></span>    server_address.sin_family <span style="color:#666">=</span> AF_INET;
+    server_address.sin_addr.s_addr <span style="color:#666">=</span> htonl(INADDR_ANY);
+    server_address.sin_port <span style="color:#666">=</span> htons(PORT);
+
+    <span style="color:#080;font-style:italic">// Binding newly created socket to given IP and verification
+</span><span style="color:#080;font-style:italic"></span>    <span style="color:#a2f;font-weight:bold">if</span> ((bind(server_socket_file_descriptor, (SA<span style="color:#666">*</span>)<span style="color:#666">&amp;</span>server_address, <span style="color:#a2f;font-weight:bold">sizeof</span>(server_address))) <span style="color:#666">!=</span> <span style="color:#666">0</span>) {
+        printf(<span style="color:#b44">&#34;socket bind failed... : %d, %d</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>, server_socket_file_descriptor, errno);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;Socket successfully binded..</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    }
+
+    <span style="color:#080;font-style:italic">// Now server is ready to listen and verification
+</span><span style="color:#080;font-style:italic"></span>    <span style="color:#a2f;font-weight:bold">if</span> ((listen(server_socket_file_descriptor, <span style="color:#666">5</span>)) <span style="color:#666">!=</span> <span style="color:#666">0</span>) {
+        printf(<span style="color:#b44">&#34;Listen failed...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;Server listening..</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    }
+    client_address_length <span style="color:#666">=</span> <span style="color:#a2f;font-weight:bold">sizeof</span>(client_address);
+
+    <span style="color:#080;font-style:italic">// Accept the data packet from client and verification
+</span><span style="color:#080;font-style:italic"></span>    client_socket_file_descriptor <span style="color:#666">=</span> accept(server_socket_file_descriptor, (SA<span style="color:#666">*</span>)<span style="color:#666">&amp;</span>client_address, <span style="color:#666">&amp;</span>client_address_length);
+    <span style="color:#a2f;font-weight:bold">if</span> (client_socket_file_descriptor <span style="color:#666">&lt;</span> <span style="color:#666">0</span>) {
+        printf(<span style="color:#b44">&#34;server acccept failed: %d,%d...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>, client_socket_file_descriptor, errno);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;server acccept the client...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+        <span style="color:#0b0;font-weight:bold">char</span> human_readable_address[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, <span style="color:#666">&amp;</span>client_address.sin_addr, human_readable_address, <span style="color:#a2f;font-weight:bold">sizeof</span>(human_readable_address));
+        printf(<span style="color:#b44">&#34;Client address: %s</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>, human_readable_address);
+    }
+
+    <span style="color:#0b0;font-weight:bold">char</span> message_buffer[MAX];
+    read(client_socket_file_descriptor, message_buffer, <span style="color:#a2f;font-weight:bold">sizeof</span>(message_buffer));
+    printf(<span style="color:#b44">&#34;From Client: %s</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>, message_buffer);
+    bzero(message_buffer, MAX);
+
+    strcpy(message_buffer, <span style="color:#b44">&#34;Hello, this is Server!&#34;</span>);
+    write(client_socket_file_descriptor, message_buffer, <span style="color:#a2f;font-weight:bold">sizeof</span>(message_buffer));
+
+    <span style="color:#080;font-style:italic">// After chatting close the socket
+</span><span style="color:#080;font-style:italic"></span>    printf(<span style="color:#b44">&#34;Closing server_socket_file_descriptor</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    close(server_socket_file_descriptor);
+}
+</code></pre></div><p>Client:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#080">#include</span> <span style="color:#080">&lt;stdio.h&gt; // For printf</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;netdb.h&gt; // For AF_INET, SOCK_STREAM, sockaddr_in</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;stdlib.h&gt; // For exit</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;string.h&gt; // For bzero</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;sys/socket.h&gt; // For connect</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;arpa/inet.h&gt; // For inet_addr</span><span style="color:#080">
+</span><span style="color:#080">#include</span> <span style="color:#080">&lt;unistd.h&gt; // for close</span><span style="color:#080">
+</span><span style="color:#080"></span>
+<span style="color:#080">#define MAX 80
+</span><span style="color:#080">#define PORT 2000
+</span><span style="color:#080">#define SA struct sockaddr
+</span><span style="color:#080"></span>
+<span style="color:#0b0;font-weight:bold">int</span> <span style="color:#00a000">main</span>() {
+    <span style="color:#0b0;font-weight:bold">int</span> server_socket_file_descriptor;
+    <span style="color:#a2f;font-weight:bold">struct</span> sockaddr_in server_address;
+
+    <span style="color:#080;font-style:italic">// socket create and varification
+</span><span style="color:#080;font-style:italic"></span>    server_socket_file_descriptor <span style="color:#666">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#666">0</span>);
+    <span style="color:#a2f;font-weight:bold">if</span> (server_socket_file_descriptor <span style="color:#666">==</span> <span style="color:#666">-</span><span style="color:#666">1</span>) {
+        printf(<span style="color:#b44">&#34;socket creation failed...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;Socket successfully created..</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    }
+
+    bzero(<span style="color:#666">&amp;</span>server_address, <span style="color:#a2f;font-weight:bold">sizeof</span>(server_address));
+
+    <span style="color:#080;font-style:italic">// assign IP, PORT
+</span><span style="color:#080;font-style:italic"></span>    server_address.sin_family <span style="color:#666">=</span> AF_INET;
+    server_address.sin_addr.s_addr <span style="color:#666">=</span> inet_addr(<span style="color:#b44">&#34;127.0.0.1&#34;</span>);
+    server_address.sin_port <span style="color:#666">=</span> htons(PORT);
+
+    <span style="color:#080;font-style:italic">// connect the client socket to server socket
+</span><span style="color:#080;font-style:italic"></span>    <span style="color:#a2f;font-weight:bold">if</span> (connect(server_socket_file_descriptor, (SA<span style="color:#666">*</span>)<span style="color:#666">&amp;</span>server_address, <span style="color:#a2f;font-weight:bold">sizeof</span>(server_address)) <span style="color:#666">!=</span> <span style="color:#666">0</span>) {
+        printf(<span style="color:#b44">&#34;connection with the server failed...</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+        exit(<span style="color:#666">0</span>);
+    }
+    <span style="color:#a2f;font-weight:bold">else</span> {
+        printf(<span style="color:#b44">&#34;connected to the server..</span><span style="color:#b62;font-weight:bold">\n</span><span style="color:#b44">&#34;</span>);
+    }
+
+    <span style="color:#0b0;font-weight:bold">char</span> message_buffer[MAX] <span style="color:#666">=</span> <span style="color:#b44">&#34;Hello, this is Client&#34;</span>;
+    write(server_socket_file_descriptor, message_buffer, <span style="color:#a2f;font-weight:bold">sizeof</span>(message_buffer));
+    bzero(message_buffer, <span style="color:#a2f;font-weight:bold">sizeof</span>(message_buffer));
+    read(server_socket_file_descriptor, message_buffer, <span style="color:#a2f;font-weight:bold">sizeof</span>(message_buffer));
+    printf(<span style="color:#b44">&#34;From Server: %s&#34;</span>, message_buffer);
+
+    <span style="color:#080;font-style:italic">// close the socket
+</span><span style="color:#080;font-style:italic"></span>    close(server_socket_file_descriptor);
+}
+</code></pre></div><p>As usual, let&rsquo;s run a few manual tests, but since this is C, we first need to compile this:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ gcc server.c -o server
+$ gcc client.c -o client
+</code></pre></div><p>We&rsquo;re going to need to shells, start the server in the first one, <code>./server</code>. It should log the following:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">Socket successfully created..
+Socket successfully binded..
+Server listening..
+</code></pre></div><p>Note that, as we saw previously when creating a server from Ruby, it is &ldquo;hanging&rdquo; and hasn&rsquo;t returned yet. In the other
+shell, run the client: <code>./client</code>, you should see the following output:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ./client
+Socket successfully created..
+connected to the server..
+From Server: Hello, this is Server!
+</code></pre></div><p>And if you return to the other shell, where the server was running, you can see that it now returned and log a few more
+things before doing so:</p>
+<div class="highlight"><pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">server acccept the client...
+Client address: 127.0.0.1
+From Client: Hello, this is Client
+Closing server_socket_file_descriptor
+</code></pre></div><p>It works! A server, that waits until a client connects, reads what the client sent and writes a message back, and once
+all of that is done, exits.</p>
+<p>Doing a step by step walkthrough of the client and server code is both a little bit out of scope and frankly something
+that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a
+similar-ish implementation to get a rough idea of what Ruby does for us under the hood.</p>
 
   </div>
   

@@ -40,7 +40,7 @@ By default Redis runs on port 6379 locally.
 The official Ruby documentation shows the following example for the [TCPServer
 class](http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html):
 
-``` ruby
+{{< highlight ruby >}}
 require 'socket'
 
 server = TCPServer.new 2000 # Server bind to port 2000
@@ -50,7 +50,7 @@ loop do
   client.puts "Time is #{Time.now}"
   client.close
 end
-```
+{{< / highlight >}}
 
 Followed by the following example and comment: "A more usable server (serving multiple clients)"
 
@@ -84,23 +84,23 @@ such as [`Addrinfo`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/raddrin
 [`SOCKSocket`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/sockssocket.c#L68).
 You can try this on your own in an `irb` shell, requiring any of these constants would fail before calling `require 'socket'` and would work afterwards:
 
-```
+``` ruby
 irb(main):001:0> TCPSocket.new
 Traceback (most recent call last):
-[truncated]
+# [truncated]
 NameError (uninitialized constant TCPSocket)
 irb(main):002:0> UNIXServer.new
 Traceback (most recent call last):
-[truncated]
+# [truncated]
 NameError (uninitialized constant UNIXServer)
 irb(main):003:0> require 'socket'
 => true
 irb(main):004:0> TCPSocket.new
-Traceback (most recent call last):
+# Traceback (most recent call last):
 [truncated]
 ArgumentError (wrong number of arguments (given 0, expected 2..4))
 irb(main):005:0> UNIXServer.new
-Traceback (most recent call last):
+# Traceback (most recent call last):
 [truncated]
 ArgumentError (wrong number of arguments (given 0, expected 1))
 ```
@@ -129,8 +129,8 @@ We'll spend more time digging into what these values mean, but for now let's jus
 
 `fd 10`: `fd` stands for File Descriptor, if you're interested you can see all the descriptors used by a process on macOS with the `lsof` tool: `lsof -p <process id>`, on my machine, this is what the last line look like:
 
-```
-...
+``` bash
+[...]
 ruby    86096 pierre   10u   IPv6 0x80d76e9380eb855d      0t0     TCP *:callbook (LISTEN)
 ```
 
@@ -140,7 +140,7 @@ ruby    86096 pierre   10u   IPv6 0x80d76e9380eb855d      0t0     TCP *:callbook
 I wasn't exactly sure what the two values in the middle were, `AF_INET6` & `::`, so I first tried to figure out how this
 string was built by looking at where the `inspect` method came from on the `TCPServer` instance:
 
-```
+``` bash
 irb(main):001:0> TCPServer.new(2003).method(:inspect)
 => #<Method: TCPServer(IPSocket)#inspect()>
 ```
@@ -163,7 +163,7 @@ exit code of 1, aka, an error. If it hangs, it might be because you have somethi
 
 Let's dive a bit deeper by passing the verbose flag, `-v`: `nc -v localhost 2000`:
 
-```
+``` bash
 found 0 associations
 found 1 connections:
      1: flags=82<CONNECTED,PREFERRED>
@@ -249,7 +249,13 @@ all other incomint clients are effectively waiting to be served.
 The second example improves on this as can be seen in `irb` if you run the following instead:
 
 ``` ruby
-loop { Thread.start(server.accept) { |socket| socket.write "Hello"; sleep 5; socket.close } }
+loop {
+  Thread.start(server.accept) { |socket|
+    socket.write "Hello"
+    sleep 5
+    socket.close
+  }
+}
 ```
 
 Running the same manual test, we should see that both `nc localhost 2000` calls get the "Hello" response, and then they
