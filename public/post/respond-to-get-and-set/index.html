@@ -36,7 +36,7 @@ Let&amp;rsquo;s write some code We&amp;rsquo;re going to start by wrapping the c
 
 
 
-<link href="/sass/main.min.a92abd6a9b8b45f0927ed186326103e391dae330d8e952d3b4553f08f59e5c97.css" rel="stylesheet">
+<link href="/sass/main.min.4787b3f938a06b628f2a69227906bccff9bafd8bfd7769025649c6e5d48b2345.css" rel="stylesheet">
 
 
 
@@ -86,12 +86,10 @@ Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to s
   <ul class="mobile-menu-list">
     <a href="/">
         <li class="mobile-menu-item">Home</li>
+      </a><a href="/chapters/">
+        <li class="mobile-menu-item">Table of Content</li>
       </a><a href="/post/">
         <li class="mobile-menu-item">Archives</li>
-      </a><a href="/tags/">
-        <li class="mobile-menu-item">Tags</li>
-      </a><a href="/categories/">
-        <li class="mobile-menu-item">Categories</li>
       </a>
   </ul>
 </nav>
@@ -106,11 +104,9 @@ Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to s
     <li class="menu-item">
         <a class="menu-item-link" href="/">Home</a>
       </li><li class="menu-item">
+        <a class="menu-item-link" href="/chapters/">Table of Content</a>
+      </li><li class="menu-item">
         <a class="menu-item-link" href="/post/">Archives</a>
-      </li><li class="menu-item">
-        <a class="menu-item-link" href="/tags/">Tags</a>
-      </li><li class="menu-item">
-        <a class="menu-item-link" href="/categories/">Categories</a>
       </li>
   </ul>
 </nav>
@@ -988,15 +984,28 @@ still serve all its clients efficiently, without blocking like the current imple
     </div>
 
     
-<footer class="post-footer">
+<div class="post-reward">
+  <p>Liked this post? Consider donating!</p>
+  <div>
+    <style>.bmc-button img{height: 34px !important;width: 35px !important;margin-bottom: 1px !important;box-shadow: none !important;border: none !important;vertical-align: middle !important;}.bmc-button{padding: 7px 15px 7px 10px !important;line-height: 35px !important;height:51px !important;text-decoration: none !important;display:inline-flex !important;color:#FFFFFF !important;background-color:#FF813F !important;border-radius: 5px !important;border: 1px solid transparent !important;padding: 7px 15px 7px 10px !important;font-size: 22px !important;letter-spacing: 0.6px !important;box-shadow: 0px 1px 2px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;margin: 0 auto !important;font-family:'Cookie', cursive !important;-webkit-box-sizing: border-box !important;box-sizing: border-box !important;}.bmc-button:hover, .bmc-button:active, .bmc-button:focus {-webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;text-decoration: none !important;box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;opacity: 0.85 !important;color:#FFFFFF !important;}</style>
+    <link href="https://fonts.googleapis.com/css?family=Cookie" rel="stylesheet">
+    <a class="bmc-button" target="_blank" href="https://www.buymeacoffee.com/pjam">
+      <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="Buy me a coffee">
+      <span style="margin-left:5px;margin-top: 0px;font-size:28px !important;">Buy me a coffee</span>
+    </a>  
+  </div>
+
+  
+  
+</div><footer class="post-footer">
       
       <nav class="post-nav">
-        
-        <a class="next" href="/post/basic-server/">
-            <span class="next-text nav-default">A basic TCP server</span>
-            <span class="next-text nav-mobile">Next</span>
-            <i class="iconfont icon-right"></i>
+        <a class="prev" href="/post/basic-server/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">A basic TCP server</span>
+            <span class="prev-text nav-mobile">Prev</span>
           </a>
+        
       </nav>
     </footer>
   </article>

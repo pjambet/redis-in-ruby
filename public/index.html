@@ -37,7 +37,7 @@
 
 
 
-<link href="/sass/main.min.a92abd6a9b8b45f0927ed186326103e391dae330d8e952d3b4553f08f59e5c97.css" rel="stylesheet">
+<link href="/sass/main.min.4787b3f938a06b628f2a69227906bccff9bafd8bfd7769025649c6e5d48b2345.css" rel="stylesheet">
 
 
 
@@ -45,7 +45,7 @@
 <meta property="og:description" content="Hugo theme even example site." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://redis.pjam.me/" />
-<meta property="og:updated_time" content="2020-05-17T21:28:17-04:00" />
+<meta property="og:updated_time" content="2020-05-17T23:45:33-04:00" />
 <meta itemprop="name" content="Redis in Ruby">
 <meta itemprop="description" content="Hugo theme even example site."><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Redis in Ruby"/>
@@ -76,12 +76,10 @@
   <ul class="mobile-menu-list">
     <a href="/">
         <li class="mobile-menu-item">Home</li>
+      </a><a href="/chapters/">
+        <li class="mobile-menu-item">Table of Content</li>
       </a><a href="/post/">
         <li class="mobile-menu-item">Archives</li>
-      </a><a href="/tags/">
-        <li class="mobile-menu-item">Tags</li>
-      </a><a href="/categories/">
-        <li class="mobile-menu-item">Categories</li>
       </a>
   </ul>
 </nav>
@@ -96,11 +94,9 @@
     <li class="menu-item">
         <a class="menu-item-link" href="/">Home</a>
       </li><li class="menu-item">
+        <a class="menu-item-link" href="/chapters/">Table of Content</a>
+      </li><li class="menu-item">
         <a class="menu-item-link" href="/post/">Archives</a>
-      </li><li class="menu-item">
-        <a class="menu-item-link" href="/tags/">Tags</a>
-      </li><li class="menu-item">
-        <a class="menu-item-link" href="/categories/">Categories</a>
       </li>
   </ul>
 </nav>
@@ -109,27 +105,23 @@
     <main id="main" class="main">
       <div class="content-wrapper">
         <div id="content" class="content">
-          <section id="posts" class="posts">
+          <section id="intro" class="posts">
     <article class="post">
-  <header class="post-header">
-    <h1 class="post-title"><a class="post-link" href="/post/respond-to-get-and-set/">Respond to Get and Set</a></h1>
-    <div class="post-meta">
-      <span class="post-time"> 2020-05-17 </span>
-      
-    </div>
-  </header>
-  
-  <div class="post-content">
-    <div class="post-summary">
-      Intro In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&rsquo;ll build a basic client using another built-in class, TCPSocket. We&rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
-Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on.
-    </div>
-    <div class="read-more">
-      <a href="/post/respond-to-get-and-set/" class="read-more-link">Read more...</a>
-    </div>
-  </div>
-</article>
+    <header class="post-header">
+      <h1 class="post-title">Welcome!</h1>
+      <div class="post-content">
+        <p>
+          This website is a completely free, ongoing, "book" about attempting to rewrite Redis in Ruby.
+        </p>
+        <p>
+          Start reading the first chapter below, or head to the <span class="read-more"><a href="/chapters/" class="read-more-link">chapters list</a></span>
+        </p>  
+      </div>
+    </header>
+    </article>
+  </section>
 
+  <section id="posts" class="posts">
     <article class="post">
   <header class="post-header">
     <h1 class="post-title"><a class="post-link" href="/post/basic-server/">A basic TCP server</a></h1>
@@ -146,6 +138,26 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
     </div>
     <div class="read-more">
       <a href="/post/basic-server/" class="read-more-link">Read more...</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/respond-to-get-and-set/">Respond to Get and Set</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2020-05-17 </span>
+      
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      Intro In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&rsquo;ll build a basic client using another built-in class, TCPSocket. We&rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
+Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on.
+    </div>
+    <div class="read-more">
+      <a href="/post/respond-to-get-and-set/" class="read-more-link">Read more...</a>
     </div>
   </div>
 </article>

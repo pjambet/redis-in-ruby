@@ -15,39 +15,44 @@ pygmentsUseClasses = true
 pygmentsCodefencesGuessSyntax = true
 
 hasCJKLanguage = false
-paginate = 5                                              # 首页每页显示的文章数
+paginate = 5
 disqusShortname = ""      # disqus_shortname
 googleAnalytics = ""      # UA-XXXXXXXX-X
-copyright = ""            # default: author.name ↓        # 默认为下面配置的author.name ↓
+copyright = ""            # default: author.name ↓
 
-[author]                  # essential                     # 必需
+[author]                  # essential
   name = "Pierre J"
 
-[sitemap]                 # essential                     # 必需
+[sitemap]                 # essential
   changefreq = "weekly"
   priority = 0.5
   filename = "sitemap.xml"
 
-[[menu.main]]             # config your menu              # 配置目录
+[[menu.main]]             # config your menu
   name = "Home"
   weight = 10
   identifier = "home"
   url = "/"
 [[menu.main]]
   name = "Archives"
-  weight = 20
+  weight = 30
   identifier = "archives"
   url = "/post/"
+# [[menu.main]]
+#   name = "Tags"
+#   weight = 30
+#   identifier = "tags"
+#   url = "/tags/"
+# [[menu.main]]
+#   name = "Categories"
+#   weight = 40
+#   identifier = "categories"
+#   url = "/categories/"
 [[menu.main]]
-  name = "Tags"
-  weight = 30
-  identifier = "tags"
-  url = "/tags/"
-[[menu.main]]
-  name = "Categories"
-  weight = 40
-  identifier = "categories"
-  url = "/categories/"
+  name = "Table of Content"
+  weight = 20
+  identifier = "chapters"
+  url = "/chapters/"  
 
 [params]
   version = "4.x"           # Used to give a friendly message when you have an incompatible update
@@ -62,7 +67,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   description = "Hugo theme even example site."
 
   # paginate of archives, tags and categories
-  archivePaginate = 5
+  archivePaginate = 20
 
   # show 'xx Posts In Total' in archive page ?
   showArchiveCount = false
@@ -162,9 +167,11 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     pagePV = true
 
   [params.reward]
-    enable = false
-    wechat = "/path/to/your/wechat-qr-code.png"
-    alipay = "/path/to/your/alipay-qr-code.png"
+    enable = true
+    buymeacoffeelink = "https://www.buymeacoffee.com/pjam"
+    buymeacoffee = "https://img.buymeacoffee.com/api/?name=pjam&size=150&bg-image=bmc"
+    # wechat = "/path/to/your/wechat-qr-code.png"
+    # alipay = "/path/to/your/alipay-qr-code.png"
 
   [params.social]
     # a-email = "mailto:your@email.com"

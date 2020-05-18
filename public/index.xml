@@ -6,10 +6,19 @@
     <description>Recent content on Redis in Ruby</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 17 May 2020 21:28:17 -0400</lastBuildDate>
+    <lastBuildDate>Sun, 17 May 2020 23:45:33 -0400</lastBuildDate>
     
 	<atom:link href="https://redis.pjam.me/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Chapters</title>
+      <link>https://redis.pjam.me/chapters/</link>
+      <pubDate>Sun, 17 May 2020 23:45:33 -0400</pubDate>
+      
+      <guid>https://redis.pjam.me/chapters/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>Respond to Get and Set</title>
