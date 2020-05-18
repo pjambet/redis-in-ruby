@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Respond to Get and Set - Redis in Ruby</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Pierre J" /><meta name="description" content="Intro In this chapter, we&amp;rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&amp;rsquo;ll build a basic client using another built-in class, TCPSocket. We&amp;rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
+Let&amp;rsquo;s write some code We&amp;rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on." /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.70.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/respond-to-get-and-set/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link href="/sass/main.min.a92abd6a9b8b45f0927ed186326103e391dae330d8e952d3b4553f08f59e5c97.css" rel="stylesheet">
+
+
+
+<meta property="og:title" content="Respond to Get and Set" />
+<meta property="og:description" content="Intro In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&rsquo;ll build a basic client using another built-in class, TCPSocket. We&rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
+Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/respond-to-get-and-set/" />
+<meta property="article:published_time" content="2020-05-17T21:28:17-04:00" />
+<meta property="article:modified_time" content="2020-05-17T21:28:17-04:00" />
+<meta itemprop="name" content="Respond to Get and Set">
+<meta itemprop="description" content="Intro In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&rsquo;ll build a basic client using another built-in class, TCPSocket. We&rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
+Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on.">
+<meta itemprop="datePublished" content="2020-05-17T21:28:17-04:00" />
+<meta itemprop="dateModified" content="2020-05-17T21:28:17-04:00" />
+<meta itemprop="wordCount" content="3585">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Respond to Get and Set"/>
+<meta name="twitter:description" content="Intro In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&rsquo;ll build a basic client using another built-in class, TCPSocket. We&rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
+Let&rsquo;s write some code We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on."/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Redis in Ruby</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Redis in Ruby</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Respond to Get and Set</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-05-17 </span>
+        
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">Contents</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#intro">Intro</a></li>
+    <li><a href="#lets-write-some-code">Let&rsquo;s write some code</a>
+      <ul>
+        <li><a href="#reading-from-the-socket-in-the-client">Reading from the socket in the client</a></li>
+        <li><a href="#sending-data-from-the-client">Sending data from the client</a></li>
+        <li><a href="#wrapping-it-up">Wrapping it up</a></li>
+      </ul>
+    </li>
+    <li><a href="#a-few-tests">A few tests</a></li>
+    <li><a href="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="intro">Intro</h2>
+<p>In this chapter, we&rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP
+server using the built-in <code>TCPServer</code> class. In this chapter we&rsquo;ll build a basic client using another built-in class,
+<code>TCPSocket</code>.
+We&rsquo;ll then make the server actually usable by making it respond to two commands, <code>GET</code> and <code>SET</code>.</p>
+<h2 id="lets-write-some-code">Let&rsquo;s write some code</h2>
+<p>We&rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add
+functionality later on.</p>
+<p>Here&rsquo;s the code we&rsquo;ll use for now.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+
+<span class="k">class</span> <span class="nc">BasicServer</span>
+
+  <span class="k">def</span> <span class="nf">initialize</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="no">TCPServer</span><span class="o">.</span><span class="n">new</span> <span class="mi">2000</span>
+    <span class="nb">puts</span> <span class="s2">&#34;Server started at: </span><span class="si">#{</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="si">}</span><span class="s2">&#34;</span>
+    <span class="kp">loop</span> <span class="k">do</span>
+      <span class="n">client</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">accept</span>
+      <span class="nb">puts</span> <span class="s2">&#34;New client connected: </span><span class="si">#{</span> <span class="n">client</span> <span class="si">}</span><span class="s2">&#34;</span>
+      <span class="n">client</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;Hello !&#34;</span>
+      <span class="n">client</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;Time is </span><span class="si">#{</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="si">}</span><span class="s2">&#34;</span>
+      <span class="n">client</span><span class="o">.</span><span class="n">close</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>We can test this by saving this code in a ruby file, say <code>server.rb</code>, and run it with:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="n">ruby</span> <span class="o">-</span><span class="n">r</span> <span class="s2">&#34;./server&#34;</span> <span class="o">-</span><span class="n">e</span> <span class="s2">&#34;BasicServer.new&#34;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>We&rsquo;re using this one-liner as a temporary workaround while we don&rsquo;t have an easy way to start the server, with an
+executable, which would allow to do something like: <code>./simple-ruby-redis-server</code>. The command means, run a ruby process,
+first require the <code>server.rb</code> file located in the same folder, and then execute the following command, <code>BasicServer.new</code>.
+We should see a line indicating that the server started, with the current time.</p>
+<p>Let&rsquo;s confirm that the server is running as expected by running, in a different shell: <code>nc localhost 2000</code>, the output
+should be similar to the following, with a different date:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">Hello !
+Time is 2020-04-18 10:54:10 -0400
+</code></pre></td></tr></table>
+</div>
+</div><p>You should also see a line in the shell where you started you server, indicating that a client successfully connected:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">New client connected: #&lt;TCPSocket:0x00007fd83108f9d8&gt;
+</code></pre></td></tr></table>
+</div>
+</div><p>The string after <code>TCPSocket:0x</code> will very likely be different on your machine, ruby&rsquo;s default
+<a href="https://ruby-doc.org/core-2.7.1/Object.html#method-i-to_s"><code>to_s</code></a> method uses the object id, which is pretty much
+always gonna be different.</p>
+<h3 id="reading-from-the-socket-in-the-client">Reading from the socket in the client</h3>
+<p>So, now that we confirmed that our <code>BasicServer</code> class runs correctly, let&rsquo;s connect to it in ruby instead of using
+<code>nc</code>. The direct parent class of <code>TCPServer</code> is <code>TCPSocket</code>, and according to the documentation:</p>
+<blockquote>
+<p>TCPSocket represents a TCP/IP client socket.</p>
+</blockquote>
+<p>So far we&rsquo;ve been using the code examples provided in the documentation, we can still do that here, we can paste the
+lines one by one:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="n">irb</span><span class="p">(</span><span class="n">main</span><span class="p">):</span><span class="mo">001</span><span class="p">:</span><span class="mi">0</span><span class="o">&gt;</span> <span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+<span class="o">=&gt;</span> <span class="kp">true</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>We already know what this line does, and we can confirm that there is <a href="https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpsocket.c#L88">a file,
+tcpsocket.c</a> in the <code>ruby/ext/socket/</code> folder, that
+defines <code>TCPSocket</code>. Moving on.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="n">irb</span><span class="p">(</span><span class="n">main</span><span class="p">):</span><span class="mo">002</span><span class="p">:</span><span class="mi">0</span><span class="o">&gt;</span> <span class="n">s</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>This line creates a new socket for the given host and port. It requires that a socket is listening on the other side,
+which you can confirm by either running this before starting your server, by killing your server and re-running this, or
+by changing the port value to a port that is unused, like 2001. You should see a Connection refused error:
+<code>Errno::ECONNREFUSED (Connection refused - connect(2) for &quot;localhost&quot; port 2000)</code>. <code>connect(2)</code> in the previous error
+message refers to the connect system call. The number 2 refers to the section of the manual, which is an optional
+argument to the <code>man</code> command. It turns out there is no other man page for connect, so you can run <code>man connect</code> to
+learn more about it, or you can be explicit and ask for a specific section, with <code>man 2 connect</code>. This is useful for
+other pages, such as <code>accept</code>, <code>man acccept</code> returns the page for <code>accept(8)</code>, but there is also an <code>accept</code> system
+call, which can read the documentation for with <code>man 2 accept</code>.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="k">while</span> <span class="p">(</span><span class="n">line</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gets</span><span class="p">)</span> <span class="o">!=</span> <span class="kp">nil</span> <span class="k">do</span> <span class="nb">puts</span> <span class="n">line</span> <span class="k">end</span> <span class="c1"># This is different from the doc, but adapted to a one-liner</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>The output should be:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="n">irb</span><span class="p">(</span><span class="n">main</span><span class="p">):</span><span class="mo">003</span><span class="p">:</span><span class="mi">0</span><span class="o">&gt;</span> <span class="k">while</span> <span class="p">(</span><span class="n">line</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">gets</span><span class="p">)</span> <span class="o">!=</span> <span class="kp">nil</span> <span class="k">do</span> <span class="nb">puts</span> <span class="n">line</span> <span class="k">end</span>
+<span class="no">Hello</span> <span class="o">!</span>
+<span class="no">Time</span> <span class="n">is</span> <span class="mi">2020</span><span class="o">-</span><span class="mo">04</span><span class="o">-</span><span class="mi">18</span> <span class="mi">20</span><span class="p">:</span><span class="mi">34</span><span class="p">:</span><span class="mi">34</span> <span class="o">-</span><span class="mo">0400</span>
+<span class="o">=&gt;</span> <span class="kp">nil</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>The documentation for <a href="https://ruby-doc.org/core-2.7.1/IO.html#method-i-gets"><code>gets</code></a> states:</p>
+<blockquote>
+<p>Reads the next &ldquo;line&rdquo; from the I/O stream; lines are separated by sep. A separator of nil reads the entire contents,
+and a zero-length separator reads the input a paragraph at a time (two successive newlines in the input separate
+paragraphs). The stream must be opened for reading or an IOError will be raised. The line read in will be returned and
+also assigned to $_. Returns nil if called at end of file. If the first argument is an integer, or optional second
+argument is given, the returning string would not be longer than the given value in bytes.</p>
+</blockquote>
+<p>As we can see, we were able to connect to the server, on <code>localhost</code>, over port 2000, and we were able to read what the
+server wrote with the <code>gets</code> method, one line at a time.</p>
+<p>In true Ruby fashion, there are a few different ways to read from the socket, I decided to use <code>read</code>, which is defined
+on <code>IO</code>, but if you look at the <code>IO</code> documentation, you&rsquo;ll find a few other similar methods, <code>gets</code>, <code>read_nonblock</code>,
+<code>readline</code> &amp; <code>readlines</code> to name a few.
+Exploring the differences between these methods is left as an excercise to the reader. Ok, I have to admit, I always
+wanted to write that. I hate when books/posts do that. But seriously, it&rsquo;s a little bit off topic for now, so we&rsquo;ll get
+back to it later, <code>read</code> is convenient because it does not require a max length arguments as some of the others methods
+do and defaults to reading the whole thing, aka until it reaches <code>EOF</code>, as opposed to doing it line by line like <code>gets</code>
+and <code>readline</code> do. As we&rsquo;ll see later on, it&rsquo;s quite convenient to read a whole line received through a socket, whereas
+<code>read</code> will keep on reading until it sees <code>EOF</code>, which basically means, until the stream is closed.
+There are at least two other methods, which map closely to system calls, <code>recvfrom</code> on <code>IPSocket</code> and <code>recv</code> on
+<code>BasicSocket</code>.
+So <code>gets</code> it is for now.</p>
+<p>Let&rsquo;s close this <code>irb</code> session and kill the server with <code>Ctrl-C</code> for now, and create a new file, <code>client.rb</code> with the
+following content:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+
+<span class="n">socket</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+<span class="n">message</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span>
+<span class="n">message</span> <span class="o">&lt;&lt;</span> <span class="n">new_line</span> <span class="k">while</span> <span class="n">new_line</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gets</span>
+<span class="nb">puts</span> <span class="n">message</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>And with this last step, we now a way to exercise what we went through without going through <code>irb</code>, first we can start
+the server with the following command: <code>ruby -r &quot;./server&quot; -e &quot;BasicServer.new&quot;</code></p>
+<p>Note: The <code>-r</code> option from ruby, according to <code>ruby -h</code>, is used to &ldquo;require the library before executing your
+script&rdquo;. So by passing a relative path, we require the content of the <code>server.rb</code> file. The <code>-e</code> option is used to &ldquo;one
+line of script. Several -e&rsquo;s allowed. Omit [programfile]&quot;. So we ran <code>BasicServer.new</code>. Omitting the <code>-r</code> option would
+fail with a <code>NameError</code> because ruby wouldn&rsquo;t be able to find a definition for <code>BasicServer</code>.</p>
+<p>In another shell, run <code>ruby client.rb</code> and you will see an output similar to what we saw earlier, <code>Hello !</code>, followed by
+a string containing the time when the server received the connection.</p>
+<p>Now that we can connect to a server, let&rsquo;s see how to send data. This is a necessary step since we want clients to send
+<code>GET</code> and <code>SET</code> requests, and have the server respond accordingly.</p>
+<h3 id="sending-data-from-the-client">Sending data from the client</h3>
+<p>Let&rsquo;s assume that our server is still running, we can start by sending a string with <code>nc</code> with the following command:
+<code>echo -n &quot;Hello Server, this is Client&quot; | nc localhost 2000</code>. The output is still the same, minus the time
+difference. So let&rsquo;s make some changes to the server to print what we receive from the clients.</p>
+<p>As a reminder, our server is an instance of TCPServer, which happens to be a subclass of <code>TCPSocket</code>. This is great
+news, because that means that we can read what the client sent the same way we read what the server sent to the
+client. This is also an indication that at the end of the day, the client and the server have a lot in common. A socket
+is open on each side, one of the main differences is that the <code>TCPServer</code> class adds the <code>accept</code> and <code>listen</code> methods,
+which we can&rsquo;t do with a <code>TCPSocket</code>.</p>
+<p>Let&rsquo;s add a print statement to the server code:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="kp">loop</span> <span class="k">do</span>
+  <span class="n">client</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">accept</span>
+  <span class="nb">puts</span> <span class="s2">&#34;New client connected: </span><span class="si">#{</span> <span class="n">client</span> <span class="si">}</span><span class="s2">&#34;</span>
+  <span class="n">client_message</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">read</span>
+  <span class="k">if</span> <span class="n">client_message</span>
+    <span class="nb">puts</span> <span class="s2">&#34;Message received from </span><span class="si">#{</span> <span class="n">client</span> <span class="si">}</span><span class="s2">: </span><span class="si">#{</span> <span class="n">client_message</span> <span class="si">}</span><span class="s2">&#34;</span>
+  <span class="k">end</span>
+  <span class="n">client</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;Hello !&#34;</span>
+  <span class="n">client</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;Time is </span><span class="si">#{</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="si">}</span><span class="s2">&#34;</span>
+  <span class="n">client</span><span class="o">.</span><span class="n">close</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Let&rsquo;s close our server if it was still running, with Ctrl-C, and restart it. And re-run the previous <code>nc</code> command. The
+output for the client is the same, we didn&rsquo;t change anything there, but our server logs now show a new line:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">Server started at: 2020-04-26 20:52:13 -0400
+New client connected: #&lt;TCPSocket:0x00007fb879931f78&gt;
+Message received from #&lt;TCPSocket:0x00007fb879931f78&gt;: Hello Server, this is Client # This is new!
+</code></pre></td></tr></table>
+</div>
+</div><p>Perfect! So it looks like we have all the pieces we need for now:</p>
+<ul>
+<li>We can create a client that can connect to our server</li>
+<li>The client can send data to the server</li>
+<li>The server can read the data sent from the client and write data back</li>
+<li>The client can read the data it received from the server</li>
+</ul>
+<h3 id="wrapping-it-up">Wrapping it up</h3>
+<p>We want our server to understand two commands, <code>GET</code> and <code>SET</code>, for the sake of simplicity, let&rsquo;s focus on their most
+basic versions.</p>
+<p><code>GET</code> takes one argument, the key name, and return its value if it exists and <code>(nil)</code> otherwise. Note that this is
+purposefully different from the <a href="https://redis.io/topics/protocol#resp-bulk-strings">Redis Protocol</a>. We&rsquo;ll focus on
+actual redis compatibility later one, once we have a stronger foundation for our implementation.</p>
+<p><code>SET</code> takes two arguments, the key value and the key name. It sets the value accordingly, erasing the previous value if
+there was one.</p>
+<p>All other command will return the following string <code>(error) ERR unknown command </code>foo<code>, with args beginning with: &lt;args&gt;</code>, where <!-- raw HTML omitted --> is everything that follows the command, aka, everything from the beginning to the first space.</p>
+<p>We are not gonna perform any other validations for now, again, to focus on having a basic implementation. We&rsquo;ll make it
+more robust later on.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+
+<span class="k">class</span> <span class="nc">BasicServer</span>
+
+  <span class="no">COMMANDS</span> <span class="o">=</span> <span class="o">[</span>
+    <span class="s2">&#34;GET&#34;</span><span class="p">,</span>
+    <span class="s2">&#34;SET&#34;</span><span class="p">,</span>
+  <span class="o">]</span>
+
+  <span class="k">def</span> <span class="nf">initialize</span>
+    <span class="vi">@data_store</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">server</span> <span class="o">=</span> <span class="no">TCPServer</span><span class="o">.</span><span class="n">new</span> <span class="mi">2000</span>
+    <span class="nb">puts</span> <span class="s2">&#34;Server started at: </span><span class="si">#{</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="si">}</span><span class="s2">&#34;</span>
+    <span class="kp">loop</span> <span class="k">do</span>
+      <span class="n">client</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">accept</span>
+      <span class="nb">puts</span> <span class="s2">&#34;New client connected: </span><span class="si">#{</span> <span class="n">client</span> <span class="si">}</span><span class="s2">&#34;</span>
+      <span class="n">client_command_with_args</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">gets</span>
+      <span class="k">if</span> <span class="n">client_command_with_args</span> <span class="o">&amp;&amp;</span> <span class="n">client_command_with_args</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">handle_client_command</span><span class="p">(</span><span class="n">client_command_with_args</span><span class="p">)</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">puts</span> <span class="n">response</span>
+      <span class="k">else</span>
+        <span class="nb">puts</span> <span class="s2">&#34;Empty request received from </span><span class="si">#{</span> <span class="n">client</span> <span class="si">}</span><span class="s2">&#34;</span>
+      <span class="k">end</span>
+      <span class="n">client</span><span class="o">.</span><span class="n">close</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="kp">private</span>
+
+  <span class="k">def</span> <span class="nf">handle_client_command</span><span class="p">(</span><span class="n">client_command_with_args</span><span class="p">)</span>
+    <span class="n">command_parts</span> <span class="o">=</span> <span class="n">client_command_with_args</span><span class="o">.</span><span class="n">split</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">command_parts</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">command_parts</span><span class="o">[</span><span class="mi">1</span><span class="o">..-</span><span class="mi">1</span><span class="o">]</span>
+    <span class="k">if</span> <span class="no">COMMANDS</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">command</span> <span class="o">==</span> <span class="s2">&#34;GET&#34;</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">length</span> <span class="o">!=</span> <span class="mi">1</span>
+          <span class="s2">&#34;(error) ERR wrong number of arguments for &#39;</span><span class="si">#{</span> <span class="n">command</span> <span class="si">}</span><span class="s2">&#39; command&#34;</span>
+        <span class="k">else</span>
+          <span class="vi">@data_store</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">,</span> <span class="s2">&#34;(nil)&#34;</span><span class="p">)</span>
+        <span class="k">end</span>
+      <span class="k">elsif</span> <span class="n">command</span> <span class="o">==</span> <span class="s2">&#34;SET&#34;</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">length</span> <span class="o">!=</span> <span class="mi">2</span>
+          <span class="s2">&#34;(error) ERR wrong number of arguments for &#39;</span><span class="si">#{</span> <span class="n">command</span> <span class="si">}</span><span class="s2">&#39; command&#34;</span>
+        <span class="k">else</span>
+          <span class="vi">@data_store</span><span class="o">[</span><span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">]]</span> <span class="o">=</span> <span class="n">args</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
+          <span class="s1">&#39;OK&#39;</span>
+        <span class="k">end</span>
+      <span class="k">end</span>
+    <span class="k">else</span>
+      <span class="n">formatted_args</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="o">|</span><span class="n">arg</span><span class="o">|</span> <span class="s2">&#34;`</span><span class="si">#{</span> <span class="n">arg</span> <span class="si">}</span><span class="s2">`,&#34;</span> <span class="p">}</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&#34; &#34;</span><span class="p">)</span>
+      <span class="s2">&#34;(error) ERR unknown command `</span><span class="si">#{</span> <span class="n">command</span> <span class="si">}</span><span class="s2">`, with args beginning with: </span><span class="si">#{</span> <span class="n">formatted_args</span> <span class="si">}</span><span class="s2">&#34;</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>The key element of this implementation is that we initialize an empty <code>Hash</code> when creating a new instance of
+<code>BasicServer</code>, and this is what we use to store the data when responding to <code>SET</code> requests. Using a <code>Hash</code> here could
+almost be considered &ldquo;cheating&rdquo;. If you have already looked at the Redis source code, a big part of its implementation
+is related to how data is stored, and since it&rsquo;s written in C, it can&rsquo;t &ldquo;just&rdquo; say: &ldquo;throw this value, for this key, in
+this existing data structure and call it a day&rdquo;. That being said, as already mentioned multiple times, we&rsquo;re taking an
+incremental approach. For now we&rsquo;re focusing on how to integrate the networking parts of our client/server architecture,
+how to exchange information, and while we&rsquo;re busy with this, Ruby&rsquo;s built-in <code>Hash</code> class is a amazing, it supports,
+among many other, the two main features we need: <a href="https://ruby-doc.org/core-2.7.1/Hash.html#method-i-5B-5D"><code>[]</code></a> &amp;
+<a href="https://ruby-doc.org/core-2.7.1/Hash.html#method-i-5B-5D-3D"><code>[]=</code></a>.</p>
+<p>And here is the client code:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+
+<span class="k">class</span> <span class="nc">BasicClient</span>
+
+  <span class="no">COMMANDS</span> <span class="o">=</span> <span class="o">[</span>
+    <span class="s2">&#34;GET&#34;</span><span class="p">,</span>
+    <span class="s2">&#34;SET&#34;</span><span class="p">,</span>
+  <span class="o">]</span>
+
+  <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">socket</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="kp">nil</span>
+    <span class="n">socket</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;GET </span><span class="si">#{</span> <span class="n">key</span> <span class="si">}</span><span class="s2">&#34;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gets</span>
+    <span class="n">socket</span><span class="o">.</span><span class="n">close</span>
+    <span class="n">result</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="n">socket</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="kp">nil</span>
+    <span class="n">socket</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;SET </span><span class="si">#{</span> <span class="n">key</span> <span class="si">}</span><span class="s2"> </span><span class="si">#{</span> <span class="n">value</span> <span class="si">}</span><span class="s2">&#34;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gets</span>
+    <span class="n">socket</span><span class="o">.</span><span class="n">close</span>
+    <span class="n">result</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Let&rsquo;s confirm that it works as expected, as usual, let&rsquo;s start the server in one shell and run commands from another
+one with <code>irb -r &quot;./client&quot;</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">irb(main):001:0&gt; client = BasicClient.new
+irb(main):002:0&gt; client.get 1
+=&gt; &#34;2\n&#34;
+irb(main):003:0&gt; client.get 1
+=&gt; &#34;(nil)\n&#34;
+irb(main):004:0&gt; client.get 2
+=&gt; &#34;(nil)\n&#34;
+irb(main):005:0&gt; client.set 1, 2
+=&gt; &#34;2\n&#34;
+irb(main):006:0&gt; client.set 2, 3
+=&gt; &#34;3\n&#34;
+irb(main):007:0&gt; client.get 1
+=&gt; &#34;2\n&#34;
+irb(main):008:0&gt; client.get 2
+=&gt; &#34;3\n&#34;
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="a-few-tests">A few tests</h2>
+<p>I apologize if you&rsquo;re a TDD enthusiast because what I&rsquo;m about to do might make you cringe. Now that we have added these
+features and manually tested that they worked, we&rsquo;re going to add a few tests.</p>
+<p>I&rsquo;m using minitest, because I like how easy it is to setup. Yes, I know, I am technically already breaking the rules I
+laid out in the &ldquo;from scratch&rdquo; section of the first chapter, but we&rsquo;re talking about tests here. While it might be
+interesting to write a testing library from scratch, and I might do that at some point, I think it&rsquo;s ok to leverage a
+library and focus on the main task, building a Redis server.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;minitest/autorun&#39;</span>
+<span class="nb">require</span> <span class="s1">&#39;timeout&#39;</span>
+<span class="nb">require</span> <span class="s1">&#39;stringio&#39;</span>
+<span class="nb">require</span> <span class="s1">&#39;./server&#39;</span>
+
+<span class="n">describe</span> <span class="s1">&#39;BasicServer&#39;</span> <span class="k">do</span>
+
+  <span class="k">def</span> <span class="nf">connect_to_server</span>
+    <span class="n">socket</span> <span class="o">=</span> <span class="kp">nil</span>
+    <span class="c1"># The server might not be ready to listen to accepting connections by the time we try to connect from the main</span>
+    <span class="c1"># thread, in the parent process. Using timeout here guarantees that we won&#39;t wait more than 1s, which should</span>
+    <span class="c1"># more than enough time for the server to start, and the retry loop inside, will retry to connect every 10ms</span>
+    <span class="c1"># until it succeeds</span>
+    <span class="no">Timeout</span><span class="o">::</span><span class="n">timeout</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">do</span>
+      <span class="kp">loop</span> <span class="k">do</span>
+        <span class="k">begin</span>
+          <span class="n">socket</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+          <span class="k">break</span>
+        <span class="k">rescue</span>
+          <span class="nb">sleep</span> <span class="mi">0</span><span class="o">.</span><span class="mo">01</span>
+        <span class="k">end</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+    <span class="n">socket</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">with_server</span>
+
+    <span class="n">child</span> <span class="o">=</span> <span class="no">Process</span><span class="o">.</span><span class="n">fork</span> <span class="k">do</span>
+      <span class="c1"># We&#39;re effectively silencing the server with these two lines</span>
+      <span class="c1"># stderr would have logged something when it receives SIGINT, with a complete stacktrace</span>
+      <span class="vg">$stderr</span> <span class="o">=</span> <span class="no">StringIO</span><span class="o">.</span><span class="n">new</span>
+      <span class="c1"># stdout would haev logged the &#34;Server started ...&#34; &amp; &#34;New client connected ...&#34; lines</span>
+      <span class="vg">$stdout</span> <span class="o">=</span> <span class="no">StringIO</span><span class="o">.</span><span class="n">new</span>
+      <span class="no">BasicServer</span><span class="o">.</span><span class="n">new</span>
+    <span class="k">end</span>
+
+    <span class="k">yield</span>
+
+  <span class="k">ensure</span>
+    <span class="k">if</span> <span class="n">child</span>
+      <span class="no">Process</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="s1">&#39;INT&#39;</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
+      <span class="no">Process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">assert_command_results</span><span class="p">(</span><span class="n">command_result_pairs</span><span class="p">)</span>
+    <span class="n">with_server</span> <span class="k">do</span>
+      <span class="n">command_result_pairs</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">command</span><span class="p">,</span> <span class="n">expected_result</span><span class="o">|</span>
+        <span class="k">begin</span>
+          <span class="n">socket</span> <span class="o">=</span> <span class="n">connect_to_server</span>
+          <span class="n">socket</span><span class="o">.</span><span class="n">puts</span> <span class="n">command</span>
+          <span class="n">response</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gets</span>
+          <span class="n">assert_equal</span> <span class="n">response</span><span class="p">,</span> <span class="n">expected_result</span> <span class="o">+</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span>
+        <span class="k">ensure</span>
+          <span class="n">socket</span><span class="o">.</span><span class="n">close</span> <span class="k">if</span> <span class="n">socket</span>
+        <span class="k">end</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="n">describe</span> <span class="s1">&#39;when initialized&#39;</span> <span class="k">do</span>
+    <span class="n">it</span> <span class="s1">&#39;listens on port 2000&#39;</span> <span class="k">do</span>
+      <span class="n">with_server</span> <span class="k">do</span>
+        <span class="c1"># lsof stands for &#34;list open files&#34;, see for more info https://stackoverflow.com/a/4421674</span>
+        <span class="n">lsof_result</span> <span class="o">=</span> <span class="sb">`lsof -nP -i4TCP:2000 | grep LISTEN`</span>
+        <span class="n">assert_match</span> <span class="s2">&#34;ruby&#34;</span><span class="p">,</span> <span class="n">lsof_result</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="n">describe</span> <span class="s1">&#39;GET&#39;</span> <span class="k">do</span>
+    <span class="n">it</span> <span class="s1">&#39;handles unexpected number of arguments&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;(error) ERR wrong number of arguments for \&#39;GET\&#39; command&#39;</span> <span class="o">]</span><span class="p">,</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+
+    <span class="n">it</span> <span class="s1">&#39;returns (nil) for unknown keys&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;GET 1&#39;</span><span class="p">,</span> <span class="s1">&#39;(nil)&#39;</span> <span class="o">]</span><span class="p">,</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+
+    <span class="n">it</span> <span class="s1">&#39;returns the value previously set by SET&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;SET 1 2&#39;</span><span class="p">,</span> <span class="s1">&#39;OK&#39;</span> <span class="o">]</span><span class="p">,</span>
+        <span class="o">[</span> <span class="s1">&#39;GET 1&#39;</span><span class="p">,</span> <span class="s1">&#39;2&#39;</span><span class="o">]</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="n">describe</span> <span class="s1">&#39;SET&#39;</span> <span class="k">do</span>
+    <span class="n">it</span> <span class="s1">&#39;handles unexpected number of arguments&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;SET&#39;</span><span class="p">,</span> <span class="s1">&#39;(error) ERR wrong number of arguments for \&#39;SET\&#39; command&#39;</span> <span class="o">]</span><span class="p">,</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+
+    <span class="n">it</span> <span class="s1">&#39;returns OK&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;SET 1 3&#39;</span><span class="p">,</span> <span class="s1">&#39;OK&#39;</span> <span class="o">]</span><span class="p">,</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+
+  <span class="k">end</span>
+
+  <span class="n">describe</span> <span class="s1">&#39;Unknown commands&#39;</span> <span class="k">do</span>
+    <span class="n">it</span> <span class="s1">&#39;returns an error message&#39;</span> <span class="k">do</span>
+      <span class="n">assert_command_results</span> <span class="o">[</span>
+        <span class="o">[</span> <span class="s1">&#39;NOT A COMMAND&#39;</span><span class="p">,</span> <span class="s1">&#39;(error) ERR unknown command `NOT`, with args beginning with: `A`, `COMMAND`,&#39;</span> <span class="o">]</span><span class="p">,</span>
+      <span class="o">]</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>There are a few oddities in there, most of them are documented inline, but the main approach is that for each test, we
+create a new process with <code>Process.fork</code>, and we start the server in the new process. We then connect to it from the
+original process, and send commands over the TCP connection.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Well, that was a lot, but we now have a nice base to build from.</p>
+<p>There are many things we can do from now, but one that I think is important is to start thinking about it would handle
+multiple clients. There are a few major flaws, one of them being that once a client connects, it will block until it
+receives a new line from the client that just connected, or until the client disconnects.</p>
+<p>We can reproduce this behavior by opening a third shell, requiring <code>socket</code> and creating a new socket connected to
+<code>localhost</code> over port 2000. Now go back to the <code>irb</code> console we used previously to test our client and try to call <code>get</code>
+or <code>set</code>. It will hang. This is because the server is running a single thread, and that thread is waiting for
+<code>client.gets</code> to return something. We have two ways to make <code>gets</code> return, either send a new line with <code>puts</code> from the
+newly created socket, or close it, with <code>close</code>.</p>
+<p>The <code>BasicClient</code> works around this issue by never keeping a connection open, when you call <code>get</code> or <code>set</code>, it starts
+from scratch, establishes a new connection, sends the command, reads the response, and closes the socket. Effectively
+killing the connection. This works for now, but is fairly wasteful, TCP connections can stay open and be reused. Let&rsquo;s
+illustrate this right now, with a non scientific quick benchmark:</p>
+<p>We&rsquo;ll start by adding a logging statement to the <code>get</code> method in the client class, to observe how long it takes to
+connect to the server, send a command, and get a response:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+  <span class="n">t0</span> <span class="o">=</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span>
+  <span class="c1"># ...</span>
+  <span class="nb">puts</span> <span class="s2">&#34;Time elapsed: </span><span class="si">#{</span> <span class="p">(</span><span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span> <span class="si">}</span><span class="s2">ms&#34;</span>
+  <span class="n">result</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Results vary a lot from one run to another on my machine, but I&rsquo;m getting in the 1ms to 1.8ms range, ish. Remember that
+both the client and server are running on the same machine, we would see very different numbers if these were running on
+different machines. Note: This is something I am really interested in and might take a few minutes to spin up two EC2
+instances and see what the numbers are on AWS.</p>
+<p>Let&rsquo;s now see what it looks like to run two <code>GET</code> commands, sequentially:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">two_full_gets</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+  <span class="n">t0</span> <span class="o">=</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span>
+  <span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+  <span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">&#34;Time elapsed: </span><span class="si">#{</span> <span class="p">(</span><span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span> <span class="si">}</span><span class="s2">ms&#34;</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Interestingly I am consistently seeing the second <code>get</code> call be 40% to 100% faster than the first one. After running it
+a dozen of times, I am seeing results in the 1.6ms to 4ms range.</p>
+<p>Let&rsquo;s end this quick test by running two gets, over the same connection!</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">two_gets_a_single_connection</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+  <span class="n">t0</span> <span class="o">=</span> <span class="no">Time</span><span class="o">.</span><span class="n">now</span>
+  <span class="n">socket</span> <span class="o">=</span> <span class="no">TCPSocket</span><span class="o">.</span><span class="n">new</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">2000</span>
+  <span class="n">result</span> <span class="o">=</span> <span class="kp">nil</span>
+  <span class="n">socket</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;GET </span><span class="si">#{</span> <span class="n">key</span> <span class="si">}</span><span class="s2">&#34;</span>
+  <span class="n">socket</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&#34;GET </span><span class="si">#{</span> <span class="n">key</span> <span class="si">}</span><span class="s2">&#34;</span>
+  <span class="n">result</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gets</span>
+  <span class="n">socket</span><span class="o">.</span><span class="n">close</span>
+  <span class="nb">puts</span> <span class="s2">&#34;Time elapsed: </span><span class="si">#{</span> <span class="p">(</span><span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span> <span class="si">}</span><span class="s2">ms&#34;</span>
+  <span class="n">result</span>
+<span class="k">end</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Again, I ran this a dozen of time times, and saw it as low as .982ms and never above 1.4ms. This makes sense,
+establishing a connection is not free. When we create an instance of <code>TCPSocket</code>, ruby delegates to the OS through the
+<code>socket</code> syscall and it attempts to establish a network connection. All of that work that is done twice in the first
+example, and only once in the second example. And once again, it is fair to assume that the difference would be even
+bigger with two different hosts, because to establish a connection, TCP packets would have to actually travel from one
+host to the other, over the network, instead of on the same physical machine.</p>
+<p>The next chapter will look at what our options are to make sure that our server can keep client connections open and
+still serve all its clients efficiently, without blocking like the current implementation does.</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">Author</span>
+    <span class="item-content">Pierre J</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">LastMod</span>
+    <span class="item-content">
+        2020-05-17
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/basic-server/">
+            <span class="next-text nav-default">A basic TCP server</span>
+            <span class="next-text nav-mobile">Next</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="https://stackoverflow.com/users/919641/pjam" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/pierre_jambet" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://github.com/pjambet/" class="iconfont icon-github" title="github"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    Powered by <a class="hexo-link" href="https://gohugo.io">Hugo</a>
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    Theme - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Pierre J</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  
+  
+
+
+
+<script type="text/javascript" src="/js/main.min.d7b7ada643c9c1a983026e177f141f7363b4640d619caf01d8831a6718cd44ea.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

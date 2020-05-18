@@ -2,21 +2,28 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>http://localhost:1313/post/my-first-post/</loc>
-    <lastmod>2020-05-16T15:54:30-04:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>http://localhost:1313/post/</loc>
-    <lastmod>2020-05-16T15:54:30-04:00</lastmod>
+    <lastmod>2020-05-17T21:28:17-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
     <loc>http://localhost:1313/</loc>
+    <lastmod>2020-05-17T21:28:17-04:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>http://localhost:1313/post/respond-to-get-and-set/</loc>
+    <lastmod>2020-05-17T21:28:17-04:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>http://localhost:1313/post/basic-server/</loc>
     <lastmod>2020-05-16T15:54:30-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>

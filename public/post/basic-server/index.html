@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="olOwOlo" /><meta name="description" content="A basic TCP server What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+<meta name="author" content="Pierre J" /><meta name="description" content="A basic TCP server What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &amp;ldquo;from scratch&amp;rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability." /><meta name="keywords" content="Hugo, theme, even" />
 
 
@@ -27,7 +27,7 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
 <meta name="generator" content="Hugo 0.70.0 with theme even" />
 
 
-<link rel="canonical" href="http://localhost:1313/post/my-first-post/" />
+<link rel="canonical" href="http://localhost:1313/post/basic-server/" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -37,14 +37,14 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
 
 
 <link href="/sass/main.min.a92abd6a9b8b45f0927ed186326103e391dae330d8e952d3b4553f08f59e5c97.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
 
 
 <meta property="og:title" content="A basic TCP server" />
 <meta property="og:description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="http://localhost:1313/post/my-first-post/" />
+<meta property="og:url" content="http://localhost:1313/post/basic-server/" />
 <meta property="article:published_time" content="2020-05-16T15:54:30-04:00" />
 <meta property="article:modified_time" content="2020-05-16T15:54:30-04:00" />
 <meta itemprop="name" content="A basic TCP server">
@@ -834,7 +834,7 @@ similar-ish implementation to get a rough idea of what Ruby does for us under th
     <div class="post-copyright">
   <p class="copyright-item">
     <span class="item-title">Author</span>
-    <span class="item-content">olOwOlo</span>
+    <span class="item-content">Pierre J</span>
   </p>
   <p class="copyright-item">
     <span class="item-title">LastMod</span>
@@ -849,7 +849,11 @@ similar-ish implementation to get a rough idea of what Ruby does for us under th
 <footer class="post-footer">
       
       <nav class="post-nav">
-        
+        <a class="prev" href="/post/respond-to-get-and-set/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Respond to Get and Set</span>
+            <span class="prev-text nav-mobile">Prev</span>
+          </a>
         
       </nav>
     </footer>
@@ -866,10 +870,9 @@ similar-ish implementation to get a rough idea of what Ruby does for us under th
 
     <footer id="footer" class="footer">
       <div class="social-links">
-      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
-      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
-      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
-      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="https://stackoverflow.com/users/919641/pjam" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/pierre_jambet" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://github.com/pjambet/" class="iconfont icon-github" title="github"></a>
   <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
 </div>
 
@@ -887,12 +890,11 @@ similar-ish implementation to get a rough idea of what Ruby does for us under th
 
   <span class="copyright-year">
     &copy; 
-    2017 - 
     2020
     <span class="heart">
       <i class="iconfont icon-heart"></i>
     </span>
-    <span class="author">olOwOlo</span>
+    <span class="author">Pierre J</span>
   </span>
 </div>
     </footer>
@@ -903,8 +905,8 @@ similar-ish implementation to get a rough idea of what Ruby does for us under th
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  
+  
 
 
 
