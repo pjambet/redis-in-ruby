@@ -1,42 +1,42 @@
-<?xml-stylesheet type="text/xsl" href="http://localhost:1313/sitemap.xsl"?>
+<?xml-stylesheet type="text/xsl" href="https://redis.pjam.me/sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>http://localhost:1313/post/</loc>
+    <loc>https://redis.pjam.me/post/</loc>
     <lastmod>2020-05-17T21:28:17-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>http://localhost:1313/</loc>
+    <loc>https://redis.pjam.me/</loc>
     <lastmod>2020-05-17T21:28:17-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>http://localhost:1313/post/respond-to-get-and-set/</loc>
+    <loc>https://redis.pjam.me/post/respond-to-get-and-set/</loc>
     <lastmod>2020-05-17T21:28:17-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>http://localhost:1313/post/basic-server/</loc>
+    <loc>https://redis.pjam.me/post/basic-server/</loc>
     <lastmod>2020-05-16T15:54:30-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>http://localhost:1313/categories/</loc>
+    <loc>https://redis.pjam.me/categories/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>http://localhost:1313/tags/</loc>
+    <loc>https://redis.pjam.me/tags/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>

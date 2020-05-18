@@ -1,4 +1,4 @@
-baseURL = "http://localhost:1313/"
+baseURL = "https://redis.pjam.me"
 languageCode = "en"
 defaultContentLanguage = "en"
 title = "Redis in Ruby"
@@ -87,7 +87,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   mathjaxEnableAutoNumber = false
   mathjaxUseLocalFiles = false  # You should install mathjax in `your-site/static/lib/mathjax`
 
-  postMetaInFooter = true   # contain author, lastMod, markdown link, license
+  postMetaInFooter = false   # contain author, lastMod, markdown link, license
   linkToMarkDown = false    # Only effective when hugo will output .md files.
   contentCopyright = ''     # e.g. '<a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a>'
 
