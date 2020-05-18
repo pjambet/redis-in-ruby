@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Pierre J" /><meta name="description" content="A basic TCP server What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+<meta name="author" content="Pierre J" /><meta name="description" content="What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &amp;ldquo;from scratch&amp;rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability." /><meta name="keywords" content="Hugo, theme, even" />
 
 
@@ -41,24 +41,24 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
 
 
 <meta property="og:title" content="A basic TCP server" />
-<meta property="og:description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+<meta property="og:description" content="What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="http://localhost:1313/post/basic-server/" />
 <meta property="article:published_time" content="2020-05-16T15:54:30-04:00" />
 <meta property="article:modified_time" content="2020-05-16T15:54:30-04:00" />
 <meta itemprop="name" content="A basic TCP server">
-<meta itemprop="description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+<meta itemprop="description" content="What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability.">
 <meta itemprop="datePublished" content="2020-05-16T15:54:30-04:00" />
 <meta itemprop="dateModified" content="2020-05-16T15:54:30-04:00" />
-<meta itemprop="wordCount" content="3255">
+<meta itemprop="wordCount" content="3251">
 
 
 
 <meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="A basic TCP server"/>
-<meta name="twitter:description" content="A basic TCP server What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
+<meta name="twitter:description" content="What we&rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
 Introduction The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability."/>
 
 <!--[if lte IE 9]>
@@ -136,13 +136,12 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
   <div class="post-toc-content always-active">
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#a-basic-tcp-server">A basic TCP server</a>
+    <li><a href="#what-well-cover">What we&rsquo;ll cover</a></li>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#a-note-about-from-scratch">A note about &ldquo;from scratch&rdquo;</a></li>
+    <li><a href="#lets-write-some-code">Let&rsquo;s write some code</a></li>
+    <li><a href="#conclusion">Conclusion</a>
       <ul>
-        <li><a href="#what-well-cover">What we&rsquo;ll cover</a></li>
-        <li><a href="#introduction">Introduction</a></li>
-        <li><a href="#a-note-about-from-scratch">A note about &ldquo;from scratch&rdquo;</a></li>
-        <li><a href="#lets-write-some-code">Let&rsquo;s write some code</a></li>
-        <li><a href="#conclusion">Conclusion</a></li>
         <li><a href="#appendix---a-c-implementation-of-the-server">Appendix - A C implementation of the server</a></li>
       </ul>
     </li>
@@ -151,12 +150,11 @@ Introduction The goal of this series of posts is to re-implement a Redis server,
   </div>
 </div>
     <div class="post-content">
-      <h2 id="a-basic-tcp-server">A basic TCP server</h2>
-<h3 id="what-well-cover">What we&rsquo;ll cover</h3>
+      <h2 id="what-well-cover">What we&rsquo;ll cover</h2>
 <p>This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with <code>netcat</code> (<code>nc</code>), a
 utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior
 of our server.</p>
-<h3 id="introduction">Introduction</h3>
+<h2 id="introduction">Introduction</h2>
 <p>The goal of this series of posts is to re-implement a Redis server, &ldquo;from scratch&rdquo;. At the time of this writing Redis
 supports 9 different <a href="TODO">data types</a>, dozens of commands related to those data types as well as many features in the
 <a href="https://redis.io/documentation#administration">Administration</a> category, such Redis Sentinel for High Availability.
@@ -166,12 +164,12 @@ I&rsquo;m choosing Ruby for this language for no other reasons that I like it, a
 caracterized as a &ldquo;slow language&rdquo; but performance is not a big concern here. While I will make sure to make sound
 implementation choices, the goal is to learn more about Redis, Ruby, networking, OS signals and so so and not to produce
 a production ready software.</p>
-<h3 id="a-note-about-from-scratch">A note about &ldquo;from scratch&rdquo;</h3>
+<h2 id="a-note-about-from-scratch">A note about &ldquo;from scratch&rdquo;</h2>
 <p>&ldquo;From scratch&rdquo; can be a an ambiguous term, especially with a languate like Ruby that provides so many features out of
 the box.
 So, my goal with this series will be to rely exclusively on the Ruby standard library. At the time of this writing,
 April 2020, the latest Ruby version is 2.7.1.</p>
-<h3 id="lets-write-some-code">Let&rsquo;s write some code</h3>
+<h2 id="lets-write-some-code">Let&rsquo;s write some code</h2>
 <p>The main Redis component is <code>redis-server</code>, which is an executable that starts a TCP server. When experimenting with
 Redis, it is common to use <code>redis-cli</code>, which is an executable that starts a REPL client that connects to a redis server.
 By default Redis runs on port 6379 locally.</p>
@@ -479,7 +477,7 @@ this approach. Threads are not an unlimited, if we were to create more and more 
 down the whole system. Using multiple threads is something that needs to be done very carefully and it can easily lead
 to race conditions. As mentioned earlier, concurrency and parallelism are both complicated topics and we&rsquo;ll try to cover
 them in future chapters.</p>
-<h3 id="conclusion">Conclusion</h3>
+<h2 id="conclusion">Conclusion</h2>
 <p>We now know how to run a basic TCP server, which doesn&rsquo;t do much, it can write strings to its clients and then close the
 connection, that&rsquo;s about it. That being said, as we&rsquo;ll see in future chapters, we can do a lot with that.
 We also looked at the limitiation of a single threaded approach, and while we could use threads to improve the

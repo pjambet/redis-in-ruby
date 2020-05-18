@@ -4,15 +4,13 @@ date: 2020-05-16T15:54:30-04:00
 draft: false
 ---
 
-## A basic TCP server
-
-### What we'll cover
+## What we'll cover
 
 This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with `netcat` (`nc`), a
 utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior
 of our server.
 
-### Introduction
+## Introduction
 
 The goal of this series of posts is to re-implement a Redis server, "from scratch". At the time of this writing Redis
 supports 9 different [data types](TODO), dozens of commands related to those data types as well as many features in the
@@ -24,14 +22,14 @@ caracterized as a "slow language" but performance is not a big concern here. Whi
 implementation choices, the goal is to learn more about Redis, Ruby, networking, OS signals and so so and not to produce
 a production ready software.
 
-### A note about "from scratch"
+## A note about "from scratch"
 
 "From scratch" can be a an ambiguous term, especially with a languate like Ruby that provides so many features out of
 the box.
 So, my goal with this series will be to rely exclusively on the Ruby standard library. At the time of this writing,
 April 2020, the latest Ruby version is 2.7.1.
 
-### Let's write some code
+## Let's write some code
 
 The main Redis component is `redis-server`, which is an executable that starts a TCP server. When experimenting with
 Redis, it is common to use `redis-cli`, which is an executable that starts a REPL client that connects to a redis server.
@@ -271,7 +269,7 @@ down the whole system. Using multiple threads is something that needs to be done
 to race conditions. As mentioned earlier, concurrency and parallelism are both complicated topics and we'll try to cover
 them in future chapters.
 
-### Conclusion
+## Conclusion
 
 We now know how to run a basic TCP server, which doesn't do much, it can write strings to its clients and then close the
 connection, that's about it. That being said, as we'll see in future chapters, we can do a lot with that.
