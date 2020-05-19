@@ -17,8 +17,7 @@
       <pubDate>Sun, 17 May 2020 21:28:17 -0400</pubDate>
       
       <guid>https://redis.pjam.me/post/respond-to-get-and-set/</guid>
-      <description>Intro In this chapter, we&amp;rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in TCPServer class. In this chapter we&amp;rsquo;ll build a basic client using another built-in class, TCPSocket. We&amp;rsquo;ll then make the server actually usable by making it respond to two commands, GET and SET.
-Let&amp;rsquo;s write some code We&amp;rsquo;re going to start by wrapping the code to start a server in a class, because this will make it easier to add functionality later on.</description>
+      <description>In this chapter, we&amp;rsquo;ll build on the foundations we established in the previous chapter. We now know how to start a TCP server using the built-in &lt;code&gt;TCPServer&lt;/code&gt; class. In this chapter we&amp;rsquo;ll build a basic client using another built-in class, &lt;code&gt;TCPSocket&lt;/code&gt;. We&amp;rsquo;ll then make the server actually usable by making it respond to two commands, &lt;code&gt;GET&lt;/code&gt; and &lt;code&gt;SET&lt;/code&gt;.</description>
     </item>
     
     <item>
@@ -27,8 +26,7 @@ Let&amp;rsquo;s write some code We&amp;rsquo;re going to start by wrapping the c
       <pubDate>Sat, 16 May 2020 15:54:30 -0400</pubDate>
       
       <guid>https://redis.pjam.me/post/basic-server/</guid>
-      <description>What we&amp;rsquo;ll cover This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with netcat (nc), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.
-Introduction The goal of this series of posts is to re-implement a Redis server, &amp;ldquo;from scratch&amp;rdquo;. At the time of this writing Redis supports 9 different data types, dozens of commands related to those data types as well as many features in the Administration category, such Redis Sentinel for High Availability.</description>
+      <description>This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with &lt;code&gt;netcat&lt;/code&gt; (&lt;code&gt;nc&lt;/code&gt;), a utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior of our server.</description>
     </item>
     
   </channel>
