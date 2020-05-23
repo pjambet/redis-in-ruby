@@ -16,8 +16,8 @@ of our server.
 ## Introduction
 
 The goal of this series of posts is to re-implement a Redis server, "from scratch". At the time of this writing Redis
-supports 9 different [data types](TODO), dozens of commands related to those data types as well as many features in the
-[Administration](https://redis.io/documentation#administration) category, such Redis Sentinel for High Availability.
+supports 9 different [data types][redis-data-types], dozens of commands related to those data types as well as many features in the
+[Administration][redis-administration] category, such Redis Sentinel for High Availability.
 I will start with a heavily simplified version of Redis, and slowly add more features, trying to get as close as
 possible to what Redis supports today.
 I'm choosing Ruby for this language for no other reasons that I like it, and I find it fun to play with. Ruby is often
@@ -38,8 +38,7 @@ The main Redis component is `redis-server`, which is an executable that starts a
 Redis, it is common to use `redis-cli`, which is an executable that starts a REPL client that connects to a redis server.
 By default Redis runs on port 6379 locally.
 
-The official Ruby documentation shows the following example for the [TCPServer
-class](http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html):
+The official Ruby documentation shows the following example for the [TCPServer class][ruby-tcp-server]:
 
 {{< highlight ruby >}}
 require 'socket'
@@ -75,15 +74,12 @@ So, for now, let's focus on the first example, line by line:
 First, we require `'socket'`. Ruby's require syntax has always been weird to me, especially compared to more explicit
 ones like Python's for instance.
 After a bit of browsing the Ruby source code, my guess is that this require will add all the constants defined in the c
-files [in this folder](https://github.com/ruby/ruby/tree/v2_7_1/ext/socket) to `$LOAD_PATH`, making a bunch of classes
-such as [`Addrinfo`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/raddrinfo.c#L2689),
-[`UnixServer`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixserver.c#L118),
-[`UNIXSocket`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixsocket.c#L584),
-[`UDPSocket`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/udpsocket.c#L238),
-[`TCPSocket`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpsocket.c#L88),
-[`TCPServer`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpserver.c#L139) &
-[`SOCKSocket`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/sockssocket.c#L68).
-You can try this on your own in an `irb` shell, requiring any of these constants would fail before calling `require 'socket'` and would work afterwards:
+files [in this folder][ruby-source-socket]) to `$LOAD_PATH`, making a bunch of classes such as
+[`Addrinfo`][ruby-source-addrinfo], [`UnixServer`][ruby-source-unixserver], [`UNIXSocket`][ruby-source-unixsocket],
+[`UDPSocket`][ruby-source-udpsocket], [`TCPSocket`][ruby-source-tcpsocket], [`TCPServer`][ruby-source-tcpserver] &
+[`SOCKSocket`][ruby-source-sockssocket].
+You can try this on your own in an `irb` shell, requiring any of these constants would fail before calling `require
+'socket'` and would work afterwards:
 
 ``` ruby
 irb(main):001:0> TCPSocket.new
@@ -147,11 +143,11 @@ irb(main):001:0> TCPServer.new(2003).method(:inspect)
 ```
 
 This makes sense, `TCPServer` inherits from `TCPSocket`, which in turn inherits from `IPSocket`. This is a C function
-defined in [`ipsocket.c`](https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/ipsocket.c#L206).  It looks like the
-values come from the `addr` function, which according the docs: "Returns the local address as an array which contains
-address_family, port, hostname and numeric_address."  A bit of Gooling about `AF_INET6` [confirmed
-this](https://stackoverflow.com/a/1594039/919641), `AF` stands for Address Family, and INET mean Internet Protocol v4,
-and INET6 means Internet Protocol v6. `::` has a special meaning for IPv6 addresses, equivalent to 0.0.0.0 for IPv4.
+defined in [`ipsocket.c`][ruby-source-ipsocket].  It looks like the values come from the `addr` function, which
+according the docs: "Returns the local address as an array which contains address_family, port, hostname and
+numeric_address."  A bit of Gooling about `AF_INET6` [confirmed this][so-af-inet6], `AF` stands for Address Family, and
+INET mean Internet Protocol v4, and INET6 means Internet Protocol v6. `::` has a special meaning for IPv6 addresses,
+equivalent to 0.0.0.0 for IPv4.
 
 Back to our server, if you still have a terminal open, where you ran `TCPServer.new 2000` in an `irb` shell, now open a
 new terminal and run `nc localhost 2000`. `nc` or `netcat`, from its `man` page: "is used for just about anything under
@@ -295,7 +291,7 @@ Note: If you do not have `gcc` installed your machine, you can install in on mac
 have lots of answers on stackoverflow and the likes.
 
 The code I'm sharing here is a simplified version of the client/server code available on
-[GeeksforGeeks](https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/):
+[GeeksforGeeks][geeks-for-geeks-server-client]:
 
 Server:
 
@@ -477,3 +473,18 @@ all of that is done, exits.
 Doing a step by step walkthrough of the client and server code is both a little bit out of scope and frankly something
 that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a
 similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
+
+[redis-data-types]:https://TODO
+[redis-administration]:https://redis.io/documentation#administration
+[ruby-tcp-server]:http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html
+[ruby-source-socket]:https://github.com/ruby/ruby/tree/v2_7_1/ext/socket
+[ruby-source-addrinfo]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/raddrinfo.c#L2689
+[ruby-source-unixserver]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixserver.c#L118
+[ruby-source-unixsocket]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/unixsocket.c#L584
+[ruby-source-udpsocket]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/udpsocket.c#L238
+[ruby-source-tcpsocket]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpsocket.c#L88
+[ruby-source-tcpserver]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/tcpserver.c#L139
+[ruby-source-sockssocket]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/sockssocket.c#L68
+[ruby-source-ipsocket]:https://github.com/ruby/ruby/blob/v2_7_1/ext/socket/ipsocket.c#L206
+[so-af-inet6]:https://stackoverflow.com/a/1594039/919641
+[geeks-for-geeks-server-client]:https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
