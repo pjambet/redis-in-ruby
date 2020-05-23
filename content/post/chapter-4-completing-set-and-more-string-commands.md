@@ -1,5 +1,5 @@
 ---
-title: "Completing Set and more string commands"
+title: "Chapter 4 - Completing Set and more string commands"
 date: 2020-05-23T10:27:27-04:00
 lastmod: 2020-05-23T10:27:27-04:00
 draft: true

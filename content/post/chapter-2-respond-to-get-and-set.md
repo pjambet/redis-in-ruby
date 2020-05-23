@@ -1,5 +1,5 @@
 ---
-title: "Respond to Get and Set"
+title: "Chapter 2 - Respond to Get and Set"
 date: 2020-05-17T21:28:17-04:00
 draft: false
 summary: "In this chapter, we'll build on the foundations we established in the previous chapter. We now know how to start a TCP
