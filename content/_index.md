@@ -19,8 +19,16 @@ Start reading the first [chapter below](#posts), or head to the [chapters list](
 
 This online book is aimed at people with some programming experience. I am assuming a reasonable level of familiarity
 with programming concepts such as conditions, loops, classes as well as some understanding of networking. Readers should
-already have heard of protocols such as [HTTP][http] and [TCP][tcp] and I think it would help to have already worked with those.
-Anyone who worked with a web application, regardless of the language, should have enough experience to read this book.
+already have heard of protocols such as [HTTP][http] and [TCP][tcp] and I think it would help to have already worked
+with those.  Anyone who worked with a web application, regardless of the language, should have enough experience to read
+this book. If you've worked with a server backend in Ruby, Python, Javascript, or literally anything else, or did
+frontend work involving fetch and/or ajax, this should be enough!
+
+Lastly, readers should also be familiar with [threads][wikipedia-threads] and [processes][wikipedia-processes]. No
+expertise is required, and I am far from being an expert on the topic, but if you've never heard of these, I would
+advise to glance at the linked wikipedia page, and to potentially explore the APIs of your favorite languages. Most
+languages provide tools to interact with threads and processes. Ruby has [a Thread class][ruby-doc-thread] and [a
+Process class][ruby-doc-process].
 
 I wrote this book aiming for it to be useful to five years ago me, when I had about 2 and 3 years of professional
 experience. I majored in computer science, so back then I had already a fair amount of few years of experience with
@@ -30,5 +38,9 @@ On a spectrum from beginner to expert, I would say that it aims somwhere in the 
 slightly on the left, so intermediate-ish.
 
 
-[http]: https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol
-[tcp]: https://en.wikipedia.org/wiki/Transmission_Control_Protocol
+[http]:https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol
+[tcp]:https://en.wikipedia.org/wiki/Transmission_Control_Protocol
+[wikipedia-threads]:https://en.wikipedia.org/wiki/Thread_(computing)
+[wikipedia-processes]:[https://en.wikipedia.org/wiki/Process_(computing)]
+[ruby-doc-thread]:https://ruby-doc.org/core-2.7.1/Thread.html
+[ruby-doc-process]:https://ruby-doc.org/core-2.7.1/Process.html
