@@ -1,6 +1,7 @@
 ---
 title: "A basic TCP server"
 date: 2020-05-16T15:54:30-04:00
+lastmod: 2020-05-23T15:52:58-04:00
 draft: false
 summary: "This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with `netcat` (`nc`), a
 utility bundled with macOS. We will briefly look at concurrency and parallelism and how threads can impact the behavior
