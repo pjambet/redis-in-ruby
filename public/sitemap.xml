@@ -2,14 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>https://redis.pjam.me/chapters/</loc>
-    <lastmod>2020-05-17T23:45:33-04:00</lastmod>
+    <loc>https://redis.pjam.me/</loc>
+    <lastmod>2020-05-23T10:27:27-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>https://redis.pjam.me/</loc>
+    <loc>https://redis.pjam.me/chapters/</loc>
     <lastmod>2020-05-17T23:45:33-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>

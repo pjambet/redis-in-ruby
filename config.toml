@@ -63,8 +63,8 @@ copyright = ""            # default: author.name ↓
   gitRepo = ""
 
   # site info (optional)
-  keywords = ["Hugo", "theme","even"]
-  description = "Hugo theme even example site."
+  keywords = ["Redis", "Ruby", "Programming"]
+  description = "Rewriting Redis in Ruby, just 'cause"
 
   # paginate of archives, tags and categories
   archivePaginate = 20
