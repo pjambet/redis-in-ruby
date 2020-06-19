@@ -203,3 +203,8 @@ copyright = ""            # default: author.name ↓
 #  section = ["HTML", "RSS"]
 #  taxonomy = ["HTML", "RSS"]
 #  taxonomyTerm = ["HTML"]
+
+# From: https://github.com/olOwOlo/hugo-theme-even/issues/198
+# Related: https://gohugo.io/news/0.60.0-relnotes/
+[markup.goldmark.renderer]
+  unsafe = true
