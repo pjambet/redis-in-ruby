@@ -112,7 +112,7 @@ Wikipedia][wikipedia-syscall]:
 > In computing, a system call (commonly abbreviated to syscall) is the programmatic way in which a computer program
 > requests a service from the kernel of the operating system on which it is executed.
 
-So far we've implictly seen three syscalls
+So far we've implictly seen two syscalls
 
 - `accept`: This is how you connect to existing socket
 - `socket`: This is how we created the server in the previous chapter
