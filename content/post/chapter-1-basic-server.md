@@ -200,8 +200,8 @@ $?` to see the status of the last command. Running `ls` followed by `echo $?` sh
 
 If you've seen C code, the `main` function's signature is `int main()` because the value returned by `main` is the value
 used as the exit status, unless you call `exit` explicitly.
-So this is you might see `return 0` at the end of the `main` function in a C program, it means "return success". It also
-seems common to use `exit(EXIT_SUCCESS)` or `exit(EXIT_FAILURE)`.
+So this is why you might see `return 0` at the end of the `main` function in a C program, it means "return success". It
+also seems common to use `exit(EXIT_SUCCESS)` or `exit(EXIT_FAILURE)`.
 
 Some codes [have special meanings][exit-codes], such as 127 meaning "Command not found"
 
