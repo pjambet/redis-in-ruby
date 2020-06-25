@@ -31,7 +31,7 @@ a production ready software.
 
 ## A note about "from scratch"
 
-"From scratch" can be a an ambiguous term, especially with a languate like Ruby that provides so many features out of
+"From scratch" can be a an ambiguous term, especially with a language like Ruby that provides so many features out of
 the box.
 My goal with this book is to rely exclusively on the Ruby standard library. At the time of this writing, April 2020, the
 latest Ruby version is 2.7.1.
