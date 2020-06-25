@@ -10,8 +10,8 @@ description: "List of all chapters"
 
 ## Part I
 
-- [Chapter 1 - A Basic Server](/post/basic-server/)
-- [Chapter 2 - Respond to Get & Set](/post/respond-to-get-and-set/)
+- [Chapter 1 - A Basic Server](/post/chapter-1-basic-server/)
+- [Chapter 2 - Respond to Get & Set](/post/chapter-2-respond-to-get-and-set/)
 - [Chapter 3 - Multiple clients - Coming soon](/)
 - [Chapter 4 - Completing set and more String commands- Coming soon](/)
 - [Chapter 5 - Rewriting the hashing algorithm - Coming soon](/)
