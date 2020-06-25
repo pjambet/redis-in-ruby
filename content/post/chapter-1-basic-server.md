@@ -178,7 +178,7 @@ free to exit with Ctrl-C. You can confirm that it did indeed do something, becau
 such as 2001, it should return right away, with an exit code of 1, aka, an error. If it hangs on port 2001 as well, it
 might be because you have something running on port 2001 on your machine.
 
-`nc` has a `-w` flag, to specify a timeout, you can see all available flags with `nc -h`. You can experiment yourseld by
+`nc` has a `-w` flag, to specify a timeout, you can see all available flags with `nc -h`. You can experiment yourself by
 running the same command, with a value for `-w`. Running `nc -w 5 localhost 2000` will wait for 5 seconds and exit with
 a status of 0 after that.
 
@@ -186,7 +186,7 @@ Regardless of the environment, I think it's an overall best practice to set time
 like HTTP requests. While it is unlikely that a server would have such a blatant bad behavior as the one we currently
 have, accept a request and do absolutely nothing with it, it is entirely possible that a server would take a very long
 time to return a response, if a spike in incoming traffic is causing the server to become unresponsive for instance. In
-this case, it might be benefitial for the client to abort after the timeout, instead of waiting.
+this case, it might be beneficial for the client to abort after the timeout, instead of waiting.
 
 
 {{% admonition info "Exit Status" %}}
