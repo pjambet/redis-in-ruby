@@ -12,7 +12,7 @@ description: "List of all chapters"
 
 - [Chapter 1 - A Basic Server](/post/chapter-1-basic-server/)
 - [Chapter 2 - Respond to Get & Set](/post/chapter-2-respond-to-get-and-set/)
-- [Chapter 3 - Multiple clients - Coming soon](/)
+- [Chapter 3 - Multiple clients - Coming soon](/post/chapter-3-multiple-clients/)
 - [Chapter 4 - Completing set and more String commands- Coming soon](/)
 - [Chapter 5 - Rewriting the hashing algorithm - Coming soon](/)
 - [Chapter 6 - Deeper dive in the Redis Protocol](/)

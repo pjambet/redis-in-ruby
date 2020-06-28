@@ -12,20 +12,13 @@ description: "In this chapter we will improve the Redis server to efficiently ha
 
 ## First problem, accepting clients
 
-Let's start with the new client problem. The goal is that, regardless of the state of the server, of what it may or may
-not currently doing, or whether other clients are already connected, new clients should be able to establish a new
-connection, and keep the connection open as long as they wish, until they either disconnect on purpose or a network
-issue occurs.
+Let's start with the new client problem. The goal is that, regardless of the state of the server, of what it may or may not currently doing, or whether other clients are already connected, new clients should be able to establish a new connection, and keep the connection open as long as they wish, until they either disconnect on purpose or a network issue occurs.
 
-Before attempting to fix the problem, we need to think about what we're trying to achieve, what parts of the current
-implementation are problematic and only then can we really start thinking about what needs to change.
+Before attempting to fix the problem, we need to think about what we're trying to achieve, what parts of the current implementation are problematic and only then can we really start thinking about what needs to change.
 
-First things first, we want our server to keep client connections alive until clients disconnect. After all, this is
-what what Redis does, it keeps the connection alive until the client closes the connection, either explicitly with the
-[QUIT][redis-documentation-quit].
+First things first, we want our server to keep client connections alive until clients disconnect. After all, this is what what Redis does, it keeps the connection alive until the client closes the connection, either explicitly with the [QUIT][redis-documentation-quit].
 
-So that means removing this `client.close` line, we will add it back when we add a handler for the `QUIT` command, but
-let's set that aside for now.
+So that means removing this `client.close` line, we will add it back when we add a handler for the `QUIT` command, but let's set that aside for now.
 
 This is what the main server loop looks like now:
 
@@ -43,9 +36,7 @@ loop do
 end
 ```
 
-The server starts, waits for a client to connect, and then handles the requests from the client, nothing changed
-there. But what happens once the server wrote the response back, it starts doing the same thing again, waiting for a new
-client to connect, not keeping track of the first client, that is, as far as we know, still connected.
+The server starts, waits for a client to connect, and then handles the requests from the client, nothing changed there. But what happens once the server wrote the response back, it starts doing the same thing again, waiting for a new client to connect, not keeping track of the first client, that is, as far as we know, still connected.
 
 Let's start there, we need the server to keep track of all the clients that are currently connected.
 
@@ -63,16 +54,11 @@ loop do
 end
 ```
 
-Everytime a client connects, we add it to the `@clients` array, so now, since the rest of the loop is the same, the first
-iteration ends, we go back to the beginning and wait for a new client. But what if the first client sends a request in the
-meantime? The server is currently waiting, potentially forever, for a new client to connect.
+Everytime a client connects, we add it to the `@clients` array, so now, since the rest of the loop is the same, the first iteration ends, we go back to the beginning and wait for a new client. But what if the first client sends a request in the meantime? The server is currently waiting, potentially forever, for a new client to connect.
 
-It is really starting to look that waiting for clients to connect and trying to handle connected clients in the same loop is
-quite problematic, especially with all these blocking calls that potentially wait forever.
+It is really starting to look that waiting for clients to connect and trying to handle connected clients in the same loop is quite problematic, especially with all these blocking calls that potentially wait forever.
 
-One approach here could be to timeblock these blocking calls, to make sure they don't block the server while there might
-be other things. We could write a custom loop around a blocking call, and making sure it doesn't wait longer than an
-arbitrary time:
+One approach here could be to timeblock these blocking calls, to make sure they don't block the server while there might be other things. We could write a custom loop around a blocking call, and making sure it doesn't wait longer than an arbitrary time:
 
 ``` ruby
 timeout = Time.now.to_f + 1
@@ -82,9 +68,7 @@ while Time.now.to_f < timeout do
 end
 ```
 
-This loop will only run for about a second, and will then stop. It turns out we don't have to write this, Ruby gives us
-the `Timeout` module, that does pretty much the same thing, and throws an exception if the block hasn't finished after the
-given timeout:
+This loop will only run for about a second, and will then stop. It turns out we don't have to write this, Ruby gives us the `Timeout` module, that does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
 
 ``` ruby
 require 'timeout'
@@ -93,24 +77,21 @@ Timeout.timeout(1) do
 end
 ```
 
-Note: The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to
-explore potential approaches, not as a long term solution.
+Note: The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to explore potential approaches, not as a long term solution.
+
+{{% admonition info %}}
+
+When dealing with clients, servers, processes that may or may not be running on the same computer, it is important to remember that a piece of code running on one machine can't really ever be sure that the other ones are in the state that you expect.
+
+In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that we have connected to may have disconnected. There might be various reasons, but to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal issue, an exception was thrown and the process died.
+
+That means that after creating the `client` variable, we have absolutely no guarantees that the actual client, on the other side, is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, the call may fail. But what about later on, imagine that we kept the
 
 
 
-> When dealing with clients, servers, processes that may or may not be running on the same computer, it is important to
-> remember that a piece of code running on one machine can't really ever be sure that the other ones are in the state
-> that you expect.
->
-> In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here,
-> we always have to keep in mind that a client that we have connected to may have disconnected. There might be various
-> reasons, but to name a few, the client may have explicitly closed the connection, a network issue may have happened,
-> causing the connection to be accidentally closed, or maybe the client code had an internal issue, an exception was
-> thrown and the process died.
->
-> That means that after creating the `client` variable, we have absolutely no guarantees that the actual client, on the
-> other side, is still connected. It is reasonable to assume that the client is still connected two lines below when we
-> call `client.gets`, and while unlikely, the call may fail. But what about later on, imagine that we kept the
+{{% /admonition %}}
+
+
 
 TODO: Finish the above after we kept track of the clients.
 
