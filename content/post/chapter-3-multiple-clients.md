@@ -79,15 +79,15 @@ end
 
 Note: The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to explore potential approaches, not as a long term solution.
 
-{{% admonition info %}}
+{{% admonition info "Clients, Servers and failures" %}}
 
-When dealing with clients, servers, processes that may or may not be running on the same computer, it is important to remember that a piece of code running on one machine can't really ever be sure that the other ones are in the state that you expect.
+When dealing with clients & servers, that is, code running in different processes, and potentially not running on the same machine, it is important to remember that a piece of code running on one machine can never really be sure that the other ones are in the state that they expect.
 
-In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that we have connected to may have disconnected. There might be various reasons, but to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal issue, an exception was thrown and the process died.
+In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that has connected in past, may have disconnected by the time the server tries to communicate with it. There might be various causes, to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal error, such as an exception being thrown and the process died.
 
-That means that after creating the `client` variable, we have absolutely no guarantees that the actual client, on the other side, is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, the call may fail. But what about later on, imagine that we kept the
+That means that after creating the `client` variable, we have absolutely no guarantees that the client process on the other side is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
 
-
+But what about later on, imagine that we kept the
 
 {{% /admonition %}}
 
