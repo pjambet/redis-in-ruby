@@ -77,7 +77,11 @@ Timeout.timeout(1) do
 end
 ```
 
-Note: The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to explore potential approaches, not as a long term solution.
+
+{{% admonition warning %}}
+The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to explore potential approaches, not as a long term solution.
+{{% /admonition %}}
+
 
 {{% admonition info "Clients, Servers and failures" %}}
 
