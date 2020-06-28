@@ -531,6 +531,10 @@ Doing a step by step walkthrough of the client and server code is both a little 
 that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a
 similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
 
+### Code
+
+The code from this chapter is [available on GitHub](https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-1)
+
 [redis-data-types]:https://TODO
 [redis-administration]:https://redis.io/documentation#administration
 [ruby-tcp-server]:http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html

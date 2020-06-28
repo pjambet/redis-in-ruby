@@ -591,6 +591,10 @@ other, over the network, instead of on the same physical machine.
 The next chapter will look at what our options are to make sure that our server can keep client connections open and
 still serve all its clients efficiently, without blocking like the current implementation does.
 
+### Code
+
+The code from this chapter is [available on GitHub](https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-2)
+
 
 [wikipedia-syscall]:https://en.wikipedia.org/wiki/System_call
 [linux-syscalls]:https://man7.org/linux/man-pages/man2/syscalls.2.html
