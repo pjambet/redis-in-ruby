@@ -8,7 +8,8 @@ description: "In this chapter we will improve the Redis server to efficiently ha
 ---
 
 ## Introduction
-👋
+
+In this chapter we will add support for efficient handling of multiple clients connected simultaneously. We will first isolate the problemeatic elements of the current implementation and explore different solutions before getting to the final one using the [`select`][select-syscall] syscall.
 
 ## First problem, accepting clients
 
@@ -61,26 +62,39 @@ It is really starting to look that waiting for clients to connect and trying to 
 One approach here could be to timeblock these blocking calls, to make sure they don't block the server while there might be other things. We could write a custom loop around a blocking call, and making sure it doesn't wait longer than an arbitrary time:
 
 ``` ruby
-timeout = Time.now.to_f + 1
-while Time.now.to_f < timeout do
-  server.accept
-  sleep 0.001
+timeout = Time.now.to_f + 5
+server_accepted = false
+
+Thread.abort_on_exception = true
+Thread.new do
+  while server_accepted == false
+    sleep 0.001
+    if Time.now.to_f > timeout
+      raise "Timeout!"
+    end
+  end
 end
+
+server.accept
+server_accepted = true
 ```
 
-This loop will only run for about a second, and will then stop. It turns out we don't have to write this, Ruby gives us the `Timeout` module, that does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
+The previous code starts with an arbitraty timeout value of 5s, creates a new thread that will loop as long as the `server.accept` has not returned or if 5 seconds have ellapsed. This means that the call to accept will not run for more than 5 seconds. The `abort_on_exception` setting is necessary, otherwise an uncaught exception in a Thread does not propagate to the parent thread.
+
+Any clients connecting to the server within five seconds will prevent the `"Timeout!"` from being thrown.
+
+As it turns out, we don't have to write this, Ruby gives us the `Timeout` module, that does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
 
 ``` ruby
 require 'timeout'
-Timeout.timeout(1) do
+Timeout.timeout(5) do
   server.accept
 end
 ```
 
+The Timeout module has received [a fair amount of criticism][sidekiq-timeout-blog] of the past few years. There are a few other posts out there if you search for "ruby timeout module dangerous", and we should absolutely follow their recommendation.
 
-{{% admonition warning %}}
-The Timeout module has received a fair amount of criticism of the past few years, we're only using it here to explore potential approaches, not as a long term solution.
-{{% /admonition %}}
+Looking back at our primitive timeout implementation above, if the second thread enters the `if Time.now.to_f > timeout` condition, it will then throw an exception, but it is entirely possible that a client would connect at the exact same time, and the exception being thrown by the second thread would effectively interrupt the connection process and prevent the server from completing the `accept` call.
 
 
 {{% admonition info "Clients, Servers and failures" %}}
@@ -95,7 +109,10 @@ But what about later on, imagine that we kept the
 
 {{% /admonition %}}
 
+The timeout based approach seems a bit complicated and already shows limitations, but let's try anoter approach to allow the server to accept new clients while still being able to handle incoming requests from connected clients.
 
+
+tl;dr; We use a different thread to accept clients, cool, but how do we know which clients to respond to
 
 TODO: Finish the above after we kept track of the clients.
 
@@ -141,8 +158,18 @@ def initialize
 end
 ```
 
-``` ruby
-```
+### Accept in a thread, gets with a timeout
+
+Check clients one by one
+
+### Accept in a thread, read_nonblock instead of gets with timeout
+
+
+### Accept in a thread, select clients, still read_nonblock
+
+### select everything, new clients and reads
 
 
 [redis-documentation-quit]:https://redis.io/commands/quit
+[select-syscall]:https://man7.org/linux/man-pages/man2/select.2.html
+[sidekiq-timeout-blog]:https://www.mikeperham.com/2015/05/08/timeout-rubys-most-dangerous-api/
