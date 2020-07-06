@@ -208,3 +208,8 @@ copyright = ""            # default: author.name ↓
 # Related: https://gohugo.io/news/0.60.0-relnotes/
 [markup.goldmark.renderer]
   unsafe = true
+
+[markup]
+  [markup.tableOfContents]
+    startLevel = 0
+    endLevel = 2

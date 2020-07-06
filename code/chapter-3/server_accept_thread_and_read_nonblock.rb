@@ -16,38 +16,29 @@ class BasicServer
     puts "Server started at: #{ Time.now }"
     Thread.new do
       loop do
-        sleep 1
-        puts "Accepting clients"
         new_client = server.accept
-        puts "New client connected: #{ new_client }"
         @clients << new_client
-        sleep 1
       end
     end
 
     loop do
       @clients.each do |client|
         puts "Entering loop for #{ client }"
-        if client.closed?
-          puts "Found a closed client, removing"
+        puts "Let's try to read from client"
+        puts "reading from client: #{ client }"
+        client_command_with_args = client.read_nonblock(256, exception: false)
+        if client_command_with_args.nil?
+          puts "Found a client at eof, closing and removing"
+          client.close
           @clients.delete(client)
+        elsif client_command_with_args == :wait_readable
+          puts "Nothing to read from, moving on!"
         else
-          puts "Let's try to read from client"
-          puts "reading from client: #{ client }"
-          client_command_with_args = client.read_nonblock(1024, exception: false)
-          if client_command_with_args.nil?
-            puts "Found a client at eof, closing and removing"
-            client.close
-            @clients.delete(client)
-          elsif client_command_with_args == :wait_readable
-            puts "Nothing to read from, moving on!"
+          if client_command_with_args && client_command_with_args.length > 0
+            response = handle_client_command(client_command_with_args)
+            client.puts response
           else
-            if client_command_with_args && client_command_with_args.length > 0
-              response = handle_client_command(client_command_with_args)
-              client.puts response
-            else
-              puts "empty request received from #{ client }"
-            end
+            puts "empty request received from #{ client }"
           end
         end
       end

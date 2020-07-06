@@ -16,35 +16,24 @@ class BasicServer
     puts "Server started at: #{ Time.now }"
     Thread.new do
       loop do
-        sleep 1
-        puts "Accepting clients"
         new_client = server.accept
-        puts "New client connected: #{ new_client }"
         @clients << new_client
-        sleep 1
       end
     end
 
     loop do
-      puts "In loop"
-      sleep 1
       @clients.each do |client|
-        puts "Entering loop for #{ client }"
         if client.closed?
-          puts "Found a closed client, removing"
           @clients.delete(client)
         else
-          puts "Let's try to read from client"
           begin
             Timeout::timeout(0.1) do
-              puts "reading from client: #{ client }"
               client_command_with_args = client.gets
               if client_command_with_args.nil?
                 puts "Found a client at eof, closing and removing"
                 client.close
                 @clients.delete(client)
               else
-                puts
                 if client_command_with_args && client_command_with_args.length > 0
                   response = handle_client_command(client_command_with_args)
                   client.puts response
