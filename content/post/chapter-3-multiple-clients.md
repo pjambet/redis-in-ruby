@@ -1,7 +1,7 @@
 ---
 title: "Chapter 3 - Multiple Clients"
-date: 2020-05-18T01:30:32-04:00
-lastmod: 2020-05-18T01:30:32-04:00
+date: 2020-07-06
+lastmod: 2020-07-06T11:55:02-04:00
 draft: true
 keywords: []
 description: "In this chapter we will improve the Redis server to efficiently handle multiple clients connected at the same time"
