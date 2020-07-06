@@ -100,7 +100,7 @@ by changing the port value to a port that is unused, like 2001. You should see a
 message refers to the connect system call. The number 2 refers to the section of the manual, which is an optional
 argument to the `man` command. It turns out there is no other man page for connect, so you can run `man connect` to
 learn more about it, or you can be explicit and ask for a specific section, with `man 2 connect`. This is useful for
-other pages, such as `accept`, `man acccept` returns the page for `accept(8)`, but there is also an `accept` system
+other pages, such as `accept`, `man accept` returns the page for `accept(8)`, but there is also an `accept` system
 call, which you can read the documentation for with `man 2 accept`.
 
 
@@ -112,7 +112,7 @@ Wikipedia][wikipedia-syscall]:
 > In computing, a system call (commonly abbreviated to syscall) is the programmatic way in which a computer program
 > requests a service from the kernel of the operating system on which it is executed.
 
-So far we've implictly seen two syscalls
+So far we've implicitly seen two syscalls
 
 - `accept`: This is how you connect to existing socket
 - `socket`: This is how we created the server in the previous chapter
@@ -153,9 +153,9 @@ server wrote with the `gets` method, one line at a time.
 In true Ruby fashion, there are a few different ways to read from the socket, the example we just looked at used `gets`,
 which is defined on `IO`, but if you look at the `IO` documentation, you'll find a few other similar methods, `read`,
 `read_nonblock`, `readline` & `readlines` to name a few.  Exploring the differences between these methods is left as an
-excercise to the reader.
+exercise to the reader.
 
-Ok, I have to admit, I always wanted to write that. I hate when books/posts do that. But seriously, it's a little bit
+OK, I have to admit, I always wanted to write that. I hate when books/posts do that. But seriously, it's a little bit
 off topic for now, so we'll get back to it later, `read` can be convenient because it does not require a max length
 argument as some of the others methods do and defaults to reading the whole thing, aka until it reaches `EOF`, as
 opposed to doing it line by line like `gets` and `readline` do. As we'll see later on, it's also quite convenient
@@ -423,7 +423,7 @@ describe 'BasicServer' do
       # We're effectively silencing the server with these two lines
       # stderr would have logged something when it receives SIGINT, with a complete stacktrace
       $stderr = StringIO.new
-      # stdout would haev logged the "Server started ..." & "New client connected ..." lines
+      # stdout would have logged the "Server started ..." & "New client connected ..." lines
       $stdout = StringIO.new
       BasicServer.new
     end

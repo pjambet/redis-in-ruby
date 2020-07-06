@@ -76,7 +76,7 @@ in depth later.
 So, for now, let's focus on the first example, line by line:
 
 First, we require `'socket'`. Ruby's require syntax has always been weird to me, especially compared to more explicit ones like Python's for instance.
-After a bit of browsing the Ruby source code, my guess is that this require will add all the constants defined in the c files [in the `lib/socket/` folder of the ruby source code][ruby-source-socket] to `$LOAD_PATH`, making a bunch of classes such as [`Addrinfo`][ruby-source-addrinfo], [`UnixServer`][ruby-source-unixserver], [`UNIXSocket`][ruby-source-unixsocket], [`UDPSocket`][ruby-source-udpsocket], [`TCPSocket`][ruby-source-tcpsocket], [`TCPServer`][ruby-source-tcpserver] & [`SOCKSocket`][ruby-source-sockssocket].
+After a bit of browsing through the Ruby source code, my guess is that this `require` call will add all the constants defined in the c files [in the `lib/socket/` folder of the ruby source code][ruby-source-socket] to `$LOAD_PATH`, making a bunch of classes such as [`Addrinfo`][ruby-source-addrinfo], [`UnixServer`][ruby-source-unixserver], [`UNIXSocket`][ruby-source-unixsocket], [`UDPSocket`][ruby-source-udpsocket], [`TCPSocket`][ruby-source-tcpsocket], [`TCPServer`][ruby-source-tcpserver] & [`SOCKSocket`][ruby-source-sockssocket].
 You can try this on your own in an `irb` shell, requiring any of these constants would fail with a `NameError` before calling `require 'socket'` and would work afterwards:
 
 ``` ruby
@@ -99,14 +99,17 @@ irb(main):005:0> UNIXServer
 The next line creates a new `TCPServer` instance, listening on port 2000. The documentation for new [is the
 following][ruby-tcp-server-new]:
 
-`new([hostname], port) => tcpserver`
+```
+new([hostname], port) => tcpserver
 
-> Creates a new server socket bound to port.
->
-> If hostname is given, the socket is bound to it.
->
-> Internally, ::new calls getaddrinfo() function to obtain addresses. If getaddrinfo() returns multiple addresses, ::new
-> tries to create a server socket for each address and returns first one that is successful.
+Creates a new server socket bound to port.
+
+If hostname is given, the socket is bound to it.
+
+Internally, ::new calls getaddrinfo() function to obtain addresses. If getaddrinfo()
+returns multiple addresses, ::new tries to create a server socket for each address and
+returns first one that is successful.
+```
 
 What the documentation implies is that the `hostname` argument is optional and that omitting it runs on `localhost` by default.
 Great, so now we have a TCP server running on `localhost:2000`, but is it actually doing anything? Let's see.
@@ -120,17 +123,11 @@ irb(main):002:0> TCPServer.new 2000
 => #<TCPServer:fd 10, AF_INET6, ::, 2000> # Note that fd value might be different on your system.
 ```
 
-We'll spend more time digging into what these values mean, but for now let's just very briefly look at what we have
-here:
+Let's take look at what these values after `TCPServer:` mean:
 
 *`fd 10`*
 
-`fd` stands for File Descriptor, if you're interested you can see all the descriptors used by a process on
-macOS with the `lsof` tool: `lsof -p <process id>`. We can use `pgrep` to get the process id (often called pid) of the
-`irb` session we started the server from. There was only one result on my machine, 86096, but if you have more than
-`irb` sessions running, you can use ps aux <pid> to get more info about a specific process, like its start timestamp for
-instance. This is what the last line looked like for me, and we can see that there is an open file with the value 10 for
-FD.
+`fd` stands for File Descriptor, if you're interested you can see all the descriptors used by a process on macOS with the `lsof` tool: `lsof -p <process id>`. We can use `pgrep` to get the process id (often called pid) of the `irb` session we started the server from. There was only one result on my machine, 86096, but if you have more than one `irb` session running, you can use `ps aux <pid>` to get more info about a specific process, like its start timestamp for instance. This is what the last line looked like for me, and we can see that there is an open file with the value 10 for FD.
 
 ``` bash
 [...]
@@ -148,23 +145,22 @@ I wasn't exactly sure what the two values in the middle were, `AF_INET6` & `::`,
 string was built by looking at where the `inspect` method came from on the `TCPServer` instance:
 
 ``` bash
-irb(main):001:0> TCPServer.new(2000).method(:inspect)
+irb(main):002:0> server = TCPServer.new(2000)
+irb(main):003:0> server.method(:inspect)
 => #<Method: TCPServer(IPSocket)#inspect()>
+irb(main):004:0> server.method(:inspect).source_location
+=> nil
 ```
 
-This makes sense, `TCPServer` inherits from `TCPSocket`, which itself inherits from `IPSocket`. The
-[`inspect`][ruby-ipsocket-inspect] method on `IPSocket` is defined as a C function in
-[`ipsocket.c`][ruby-source-ipsocket].  It looks like the values come from the `addr` function, which according to [the
-ruby documentation][ruby-ipsocket-addr]: "Returns the local address as an array which contains address_family, port,
-hostname and numeric_address."  A bit of Gooling about `AF_INET6` [confirmed this][so-af-inet6], `AF` stands for Address
-Family, and INET mean Internet Protocol v4, and INET6 means Internet Protocol v6. `::` has a [special
-meaning][four-zeroes-ip] for IPv6 addresses, equivalent to 0.0.0.0 for IPv4.
+Great, and not so great, the `method` method tells us that `inspect` comes the `IPSocket` class, but `source_location` doesn't help us at all, let's keep digging.
+
+`TCPServer` inherits from `TCPSocket`, which itself inherits from `IPSocket`. The [`inspect`][ruby-ipsocket-inspect] method on `IPSocket` is defined as a C function in [`ipsocket.c`][ruby-source-ipsocket].  It looks like the values come from the `addr` function, which according to [the ruby documentation][ruby-ipsocket-addr]: "Returns the local address as an array which contains address_family, port, hostname and numeric_address."  A bit of Googling about `AF_INET6` [confirmed this][so-af-inet6], `AF` stands for Address Family, and INET mean Internet Protocol v4, INET6 means Internet Protocol v6. `::` has a [special meaning][four-zeroes-ip] for IPv6 addresses, equivalent to 0.0.0.0 for IPv4.
 
 ---
 
 Back to our server, if you still have a terminal open, where you ran `TCPServer.new 2000` in an `irb` shell, now open a new terminal and run `nc localhost 2000`. `nc`, which is the cli for the `netcat` utility, is used for, according to its `man` page: "[...] just about anything under the sun involving TCP or UDP". `telnet` is another similar tool, but it does not come bundled with macOS by default, that being said, it is only a `brew install` away.
 
-Running `nc localhost 2000` should "hang", nothing is happening and you cannot type more commands in the shell. Feel free to exit with Ctrl-C. You can confirm that it did indeed do something, because if you try it with an unused port, such as 2001, it should return right away, with an exit code of 1, aka, an error. If it hangs on port 2001 as well, it might be because you have something running on port 2001 on your machine.
+Running `nc localhost 2000` should "hang", nothing is happening and you cannot type more commands in the shell. Feel free to exit with `Ctrl-C`. It would otherwise never end, unless you stop the server running in the other shell, either with the `close` method or by closing the `irb` session. You can confirm that it did indeed do something, because if you try it with an unused port, such as 2001, it should return right away, with an exit code of 1, aka, an error. If it hangs on port 2001 as well, it might be because you have something running on port 2001 on your machine.
 
 `nc` has a `-w` flag, to specify a timeout, you can see all available flags with `nc -h`. You can experiment yourself by running the same command, with a value for `-w`. Running `nc -w 5 localhost 2000` will wait for 5 seconds and exit with a status of 0 after that.
 
@@ -175,14 +171,14 @@ Regardless of the environment, I think it's an overall best practice to set time
 
 Quoting the [wikipedia page][wikipedia-exit-status]:
 
-Each process returns an exit status, as an integer when it terminates. 0 represents a success, and every other values.
+> Each process returns an exit status, as an integer when it terminates. 0 represents a success, and every other values.
 
 Some terminals are configured to show the exit status, some do it only for non zero codes, but you can always use `echo $?` to see the status of the last command. Running `ls` followed by `echo $?` should output `0`.
 
 If you've seen C code, the `main` function's signature is `int main()` because the value returned by `main` is the value used as the exit status, unless you call `exit` explicitly.
 So this is why you might see `return 0` at the end of the `main` function in a C program, it means "return success". It also seems common to use `exit(EXIT_SUCCESS)` or `exit(EXIT_FAILURE)`.
 
-Some codes [have special meanings][exit-codes], such as 127 meaning "Command not found"
+Some codes [have special meanings][exit-codes], such as 127 meaning "Command not found" and 130 "Script terminated by Control-C".
 
 Exit statuses are not specific to POSIX systems as documented on [Wikipedia][wikipedia-exit-status].
 
@@ -208,7 +204,7 @@ with the incoming connection.
 
 `loop` in Ruby starts an infinite loop, nothing special here, it is common for a server to start and never end. Think
 about Redis for a minute, once the server is running, we want it to run forever, we don't expect it to stop unless told
-to do so. An inifinite loop makes perfect sense for a use case like that.
+to do so. An infinite loop makes perfect sense for a use case like that.
 
 The next line is really interesting, and probably one of the most interesting ones in this small snippet: `server.accept`.
 Let's go back to `irb` for a moment, because it makes it easier to experiment with these methods, one at a time.
@@ -220,7 +216,7 @@ irb(main):002:0> s = TCPServer.new 2000
 irb(main):003:0> s.accept
 ```
 
-The `accept` method does not return. The documentation is sadly very succint:
+The `accept` method does not return. The documentation is sadly very succinct:
 
 > Accepts an incoming connection. It returns a new TCPSocket object.
 
@@ -247,7 +243,7 @@ Let's illustrate this with an example, we'll simulate a slow server by adding a 
 loop { socket = server.accept; socket.write "Hello"; sleep 5; socket.close }
 ```
 
-This is almost identical to the first example, except that the main thread sleeps for five seconds before closing the socket. Back to the other terminal, run `nc localhost 2000` again, and you'll see "Hello" being printed almost instantly, followed by the process hanging for five seconds and then exiting. While it is hanging, open a terminal and run the same command, `nc localhost 2000`, if you see "Hello" right away, it might be because the five seconds elapsed in the previous terminal. Feel free to close the inifinite loop in `irb` with Ctrl-C and increase the value to 10 seconds or more and experiment with this.
+This is almost identical to the first example, except that the main thread sleeps for five seconds before closing the socket. Back to the other terminal, run `nc localhost 2000` again, and you'll see "Hello" being printed almost instantly, followed by the process hanging for five seconds and then exiting. While it is hanging, open a terminal and run the same command, `nc localhost 2000`, if you see "Hello" right away, it might be because the five seconds elapsed in the previous terminal. Feel free to close the infinite loop in `irb` with Ctrl-C and increase the value to 10 seconds or more and experiment with this.
 
 What this shows us is that while the server is busy dealing with a client, even if it doesn't do anything and just sleeps, all other incoming clients are effectively waiting to be served.
 The second example improves on this as can be seen in `irb` if you run the following instead:
@@ -269,7 +265,7 @@ We have a server that can server multiple clients at one, which is great. That b
 
 ## Conclusion
 
-We now know how to run a basic TCP server, it can write strings to its clients and then close the connection, that's it. That being said, as we'll see in future chapters, we can do a lot with that. We also looked at the limitiation of a single threaded approach, and while we could use threads to improve the situation, we are purposefully not doing it for now, to keep our example simple and improve it one step at a time.
+We now know how to run a basic TCP server, it can write strings to its clients and then close the connection, that's it. That being said, as we'll see in future chapters, we can do a lot with that. We also looked at the limitation of a single threaded approach, and while we could use threads to improve the situation, we are purposefully not doing it for now, to keep our example simple and improve it one step at a time.
 
 In the next chapter we'll create a server class and make it read input from clients, and respond to `GET` and `SET`, in their most basic forms, we won't implement things like TTL or other options,
 
@@ -332,7 +328,7 @@ int main()
         exit(0);
     }
     else {
-        printf("Socket successfully binded..\n");
+        printf("Socket successfully bound..\n");
     }
 
     // Now server is ready to listen and verification
@@ -348,11 +344,11 @@ int main()
     // Accept the data packet from client and verification
     client_socket_file_descriptor = accept(server_socket_file_descriptor, (SA*)&client_address, &client_address_length);
     if (client_socket_file_descriptor < 0) {
-        printf("server acccept failed: %d,%d...\n", client_socket_file_descriptor, errno);
+        printf("server accept failed: %d,%d...\n", client_socket_file_descriptor, errno);
         exit(0);
     }
     else {
-        printf("server acccept the client...\n");
+        printf("server accept the client...\n");
         char human_readable_address[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_address.sin_addr, human_readable_address, sizeof(human_readable_address));
         printf("Client address: %s\n", human_readable_address);
@@ -391,7 +387,7 @@ int main() {
     int server_socket_file_descriptor;
     struct sockaddr_in server_address;
 
-    // socket create and varification
+    // socket create and verification
     server_socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket_file_descriptor == -1) {
         printf("socket creation failed...\n");
@@ -439,7 +435,7 @@ We're going to need to shells, start the server in the first one, `./server`. It
 
 ``` bash
 Socket successfully created..
-Socket successfully binded..
+Socket successfully bound..
 Server listening..
 ```
 
@@ -455,7 +451,7 @@ From Server: Hello, this is Server!
 And if you return to the other shell, where the server was running, you can see that it now returned and logged a few more things before doing so:
 
 ``` bash
-server acccept the client...
+server accept the client...
 Client address: 127.0.0.1
 From Client: Hello, this is Client
 Closing server_socket_file_descriptor
@@ -463,7 +459,7 @@ Closing server_socket_file_descriptor
 
 It works! A server, that waits until a client connects, reads what the client sent and writes a message back, and once all of that is done, exits.
 
-Doing a step by step walkthrough of the client and server code is both a little bit out of scope and frankly something that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
+Doing a step by step walk through of the client and server code is both a little bit out of scope and frankly something that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
 
 ### Code
 
