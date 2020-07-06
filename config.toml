@@ -9,7 +9,7 @@ theme = "even"
 enableGitInfo = false # use git commit log to generate lastmod record
 
 # Syntax highlighting by Chroma. NOTE: Don't enable `highlightInClient` and `chroma` at the same time!
-pygmentsOptions = "linenos=table"
+pygmentsOptions = "linenos=false"
 pygmentsCodefences = true
 pygmentsUseClasses = true
 pygmentsCodefencesGuessSyntax = true
