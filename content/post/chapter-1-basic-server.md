@@ -171,7 +171,11 @@ Regardless of the environment, I think it's an overall best practice to set time
 
 Quoting the [wikipedia page][wikipedia-exit-status]:
 
-> Each process returns an exit status, as an integer when it terminates. 0 represents a success, and every other values.
+> The exit status of a process in computer programming is a small number passed from a child process (or callee) to a parent process (or caller) when it has finished executing a specific procedure or delegated task.
+>
+> [...]
+>
+> POSIX-compatible systems typically use a convention of zero for success and nonzero for error
 
 Some terminals are configured to show the exit status, some do it only for non zero codes, but you can always use `echo $?` to see the status of the last command. Running `ls` followed by `echo $?` should output `0`.
 
