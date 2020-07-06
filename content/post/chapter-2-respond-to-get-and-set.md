@@ -8,7 +8,7 @@ summary: >
   `TCPSocket`. We'll then make the server actually usable by making it respond to two commands, `GET` and `SET`."
 ---
 
-## Intro
+## What we'll cover
 
 In this chapter, we'll build on the foundations we established in the previous chapter. We now know how to start a TCP
 server using the built-in `TCPServer` class. In this chapter we'll build a basic client using another built-in class,

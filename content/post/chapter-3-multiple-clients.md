@@ -4,12 +4,12 @@ date: 2020-07-06
 lastmod: 2020-07-06T11:55:02-04:00
 draft: true
 keywords: []
-description: "In this chapter we will improve the Redis server to efficiently handle multiple clients connected at the same time"
+summary: "In this chapter we will improve the server to efficiently handle multiple clients connected at the same time. We will end up using the `select` syscall and explore different alternatives using threads on the way."
 ---
 
 ## Introduction
 
-In this chapter we will add support for efficient handling of multiple clients connected simultaneously. We will first isolate the problemeatic elements of the current implementation and explore different solutions before getting to the final one using the [`select`][select-syscall] syscall.
+In this chapter we will add support for efficient handling of multiple clients connected simultaneously. We will first isolate the problematic elements of the current implementation and explore different solutions before getting to the final one using the [`select`][select-syscall] syscall.
 
 ## First problem, accepting clients
 
@@ -99,9 +99,9 @@ Looking back at our primitive timeout implementation above, if the second thread
 
 {{% admonition info "Clients, Servers and failures" %}}
 
-When dealing with clients & servers, that is, code running in different processes, and potentially not running on the same machine, it is important to remember that a piece of code running on one machine can never really be sure that the other ones are in the state that they expect.
+When dealing with clients & servers, that is, code running in different processes, and potentially not running on the same machine, it is important to remember that a piece of code running on one machine can never really be sure that the other ones are in the state that they expect. The main different with running code in a single process is that when two pieces of code run in difference processes, they do not share memory, you can't create a variable in one, and read its value from the other. On top of that, each process has its own lifecycle, one process might be stopped, for various reasons, while the other might still be running.
 
-In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that has connected in past, may have disconnected by the time the server tries to communicate with it. There might be various causes, to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal error, such as an exception being thrown and the process died.
+In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that has connected in the past, may have disconnected by the time the server tries to communicate with it. There might be various reasons, to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal error, such as an exception being thrown and the process died.
 
 That means that after creating the `client` variable, we have absolutely no guarantees that the client process on the other side is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
 

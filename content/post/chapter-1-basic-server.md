@@ -40,7 +40,7 @@ latest Ruby version is 2.7.1.
 
 The main Redis component is `redis-server`, which is an executable that starts a TCP server. When experimenting with
 Redis, it is common to use `redis-cli`, which is an executable that starts a REPL client that connects to a redis server.
-By default Redis runs on port 6379 locally.
+By default Redis runs on localhost, on port 6379.
 
 The official Ruby documentation shows the following example for the [TCPServer class][ruby-tcp-server]:
 
@@ -72,18 +72,12 @@ end
 ```
 
 I will ignore the second example for now because concurrency/parallelism is a complicated topic and I want to address it
-in depth in a later post.
+in depth later.
 So, for now, let's focus on the first example, line by line:
 
-First, we require `'socket'`. Ruby's require syntax has always been weird to me, especially compared to more explicit
-ones like Python's for instance.
-After a bit of browsing the Ruby source code, my guess is that this require will add all the constants defined in the c
-files [in the `lib/socket/` folder of the ruby source code][ruby-source-socket] to `$LOAD_PATH`, making a bunch of
-classes such as [`Addrinfo`][ruby-source-addrinfo], [`UnixServer`][ruby-source-unixserver],
-[`UNIXSocket`][ruby-source-unixsocket], [`UDPSocket`][ruby-source-udpsocket], [`TCPSocket`][ruby-source-tcpsocket],
-[`TCPServer`][ruby-source-tcpserver] & [`SOCKSocket`][ruby-source-sockssocket].
-You can try this on your own in an `irb` shell, requiring any of these constants would fail with a `NameError` before
-calling `require 'socket'` and would work afterwards:
+First, we require `'socket'`. Ruby's require syntax has always been weird to me, especially compared to more explicit ones like Python's for instance.
+After a bit of browsing the Ruby source code, my guess is that this require will add all the constants defined in the c files [in the `lib/socket/` folder of the ruby source code][ruby-source-socket] to `$LOAD_PATH`, making a bunch of classes such as [`Addrinfo`][ruby-source-addrinfo], [`UnixServer`][ruby-source-unixserver], [`UNIXSocket`][ruby-source-unixsocket], [`UDPSocket`][ruby-source-udpsocket], [`TCPSocket`][ruby-source-tcpsocket], [`TCPServer`][ruby-source-tcpserver] & [`SOCKSocket`][ruby-source-sockssocket].
+You can try this on your own in an `irb` shell, requiring any of these constants would fail with a `NameError` before calling `require 'socket'` and would work afterwards:
 
 ``` ruby
 irb(main):001:0> TCPSocket
@@ -168,25 +162,13 @@ meaning][four-zeroes-ip] for IPv6 addresses, equivalent to 0.0.0.0 for IPv4.
 
 ---
 
-Back to our server, if you still have a terminal open, where you ran `TCPServer.new 2000` in an `irb` shell, now open a
-new terminal and run `nc localhost 2000`. `nc`, which is the cli for the `netcat` utility, is used for, according to its
-`man` page: "[...] just about anything under the sun involving TCP or UDP". `telnet` is another similar tool, but it
-does not come bundled with macOS by default, that being said, it is only a `brew install` away.
+Back to our server, if you still have a terminal open, where you ran `TCPServer.new 2000` in an `irb` shell, now open a new terminal and run `nc localhost 2000`. `nc`, which is the cli for the `netcat` utility, is used for, according to its `man` page: "[...] just about anything under the sun involving TCP or UDP". `telnet` is another similar tool, but it does not come bundled with macOS by default, that being said, it is only a `brew install` away.
 
-Running `nc localhost 2000` should "hang", nothing is happening and you cannot type more commands in the shell. Feel
-free to exit with Ctrl-C. You can confirm that it did indeed do something, because if you try it with an unused port,
-such as 2001, it should return right away, with an exit code of 1, aka, an error. If it hangs on port 2001 as well, it
-might be because you have something running on port 2001 on your machine.
+Running `nc localhost 2000` should "hang", nothing is happening and you cannot type more commands in the shell. Feel free to exit with Ctrl-C. You can confirm that it did indeed do something, because if you try it with an unused port, such as 2001, it should return right away, with an exit code of 1, aka, an error. If it hangs on port 2001 as well, it might be because you have something running on port 2001 on your machine.
 
-`nc` has a `-w` flag, to specify a timeout, you can see all available flags with `nc -h`. You can experiment yourself by
-running the same command, with a value for `-w`. Running `nc -w 5 localhost 2000` will wait for 5 seconds and exit with
-a status of 0 after that.
+`nc` has a `-w` flag, to specify a timeout, you can see all available flags with `nc -h`. You can experiment yourself by running the same command, with a value for `-w`. Running `nc -w 5 localhost 2000` will wait for 5 seconds and exit with a status of 0 after that.
 
-Regardless of the environment, I think it's an overall best practice to set timeouts when dealing with network calls
-like HTTP requests. While it is unlikely that a server would have such a blatant bad behavior as the one we currently
-have, accept a request and do absolutely nothing with it, it is entirely possible that a server would take a very long
-time to return a response, if a spike in incoming traffic is causing the server to become unresponsive for instance. In
-this case, it might be beneficial for the client to abort after the timeout, instead of waiting.
+Regardless of the environment, I think it's an overall best practice to set timeouts when dealing with network calls like HTTP requests. While it is unlikely that a server would have such a blatant bad behavior as the one we currently have, accept a request and do absolutely nothing with it, it is entirely possible that a server would take a very long time to return a response, if a spike in incoming traffic is causing the server to become unresponsive for instance. In this case, it might be beneficial for the client to abort after the timeout, instead of waiting.
 
 
 {{% admonition info "Exit Status" %}}
@@ -195,13 +177,10 @@ Quoting the [wikipedia page][wikipedia-exit-status]:
 
 Each process returns an exit status, as an integer when it terminates. 0 represents a success, and every other values.
 
-Some terminals are configured to show the exit status, some do it only for non zero codes, but you can always use `echo
-$?` to see the status of the last command. Running `ls` followed by `echo $?` should output `0`.
+Some terminals are configured to show the exit status, some do it only for non zero codes, but you can always use `echo $?` to see the status of the last command. Running `ls` followed by `echo $?` should output `0`.
 
-If you've seen C code, the `main` function's signature is `int main()` because the value returned by `main` is the value
-used as the exit status, unless you call `exit` explicitly.
-So this is why you might see `return 0` at the end of the `main` function in a C program, it means "return success". It
-also seems common to use `exit(EXIT_SUCCESS)` or `exit(EXIT_FAILURE)`.
+If you've seen C code, the `main` function's signature is `int main()` because the value returned by `main` is the value used as the exit status, unless you call `exit` explicitly.
+So this is why you might see `return 0` at the end of the `main` function in a C program, it means "return success". It also seems common to use `exit(EXIT_SUCCESS)` or `exit(EXIT_FAILURE)`.
 
 Some codes [have special meanings][exit-codes], such as 127 meaning "Command not found"
 
@@ -251,51 +230,26 @@ another method on `TCPServer`, [`accept_nonblock`][ruby-accept-nonblock], which,
 > Accepts an incoming connection using accept(2) after O_NONBLOCK is set for the underlying file descriptor. It returns
 > an accepted TCPSocket for the incoming connection.
 
-We'll look closer at `accept_nonblock` in a later chapter. Let's go back to our second shell, note that the hanging `nc
-localhost 2000` ended if you closed the first `irb` shell. What happened is that the server closed the connection, and
-the client, `nc`, stopped as well. Let's re-run the same command, `nc localhost 2000`. We'll see a very similar output
-we saw above, saying that the connection succeeded.
-The main difference is that the hanging `accept` call in `irb` now returned, with a `TCPSocket` instance. Let's get a
-reference to this socket with `socket = _` (`_` is a reference to the last value returned in `irb`) and send something
-to our client: `socket.puts "Hey!"`. If you go back to the terminal where you ran `nc`, you should see "Hey!". Let's now
-close the connection with `socket.close` and we can observer that the `nc` calls returned, with an exit code of 0, aka,
-success.
+We'll look closer at `accept_nonblock` in a later chapter. Let's go back to our second shell, note that the hanging `nc localhost 2000` ended if you closed the first `irb` shell. What happened is that the server closed the connection, and the client, `nc`, stopped as well. Let's re-run the same command, `nc localhost 2000`. We'll see a very similar output we saw above, saying that the connection succeeded.
+The main difference is that the hanging `accept` call in `irb` now returned, with a `TCPSocket` instance. Let's get a reference to this socket with `socket = _` (`_` is a reference to the last value returned in `irb`) and send something to our client: `socket.puts "Hey!"`. If you go back to the terminal where you ran `nc`, you should see "Hey!". Let's now close the connection with `socket.close` and we can observer that the `nc` calls returned, with an exit code of 0, aka, success.
 
-And that's it, we went through the official example of `TCPServer`. The example starts a TCP server on port 2000, and
-then enters an infinite loop, it first waits for an incoming connection, and does nothing else until a client connects,
-once a client connects, it writes "Hello !" first and then the current time and finally closes the connection, and
-starts over.
+And that's it, we went through the official example of `TCPServer`. The example starts a TCP server on port 2000, and then enters an infinite loop, it first waits for an incoming connection, and does nothing else until a client connects, once a client connects, it writes "Hello !" first and then the current time and finally closes the connection, and starts over.
 
-If you remember, at the beginning we briefly looked at the second example in the documentation, using
-`Thread.start`. The justification for this example was that it was more usable by being able to serve multiple clients.
-There is indeed a major issue with the initial example, it can only serve one client at a time. If you were to put the
-example in a file, say, `server.rb` and run it with `ruby server.rb`, it would start one process, one thread and start
-executing the loop.
-The second example improves the situation by passing the result of the blocking operation, `server.accept`, to a new
-thread and letting it handle the client.
+If you remember, at the beginning we briefly looked at the second example in the documentation, using `Thread.start`. The justification for this example was that it was more usable by being able to serve multiple clients. There is indeed a major issue with the initial example, it can only serve one client at a time. If you were to put the example in a file, say, `server.rb` and run it with `ruby server.rb`, it would start one process, one thread and start executing the loop.
+The second example improves the situation by passing the result of the blocking operation, `server.accept`, to a new thread and letting it handle the client.
 
-There are a few important things to note here. First, ruby does not support lazy arguments, so when we write
-`Thread.start(server.accept)`, we first need to evaluate the argument, and only then will `start` be called, with the
-result of the evaluation.
-What that means for our example is that the loop starts, then blocks until a client connects, and once the client is
-connected, the resulting socket is passed to `Thread.start`.
+There are a few important things to note here. First, ruby does not support lazy arguments, so when we write `Thread.start(server.accept)`, we first need to evaluate the argument, and only then will `start` be called, with the result of the evaluation.
+What that means for our example is that the loop starts, then blocks until a client connects, and once the client is connected, the resulting socket is passed to `Thread.start`.
 
-Let's illustrate this with an example, we'll simulate a slow server by adding a `sleep` call. Still in `irb`, run the
-following:
+Let's illustrate this with an example, we'll simulate a slow server by adding a `sleep` call. Still in `irb`, run the following:
 
 ``` ruby
 loop { socket = server.accept; socket.write "Hello"; sleep 5; socket.close }
 ```
 
-This is almost identical to the first example, except that the main thread sleeps for five seconds before closing the
-socket. Back to the other terminal, run `nc localhost 2000` again, and you'll see "Hello" being printed almost
-instantly, followed by the process hanging for five seconds and then exiting. While it is hanging, open a terminal and
-run the same command, `nc localhost 2000`, if you see "Hello" right away, it might be because the five seconds elapsed
-in the previous terminal. Feel free to close the inifinite loop in `irb` with Ctrl-C and increase the value to 10
-seconds or more and experiment with this.
+This is almost identical to the first example, except that the main thread sleeps for five seconds before closing the socket. Back to the other terminal, run `nc localhost 2000` again, and you'll see "Hello" being printed almost instantly, followed by the process hanging for five seconds and then exiting. While it is hanging, open a terminal and run the same command, `nc localhost 2000`, if you see "Hello" right away, it might be because the five seconds elapsed in the previous terminal. Feel free to close the inifinite loop in `irb` with Ctrl-C and increase the value to 10 seconds or more and experiment with this.
 
-What this shows us is that while the server is busy dealing with a client, even if it doesn't do anything and just
-sleeps, all other incoming clients are effectively waiting to be served.
+What this shows us is that while the server is busy dealing with a client, even if it doesn't do anything and just sleeps, all other incoming clients are effectively waiting to be served.
 The second example improves on this as can be seen in `irb` if you run the following instead:
 
 ``` ruby
@@ -308,41 +262,26 @@ loop {
 }
 ```
 
-Running the same manual test, we should see that both `nc localhost 2000` calls get the "Hello" response, and then they
-proceed to both wait for five seconds until the server closes the socket.
-This is because each client is being handled by a different thread. The first client will trigger the first
-`server.accept` call to return, resulting in a second thread being started (second thread because the initial program is
-itself running in a thread as well). While the second thread is sleeping, the main thread is not blocked anymore, it
-passed the socket to the second thread and is back at being blocked on `server.accept`. When the second client connects,
-the same thing happens, a new thread is started, and it's being given the newly created socket.
+Running the same manual test, we should see that both `nc localhost 2000` calls get the "Hello" response, and then they proceed to both wait for five seconds until the server closes the socket.
+This is because each client is being handled by a different thread. The first client will trigger the first `server.accept` call to return, resulting in a second thread being started (second thread because the initial program is itself running in a thread as well). While the second thread is sleeping, the main thread is not blocked anymore, it passed the socket to the second thread and is back at being blocked on `server.accept`. When the second client connects, the same thing happens, a new thread is started, and it's being given the newly created socket.
 
-We have a server that can server multiple clients at one, which is great. That being said, there is a big problem with
-this approach. Threads are not unlimited, if we were to create more and more threads, we could be at risk of slowing
-down the whole system. Using multiple threads is something that needs to be done very carefully and it can easily lead
-to race conditions. As mentioned earlier, concurrency and parallelism are both complicated topics and we'll try to cover
-them in future chapters.
+We have a server that can server multiple clients at one, which is great. That being said, there is a big problem with this approach. Threads are not unlimited, if we were to create more and more threads, we could be at risk of slowing down the whole system. Using multiple threads is something that needs to be done very carefully and it can easily lead to race conditions. As mentioned earlier, concurrency and parallelism are both complicated topics and we'll try to cover them in future chapters.
 
 ## Conclusion
 
-We now know how to run a basic TCP server, it can write strings to its clients and then close the connection, that's
-it. That being said, as we'll see in future chapters, we can do a lot with that. We also looked at the limitiation of a
-single threaded approach, and while we could use threads to improve the situation, we are purposefully not doing it for
-now, to keep our example simple and improve it one step at a time.
+We now know how to run a basic TCP server, it can write strings to its clients and then close the connection, that's it. That being said, as we'll see in future chapters, we can do a lot with that. We also looked at the limitiation of a single threaded approach, and while we could use threads to improve the situation, we are purposefully not doing it for now, to keep our example simple and improve it one step at a time.
 
-In the next chapter we'll create a server class and make it read input from clients, and respond to `GET` and `SET`, in
-their most basic forms, we won't implement things like TTL or other options,
+In the next chapter we'll create a server class and make it read input from clients, and respond to `GET` and `SET`, in their most basic forms, we won't implement things like TTL or other options,
 
 
 ### Appendix - A C implementation of the server
 
-I was interested to see what a lower level implementation would be like, so I tried to put together an example in C, of
-a server, listening on port 2000, and writing data back to clients when they connect. Here is the code.
+I was interested to see what a lower level implementation would be like, so I tried to put together an example in C, of a server, listening on port 2000, and writing data back to clients when they connect. Here is the code.
 
 {{% admonition info "Using gcc" %}}
 
 Note: If you do not have `gcc` installed your machine, you can install in on macOS with the following command:
-`xcode-select --install`, if you're on a different OS, I'll let you search, this should be a fairly common questions and
-have lots of answers on stackoverflow and the likes.
+`xcode-select --install`, if you're on a different OS, I'll let you search, this should be a fairly common questions and have lots of answers on stackoverflow and the likes.
 
 {{% /admonition %}}
 
@@ -504,8 +443,7 @@ Socket successfully binded..
 Server listening..
 ```
 
-Note that, as we saw previously when creating a server from Ruby, it is "hanging" and hasn't returned yet. In the other
-shell, run the client: `./client`, you should see the following output:
+Note that, as we saw previously when creating a server from Ruby, it is "hanging" and hasn't returned yet. In the other shell, run the client: `./client`, you should see the following output:
 
 ``` bash
 $ ./client
@@ -514,8 +452,7 @@ connected to the server..
 From Server: Hello, this is Server!
 ```
 
-And if you return to the other shell, where the server was running, you can see that it now returned and logged a few
-more things before doing so:
+And if you return to the other shell, where the server was running, you can see that it now returned and logged a few more things before doing so:
 
 ``` bash
 server acccept the client...
@@ -524,12 +461,9 @@ From Client: Hello, this is Client
 Closing server_socket_file_descriptor
 ```
 
-It works! A server, that waits until a client connects, reads what the client sent and writes a message back, and once
-all of that is done, exits.
+It works! A server, that waits until a client connects, reads what the client sent and writes a message back, and once all of that is done, exits.
 
-Doing a step by step walkthrough of the client and server code is both a little bit out of scope and frankly something
-that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a
-similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
+Doing a step by step walkthrough of the client and server code is both a little bit out of scope and frankly something that I am not really capable of doing at the moment. That being said, I thought it would be interesting to visualize a similar-ish implementation to get a rough idea of what Ruby does for us under the hood.
 
 ### Code
 

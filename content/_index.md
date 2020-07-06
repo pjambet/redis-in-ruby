@@ -36,7 +36,7 @@ I am writing this book aiming for it to be useful to five years ago me, when I h
 experience. I majored in computer science, so back then I had already a few years of experience with programming. That
 being said, a degree in CS is definitely not required to read this.
 
-On a spectrum from beginner to expert, I would say that it aims somwhere in the middle, but leaning towards beginner,
+On a spectrum from beginner to expert, I would say that this book lands somewhere in the middle, but leaning towards beginner,
 slightly to the left, so intermediate-ish.
 
 
