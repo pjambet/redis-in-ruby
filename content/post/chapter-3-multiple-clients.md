@@ -169,6 +169,11 @@ Check clients one by one
 
 ### select everything, new clients and reads
 
+### Code
+
+The code from this chapter is [available on GitHub](https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-3)
+
+
 
 [redis-documentation-quit]:https://redis.io/commands/quit
 [select-syscall]:https://man7.org/linux/man-pages/man2/select.2.html
