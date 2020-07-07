@@ -31,20 +31,19 @@ class BasicServer
               client_command_with_args = client.gets
               if client_command_with_args.nil?
                 puts "Found a client at eof, closing and removing"
-                client.close
                 @clients.delete(client)
+              elsif client_command_with_args.strip.empty?
+                puts "Empty request received from #{ client }"
               else
-                if client_command_with_args && client_command_with_args.length > 0
-                  response = handle_client_command(client_command_with_args)
-                  client.puts response
-                else
-                  puts "empty request received from #{ client }"
-                end
+                response = handle_client_command(client_command_with_args.strip)
+                client.puts response
               end
             end
           rescue Timeout::Error
             puts "Did not receive anything from client after 0.1s, moving on"
             next
+          rescue Errno::ECONNRESET
+            @clients.delete(client)
           end
         end
       end

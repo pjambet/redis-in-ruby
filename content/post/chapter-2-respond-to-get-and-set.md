@@ -273,7 +273,7 @@ class BasicServer
       client = server.accept
       puts "New client connected: #{ client }"
       client_command_with_args = client.gets
-      if client_command_with_args && client_command_with_args.length > 0
+      if client_command_with_args && client_command_with_args.strip.length > 0
         response = handle_client_command(client_command_with_args)
         client.puts response
       else

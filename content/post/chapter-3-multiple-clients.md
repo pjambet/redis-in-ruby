@@ -15,9 +15,7 @@ In this chapter we will add support for efficient handling of multiple clients c
 
 Let's start with the new client problem. The goal is that, regardless of the state of the server, of what it may or may not currently doing, or whether other clients are already connected, new clients should be able to establish a new connection, and keep the connection open as long as they wish, until they either disconnect on purpose or a network issue occurs.
 
-Before attempting to fix the problem, we need to think about what we're trying to achieve, what parts of the current implementation are problematic and only then can we really start thinking about what needs to change.
-
-First things first, we want our server to keep client connections alive until clients disconnect. After all, this is what what Redis does, it keeps the connection alive until the client closes the connection, either explicitly with the [QUIT][redis-documentation-quit] or as a side effect of the process that had started the connection dying.
+We want our server to keep client connections alive until clients disconnect. After all, this is what Redis does, it keeps the connection alive until the client closes the connection, either explicitly with the [QUIT][redis-documentation-quit] command or as a side effect of the process that had started the connection dying.
 
 In order to achieve this we first have to remove the `client.close` line, we will add it back when we add a handler for the `QUIT` command, but let's set that aside for now.
 
@@ -37,9 +35,9 @@ loop do
 end
 ```
 
-The server starts, waits for a client to connect, and then handles the requests from the client, nothing changed. Once the server wrote the response back, it starts doing the same thing again, waiting for a new client to connect, not keeping track of the first client, that is still connected as far as we know.
+The server starts, waits for a client to connect, and then handles the requests from that client, nothing changed. Once the server is done writing the response back, it starts doing the same thing again, waiting for a new client to connect, not keeping track of the first client, that is still connected as far as we know.
 
-Let's start there, we need the server to keep track of all the clients that are currently connected.
+Now that we're not closing the connection after writing back, we need the server to keep track of all the clients that are currently connected.
 
 ``` ruby
 # ...
@@ -55,9 +53,7 @@ loop do
 end
 ```
 
-Every time a client connects, we add it to the `@clients` array.
-
-The rest of the loop is the same, when the first iteration ends, we go back to the beginning and wait for a new client. But what if the first client sends a request in the meantime? The server is currently waiting, potentially forever, for a new client to connect.
+Every time a client connects, we add it to the `@clients` array. The rest of the loop is the same, when the first iteration ends, we go back to the beginning and wait for a new client. But what if the first client sends a request in the meantime? The server is currently waiting, potentially forever, for a new client to connect.
 
 It is really starting to look that waiting for clients to connect and trying to handle connected clients in the same loop is quite problematic, especially with all these blocking calls that potentially wait forever.
 
@@ -81,11 +77,11 @@ server.accept
 server_accepted = true
 ```
 
-In the previous example, we create a new thread that will loop as long as the `server.accept` has not returned or if 5 seconds have elapsed. This means that the call to accept will not run for more than 5 seconds. The `abort_on_exception` setting is necessary, otherwise an uncaught exception in a Thread does not propagate to the parent thread.
+We create a new thread that will loop as long as the `server.accept` has not returned or until five seconds have elapsed. This means that the call to accept will not run for more than five seconds. The `abort_on_exception` setting is necessary, otherwise an uncaught exception in a Thread does not propagate to the parent thread, and the thread would silently fail, not interrupting the `accept` call.
 
 Any clients connecting to the server within five seconds will prevent the `"Timeout!"` exception from being thrown.
 
-As it turns out, we don't have to write this, Ruby gives us the `Timeout` module, that does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
+As it turns out, we don't have to write this, Ruby gives us the [`Timeout` module][ruby-doc-timeout], that does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
 
 ``` ruby
 require 'timeout'
@@ -94,20 +90,20 @@ Timeout.timeout(5) do
 end
 ```
 
-The Timeout module has received [a fair amount of criticism][sidekiq-timeout-blog] of the past few years. There are a few other posts out there if you search for the following keywords: "ruby timeout module dangerous". We should absolutely follow their recommendation.
+The Timeout module has received [a fair amount of criticism][sidekiq-timeout-blog] of the past few years. There are a few other posts out there if you search for the following keywords: "ruby timeout module dangerous" and we should absolutely follow their recommendation.
 
-Looking back at our primitive timeout implementation above, if the second thread enters the `if Time.now.to_f > timeout` condition, it will then throw an exception, but it is entirely possible that a client would connect at the exact same time, and the exception being thrown by the second thread would effectively interrupt the connection process and prevent the server from completing the `accept` call.
+Looking back at our primitive timeout implementation above, if the second thread enters the `if Time.now.to_f > timeout` condition, it will then throw an exception, but it is entirely possible that a client would connect at the exact same time, and the exception being thrown by the second thread would interrupt the parent thread, as it is creating the connection and effectively prevent the server from completing the `accept` call.
 
 
 {{% admonition info "Clients, Servers and failures" %}}
 
-When dealing with clients & servers, that is, code running in different processes, and potentially not running on the same machine, it is important to remember that a piece of code running on one machine can never really be sure that the other ones are in the state that they expect. The main different with running code in a single process is that when two pieces of code run in difference processes, they do not share memory, you can't create a variable in one, and read its value from the other. On top of that, each process has its own life cycle, one process might be stopped, for various reasons, while the other might still be running.
+When dealing with clients & servers, that is, code running in different processes, and potentially not running on the same machine, it is important to remember that a piece of code running on one machine can never really be sure that the other ones are in the state that they expect. The main difference with running code in a single process is that when two pieces of code run in difference processes, they do not share memory, you can't create a variable in one, and read its value from the other. On top of that, each process has its own life cycle, one process might be stopped, for various reasons, while the other might still be running.
 
 In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that has connected in the past, may have disconnected by the time the server tries to communicate with it. There might be various reasons, to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal error, such as an exception being thrown and the process died.
 
-That means that after creating the `client` variable, we have absolutely no guarantees that the client process on the other side is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
+After creating the `client` variable, we have absolutely no guarantee that the client process on the other side is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
 
-But what about later on, imagine that we kept the
+But what about later on, on the next iteration, and so on? We always have to expect that things might fail if we want our server to handle all the possible scenarios it might find itself in.
 
 {{% /admonition %}}
 
@@ -131,19 +127,18 @@ def initialize
 
   loop do
     @clients.each do |client|
-      if client.closed?
-        @clients.delete(client)
-      elsif client.eof?
-        client.close
-        @clients.delete(client)
-      else
+      begin
         client_command_with_args = client.gets
-        if client_command_with_args && client_command_with_args.length > 0
+        if client_command_with_args.nil?
+          @clients.delete(client)
+        elsif client_command_with_args.strip.empty?
+          puts "Empty request received from #{ client }"
+        else
           response = handle_client_command(client_command_with_args)
           client.puts response
-        else
-          puts "Empty request received from #{ client }"
         end
+      rescue Errno::ECONNRESET
+        @clients.delete(client)
       end
     end
   end
@@ -159,7 +154,9 @@ As soon as the server starts, we create a new thread, which does only thing, acc
 
 By moving the blocking call to `accept` to a different thread, we're not blocking the main loop anymore. Not with `accept` at least, there are still issues with this implementation, and `gets` is also a blocking call. We're improving things one step at a time.
 
-### `client.eof?`
+### `client_command_with_args.nil?`
+
+TODO: UPDATE
 
 The main loop is pretty different now. We start by iterating through the `@clients` array. The idea being that on each iteration of `loop`, we want to give each of the connected clients a change to be handled.
 
@@ -174,6 +171,10 @@ This condition is essentially a first check to make sure that the client referen
 One way to think about it is to imagine a phone call, if you started a phone call, left your phone on your desk to go pick up a pen and came back, you would probably start by asking something like: "Are you still there?" and only if the person on the other end says yes, you would proceed to continue the conversation.
 
 If `eof?` returns true, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
+
+### `rescue Errno::ECONNRESET`
+
+If the client disconnects while we're blocked on the `gets` call, an `Errno::ECONNRESET` exception is raised. We catch it and remove the client we were handling when this happens, as it means that the connection cannot be used anymore.
 
 ### The rest
 
@@ -211,17 +212,14 @@ def initialize
     @clients.each do |client|
       client_command_with_args = client.read_nonblock(256, exception: false)
       if client_command_with_args.nil?
-        puts "Found a client at eof, closing and removing"
         @clients.delete(client)
       elsif client_command_with_args == :wait_readable
         # There's nothing to read from the client, we don't have to do anything
+      elsif client_command_with_args.strip.empty?
+        puts "Empty request received from #{ client }"
       else
-        if client_command_with_args && client_command_with_args.length > 0
-          response = handle_client_command(client_command_with_args)
-          client.puts response
-        else
-          puts "empty request received from #{ client }"
-        end
+        response = handle_client_command(client_command_with_args.strip)
+        client.puts response
       end
     end
   end
@@ -275,13 +273,11 @@ def initialize
         @clients.delete(client)
       elsif client_command_with_args == :wait_readable
       # There's nothing to read from the client, we don't have to do anything
+      elsif client_command_with_args.strip.empty?
+        puts "Empty request received from #{ client }"
       else
-        if client_command_with_args && client_command_with_args.length > 0
-          response = handle_client_command(client_command_with_args)
-          client.puts response
-        else
-          puts "empty request received from #{ client }"
-        end
+        response = handle_client_command(client_command_with_args.strip)
+        client.puts response
       end
     end
   end
@@ -335,14 +331,12 @@ def initialize
           puts "Found a client at eof, closing and removing"
           @clients.delete(socket)
         elsif client_command_with_args == :wait_readable
-          # There's nothing to read from the client, we don't have to do anything
+        # There's nothing to read from the client, we don't have to do anything
+        elsif client_command_with_args.strip.empty?
+          puts "Empty request received from #{ client }"
         else
-          if client_command_with_args && client_command_with_args.length > 0
-            response = handle_client_command(client_command_with_args)
-            socket.puts response
-          else
-            puts "empty request received from #{ client }"
-          end
+          response = handle_client_command(client_command_with_args.strip)
+          socket.puts response
         end
       else
         raise "Unknown socket type: #{ socket }"
@@ -400,3 +394,4 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [ae-select]:https://github.com/redis-io/redis/blob/6.0/src/ae_select.c
 [ae-kqueue]:https://github.com/redis-io/redis/blob/6.0/src/ae_kqueue.c
 [ae-evport]:https://github.com/redis-io/redis/blob/6.0/src/ae_evport.c
+[ruby-doc-timeout]:http://ruby-doc.org/stdlib-2.7.1/libdoc/timeout/rdoc/Timeout.html

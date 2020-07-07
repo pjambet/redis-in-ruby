@@ -29,19 +29,21 @@ class BasicServer
       end
       result = IO.select(@clients)
       result[0].each do |client|
-        client_command_with_args = client.read_nonblock(1024, exception: false)
-        if client_command_with_args.nil?
-          puts "Found a client at eof, closing and removing"
-          @clients.delete(client)
-        elsif client_command_with_args == :wait_readable
-        # There's nothing to read from the client, we don't have to do anything
-        else
-          if client_command_with_args && client_command_with_args.length > 0
-            response = handle_client_command(client_command_with_args)
-            client.puts response
+        begin
+          client_command_with_args = client.read_nonblock(1024, exception: false)
+          if client_command_with_args.nil?
+            puts "Found a client at eof, closing and removing"
+            @clients.delete(client)
+          elsif client_command_with_args == :wait_readable
+          # There's nothing to read from the client, we don't have to do anything
+          elsif client_command_with_args.strip.empty?
+            puts "Empty request received from #{ client }"
           else
-            puts "empty request received from #{ client }"
+            response = handle_client_command(client_command_with_args.strip)
+            client.puts response
           end
+        rescue Errno::ECONNRESET
+          @clients.delete(client)
         end
       end
     end

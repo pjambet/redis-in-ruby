@@ -22,18 +22,18 @@ class BasicServer
 
     loop do
       @clients.each do |client|
-        if client.eof?
-          p "Client eof #{ client }"
-          client.close
-          @clients.delete(client)
-        else
+        begin
           client_command_with_args = client.gets
-          if client_command_with_args && client_command_with_args.length > 0
-            response = handle_client_command(client_command_with_args)
-            client.puts response
-          else
+          if client_command_with_args.nil?
+            @clients.delete(client)
+          elsif client_command_with_args.strip.empty?
             puts "Empty request received from #{ client }"
+          else
+            response = handle_client_command(client_command_with_args.strip)
+            client.puts response
           end
+        rescue Errno::ECONNRESET
+          @clients.delete(client)
         end
       end
     end
