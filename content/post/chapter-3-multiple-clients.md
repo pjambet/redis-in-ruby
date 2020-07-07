@@ -4,7 +4,7 @@ date: 2020-07-06
 lastmod: 2020-07-06T11:55:02-04:00
 draft: false
 keywords: []
-summary: "In this chapter we will improve the server to efficiently handle multiple clients connected at the same time. We will end up using the `select` syscall and explore different alternatives using threads on the way."
+summary: "In this chapter we will add support for efficient handling of multiple clients connected simultaneously. We will first isolate the problematic elements of the current implementation and explore different solutions before getting to the final one using the select syscall"
 ---
 
 ## What we'll cover
