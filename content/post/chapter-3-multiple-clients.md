@@ -156,25 +156,33 @@ By moving the blocking call to `accept` to a different thread, we're not blockin
 
 ### `client_command_with_args.nil?`
 
-TODO: UPDATE
-
 The main loop is pretty different now. We start by iterating through the `@clients` array. The idea being that on each iteration of `loop`, we want to give each of the connected clients a change to be handled.
 
-`eof?` is a method defined on [`IO`][ruby-doc-io-eof?], the documentation describes it as:
+A `nil` value returned by gets means that we reached the end of the file, often called `EOF`. We can learn more about this through the `eof?` method defined on [`IO`][ruby-doc-io-eof?], the documentation describes it as:
 
 > Returns true if ios is at end of file that means there are no more data to read. The stream must be opened for reading or an IOError will be raised.
 
-In our case, `eof?` will return true if the client either explicitly closed the connection with the `close` method on `IO` or if the process that started the connection was killed.
+In our case, we will see a `nil` value if the client either explicitly closed the connection with the `close` method on `IO` or if the process that started the connection was killed.
 
 This condition is essentially a first check to make sure that the client referenced by the `client` variable is still connected.
 
-One way to think about it is to imagine a phone call, if you started a phone call, left your phone on your desk to go pick up a pen and came back, you would probably start by asking something like: "Are you still there?" and only if the person on the other end says yes, you would proceed to continue the conversation.
+One way to think about it is to imagine a phone call, if you started a phone call, left your phone on your desk to go pick up a pen and came back, you would probably resume by asking something like: "Are you still there?" and only if the person on the other end says yes, you would proceed to continue the conversation, if you don't hear anything, you would assume they hung up. If you only know smarphones, then this analogy might not make a lot of sense, because the screen would tell you if the call is still on. Believe me, there were phones without screen at some point, but you could also imagine that the screen was locked when you picked up the phone. Work with me here, please!
 
 If `eof?` returns true, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
 
 ### `rescue Errno::ECONNRESET`
 
-If the client disconnects while we're blocked on the `gets` call, an `Errno::ECONNRESET` exception is raised. We catch it and remove the client we were handling when this happens, as it means that the connection cannot be used anymore.
+I am honestly not entirely sure about all the conditions that can cause this error, but I was able to trigger it if the client disconnects while we're blocked on the `gets` call, but only once some data was previously sent. In this case an `Errno::ECONNRESET` exception is raised. We catch it and remove the client we were handling when this happens, as it means that the connection cannot be used anymore.
+
+To reproduce this error, you can start the server with `ruby -r"./server_accept_thread" -e "BasicServer.new"` and run the following in an `irb` shell:
+
+```
+irb(main):051:0> socket = TCPSocket.new 'localhost', 2000
+irb(main):052:0> socket.puts "GET 1"
+=> nil
+irb(main):053:0> socket.close
+```
+
 
 ### The rest
 
