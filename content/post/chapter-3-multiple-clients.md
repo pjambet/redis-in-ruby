@@ -355,14 +355,21 @@ end
 And we finally have it, on each loop we check if any of the connected clients has sent anything as well as whether or not there are new clients.
 
 
-## But what about Redis?
+## But what about the real Redis?
 
-I'm glad you asked, we haven't mentioned Redis in a while, you know the thing we're trying to replicate. How does Redis handle its clients?
+I'm glad you asked, we haven't mentioned Redis in a while, you know the thing we're trying to replicate. So, how does Redis handle its clients?
 
 Well, I don't know if you're going to like the answer, but ... it depends.
 
-Redis does [this][redis-source-multiplexer-choice] and [that][redis-source-multiplexer-constants]
+Redis uses different multiplexers (`select` is described in the man page as doing "synchronous I/O mutiplexing"), and tries to find the most efficient one. `select` is [apparently known to have limitations][select-problems] and seems to be limited to 1024 sockets. While it is not a problem for us to be limited to 1023 connected clients (keeping one for the server), we could easily imagine that Redis would want to support more.
 
+It turns out that there are better alternatives, [kqueue][kqueue] on macOS and BSD, [epoll][epoll] on linux and evport on Solaris (I could not find a link for it).
+
+Redis defines its own even library, `ae`, in the [`ae.c` file][redis-ae]. The interface for `ae` is then implemented with each of the libraries mentioned above, [in `ae_epoll.c`][ae-epoll], [in `ae_kqueue.c`][ae-kqueue], [in `ae_evport.c`][ae-evport] and [in `ae_select.c`][ae-select].
+
+Redis [defines constants depending on what is available at compile time][redis-source-multiplexer-constants] and chooses the implementation [in server.c][redis-source-multiplexer-choice].
+
+So, does Redis use `select`, probably not, but it could, if nothing else is available on the system it is being compiled on.
 
 ## Conclusion
 
@@ -385,3 +392,11 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [gets-with-timeout-gh]:https://github.com/pjambet/redis-in-ruby/blob/master/code/chapter-3/server_accept_thread_and_gets_timeout.rb
 [ruby-doc-io-read-nonblock]:http://ruby-doc.org/core-2.7.1/IO.html#read_nonblock-method
 [ruby-doc-io-select]:http://ruby-doc.org/core-2.7.1/IO.html#select-method
+[select-problems]:http://www.moythreads.com/wordpress/2009/12/22/select-system-call-limitation/
+[kqueue]:https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
+[epoll]:https://linux.die.net/man/4/epoll
+[redis-ae]:https://redis.io/topics/internals-rediseventlib
+[ae-epoll]:https://github.com/redis-io/redis/blob/6.0/src/ae_epoll.c
+[ae-select]:https://github.com/redis-io/redis/blob/6.0/src/ae_select.c
+[ae-kqueue]:https://github.com/redis-io/redis/blob/6.0/src/ae_kqueue.c
+[ae-evport]:https://github.com/redis-io/redis/blob/6.0/src/ae_evport.c
