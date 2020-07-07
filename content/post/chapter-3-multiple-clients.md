@@ -204,12 +204,128 @@ The title of this section says it all, we are going to use a non-blocking altern
 It seems to be common to choose an arbitrary length, that should "long enough". Let's pick 256 for now, because we never expect commands to be longer than seven bytes for now, 256 gives us a lot to play with for now.
 
 ``` ruby
+def initialize
+  # ...
+
+  loop do
+    @clients.each do |client|
+      client_command_with_args = client.read_nonblock(256, exception: false)
+      if client_command_with_args.nil?
+        puts "Found a client at eof, closing and removing"
+        @clients.delete(client)
+      elsif client_command_with_args == :wait_readable
+        # There's nothing to read from the client, we don't have to do anything
+      else
+        if client_command_with_args && client_command_with_args.length > 0
+          response = handle_client_command(client_command_with_args)
+          client.puts response
+        else
+          puts "empty request received from #{ client }"
+        end
+      end
+    end
+  end
+end
+```
+
+Only the content of the main loop changed. It starts the same way, by iterating through the `@clients` array, but the content of the `each` loop is different.
+
+We start by calling `read_nonblock`, with 256 as the `maxlen` argument. The default behavior of `read_nonblock` is to throw different exceptions depending on some potential output, the `exception: false` argument allows us to only rely on the return value:
+
+- If the value is `nil`, that means that we reached `EOF`. It would have raised `EOFError` without the `exception: false` argument
+- If the value is the symbol `:wait_readable`, that means that there is nothing to read at the moment. It would have raised `IO::WaitReadable` without the `exception: false` argument.
+- Otherwise, it returns up to 256 bytes read from the socket
+
+A major improvement! No more explicit timeouts. That being said, we're still being fairly inefficient by manually cycling through all the clients. Sure, we're not doing that much if there's nothing to read, but we're still doing _something_, that is, calling `read_nonblock`, when we would ideally not do anything given that there's nothing to read.
+
+There's a syscall for that! `select`, described in `man 2 select` as:
+
+> select() examines the I/O descriptor sets whose addresses are passed in readfds, writefds, and errorfds to see if some of their descriptors are ready for reading, are ready for writing, or have an exceptional condition pending, respectively
+
+## Let's use `select`
+
+The `select` syscall is available in Ruby as a class method on the `IO` class : [`IO.select`][ruby-doc-io-select]. It accepts between one and four arguments and returns an array containing three items, each of them being an array as well. Let's look closely at what all these arrays mean:
+
+- The first argument is mandatory, it is an array of sockets, `select` will look through all of them and, for each socket that has _something_ that can be read, will return it in the first of the three arrays returned.
+- The second argument is optional, it is also an array of sockets. `select` will look through all of them and, for each socket that can be written to, will return it in the second of the three arrays returned.
+- The third argument is optional as well, it is again an array of sockets. `select` will look through all of them and, for each socket that have pending exceptions, will return it in the third of the three arrays returned.
+- The fourth argument is optional. By default `select` is blocking, this argument is an integer telling `select` the maximum duration to wait for, and it will return `nil` if it wasn't able to return anything in time.
+
+As of this writing, I am not aware of any conditions that would cause a socket to "have a pending exception".
+
+The main use case we're interested in is the one related to the first argument. Our `@client` array is a list of socket. If we give to `select` as the first argument, it will return a list of sockets that can be read from.
+
+I did mention above how setting timeouts is often a best practice. Here is a good example of when a timeout is not needed. It does not matter if our server waits forever to read for clients, it would only happen if no clients are sending commands. By blocking forever here we're not preventing the server from doing else, we're waiting because there is nothing else to do.
+
+``` ruby
+def initialize
+  # ...
+  loop do
+    # Selecting blocks, so if there's no client, we don't have to call it, which would
+    # block, we can just keep looping
+    if @clients.empty?
+      next
+    end
+    result = IO.select(@clients)
+    result[0].each do |client|
+      client_command_with_args = client.read_nonblock(1024, exception: false)
+      if client_command_with_args.nil?
+        puts "Found a client at eof, closing and removing"
+        client.close
+        @clients.delete(client)
+      elsif client_command_with_args == :wait_readable
+      # There's nothing to read from the client, we don't have to do anything
+      else
+        if client_command_with_args && client_command_with_args.length > 0
+          response = handle_client_command(client_command_with_args)
+          client.puts response
+        else
+          puts "empty request received from #{ client }"
+        end
+      end
+    end
+  end
+end
+```
+
+There's one more problem, and I swear, the next version will be the last one in this chapter. As previously mentioned `select` blocks, so if one clients connects, and never sends a command, the call to `IO.select` will never return. Meanwhile the thread dedicated to accepting new clients is still accepting clients, appending them to the `@clients` array.
+
+We could use the timeout argument, handle the case where the return value is nil, but as we discussed through the chapters, using a timeout would be inefficient. Imagine that two clients connect around the same time, the first one to connect does not send a command, the second one does. Regardless of the timeout, the second client would have to wait for it until the server acknowledges it. It would be great if the server could be more reactive, and not wait for timeouts.
+
+And the solution to that is ... `select` again! I know this was anticlimactic, but `select` is very versatile.
+
+## `select` everything
+
+Accepting a client is actually a different form of reading from a socket, so if we pass a server socket in the first array to `IO.select`, it will be returned if a new client attempted to connect.
+
+Let's demonstrate this in `irb`:
+
+```
+irb(main):001:0> require 'socket'
+=> true
+irb(main):002:0> server = TCPServer.new(2000)
+irb(main):003:0> IO.select [server]
+=> [[#<TCPServer:fd 10, AF_INET6, ::, 2000>], [], []]
+```
+
+The `select` call will only return after you connect to the server. In the previous example, I used our good friend `nc` from Chapter 1: `nc -v localhost 2000`.
+
+Let's apply this to our server to remove the `accept` thread:
+
+``` ruby
 
 ```
 
-## Accept in a thread, select clients, still read_nonblock
 
-## select everything, new clients and reads
+
+## But what about Redis?
+
+I'm glad you asked, we haven't mentioned Redis in a while, you know the thing we're trying to replicate. How does Redis handle its clients?
+
+Well, I don't know if you're going to like the answer, but ... it depends.
+
+Redis does [this][redis-source-multiplexer-choice] and [that][redis-source-multiplexer-constants]
+
 
 ## Conclusion
 
@@ -229,3 +345,4 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [ruby-doc-io-eof?]:http://ruby-doc.org/core-2.7.1/IO.html#eof-3F-method
 [gets-with-timeout-gh]:https://github.com/pjambet/redis-in-ruby/blob/master/code/chapter-3/server_accept_thread_and_gets_timeout.rb
 [ruby-doc-io-read-nonblock]:http://ruby-doc.org/core-2.7.1/IO.html#read_nonblock-method
+[ruby-doc-io-select]:http://ruby-doc.org/core-2.7.1/IO.html#select-method

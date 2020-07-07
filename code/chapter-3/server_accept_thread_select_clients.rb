@@ -16,53 +16,34 @@ class BasicServer
     puts "Server started at: #{ Time.now }"
     Thread.new do
       loop do
-        sleep 1
-        puts "Accepting clients"
         new_client = server.accept
-        puts "New client connected: #{ new_client }"
         @clients << new_client
-        sleep 1
       end
     end
 
     loop do
-      begin
-        if @clients.empty?
-          puts "No clients"
-          sleep 1
-          next
-        end
-        # Selecting blocks, so even if we got new clients, we'll wait until the existing ones connect
-        result = IO.select(@clients)
-        p "RESULT: #{ result }"
-        result[0].each do |client|
-          puts "Entering loop for #{ client }"
-          if client.closed?
-            puts "Found a closed client, removing"
-            @clients.delete(client)
+      # Selecting blocks, so if there's no client, we don't have to call it, which would
+      # block, we can just keep looping
+      if @clients.empty?
+        next
+      end
+      result = IO.select(@clients)
+      result[0].each do |client|
+        client_command_with_args = client.read_nonblock(1024, exception: false)
+        if client_command_with_args.nil?
+          puts "Found a client at eof, closing and removing"
+          client.close
+          @clients.delete(client)
+        elsif client_command_with_args == :wait_readable
+        # There's nothing to read from the client, we don't have to do anything
+        else
+          if client_command_with_args && client_command_with_args.length > 0
+            response = handle_client_command(client_command_with_args)
+            client.puts response
           else
-            puts "Let's try to read from client"
-            puts "reading from client: #{ client }"
-            client_command_with_args = client.read_nonblock(1024, exception: false)
-            if client_command_with_args.nil?
-              puts "Found a client at eof, closing and removing"
-              client.close
-              @clients.delete(client)
-            elsif client_command_with_args == :wait_readable
-              puts "Nothing to read from, moving on!"
-            else
-              if client_command_with_args && client_command_with_args.length > 0
-                response = handle_client_command(client_command_with_args)
-                client.puts response
-              else
-                puts "empty request received from #{ client }"
-              end
-            end
+            puts "empty request received from #{ client }"
           end
         end
-      rescue IO::WaitReadable
-        puts "Nothing do to, next!"
-        sleep 1
       end
     end
   end
