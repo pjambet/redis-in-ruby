@@ -288,6 +288,8 @@ def initialize
 end
 ```
 
+It's worth mentioning that the `each` loop that we removed did not exactly disappear, we actually delegated the iteration to the operating system. We have to assume that `select` does something similar internally, it has to iterate over the given array of file descriptors and do something with them. The difference is that by delegating such operation to the OS, we're not reinventing the wheel but we're also relying on an implementation that we can assume is well optimized.
+
 There's one more problem, and I swear, the next version will be the last one in this chapter. As previously mentioned `select` blocks, so if one clients connects, and never sends a command, the call to `IO.select` will never return. Meanwhile the thread dedicated to accepting new clients is still accepting clients, appending them to the `@clients` array.
 
 We could use the timeout argument, handle the case where the return value is nil, but as we discussed through the chapters, using a timeout would be inefficient. Imagine that two clients connect around the same time, the first one to connect does not send a command, the second one does. Regardless of the timeout, the second client would have to wait for it until the server acknowledges it. It would be great if the server could be more reactive, and not wait for timeouts.
@@ -313,9 +315,44 @@ The `select` call will only return after you connect to the server. In the previ
 Let's apply this to our server to remove the `accept` thread:
 
 ``` ruby
+def initialize
+  @clients = []
+  @data_store = {}
 
+  server = TCPServer.new 2000
+  puts "Server started at: #{ Time.now }"
+
+  loop do
+    # Selecting blocks, so if there's no client, we don't have to call it, which would
+    # block, we can just keep looping
+    result = IO.select(@clients + [server])
+    result[0].each do |socket|
+      if socket.is_a?(TCPServer)
+        @clients << server.accept
+      elsif socket.is_a?(TCPSocket)
+        client_command_with_args = socket.read_nonblock(1024, exception: false)
+        if client_command_with_args.nil?
+          puts "Found a client at eof, closing and removing"
+          @clients.delete(socket)
+        elsif client_command_with_args == :wait_readable
+          # There's nothing to read from the client, we don't have to do anything
+        else
+          if client_command_with_args && client_command_with_args.length > 0
+            response = handle_client_command(client_command_with_args)
+            socket.puts response
+          else
+            puts "empty request received from #{ client }"
+          end
+        end
+      else
+        raise "Unknown socket type: #{ socket }"
+      end
+    end
+  end
+end
 ```
 
+And we finally have it, on each loop we check if any of the connected clients has sent anything as well as whether or not there are new clients.
 
 
 ## But what about Redis?
@@ -329,7 +366,9 @@ Redis does [this][redis-source-multiplexer-choice] and [that][redis-source-multi
 
 ## Conclusion
 
-TODO
+It took a while and explored a few different options, with threads and timeouts, only to discard them all and use `select` for everything. That may seem like a waste of time but it is not, I think it's extremely important to look at what the alternatives are to fully understand and appreciate the benefit of a given solution.
+
+In the next chapter we'll add more commands to the server to make it a little bit closer to the real Redis server.
 
 ### Code
 

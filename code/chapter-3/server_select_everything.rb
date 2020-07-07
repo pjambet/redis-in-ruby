@@ -14,34 +14,31 @@ class BasicServer
 
     server = TCPServer.new 2000
     puts "Server started at: #{ Time.now }"
-    Thread.new do
-      loop do
-        new_client = server.accept
-        @clients << new_client
-      end
-    end
 
     loop do
       # Selecting blocks, so if there's no client, we don't have to call it, which would
       # block, we can just keep looping
-      if @clients.empty?
-        next
-      end
-      result = IO.select(@clients)
-      result[0].each do |client|
-        client_command_with_args = client.read_nonblock(1024, exception: false)
-        if client_command_with_args.nil?
-          puts "Found a client at eof, closing and removing"
-          @clients.delete(client)
-        elsif client_command_with_args == :wait_readable
-        # There's nothing to read from the client, we don't have to do anything
-        else
-          if client_command_with_args && client_command_with_args.length > 0
-            response = handle_client_command(client_command_with_args)
-            client.puts response
+      result = IO.select(@clients + [server])
+      result[0].each do |socket|
+        if socket.is_a?(TCPServer)
+          @clients << server.accept
+        elsif socket.is_a?(TCPSocket)
+          client_command_with_args = socket.read_nonblock(1024, exception: false)
+          if client_command_with_args.nil?
+            puts "Found a client at eof, closing and removing"
+            @clients.delete(socket)
+          elsif client_command_with_args == :wait_readable
+          # There's nothing to read from the client, we don't have to do anything
           else
-            puts "empty request received from #{ client }"
+            if client_command_with_args && client_command_with_args.length > 0
+              response = handle_client_command(client_command_with_args)
+              socket.puts response
+            else
+              puts "empty request received from #{ client }"
+            end
           end
+        else
+          raise "Unknown socket type: #{ socket }"
         end
       end
     end
