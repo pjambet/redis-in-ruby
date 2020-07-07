@@ -28,7 +28,8 @@ class BasicServer
             if client_command_with_args.nil?
               @clients.delete(socket)
             elsif client_command_with_args == :wait_readable
-             # There's nothing to read from the client, we don't have to do anything
+              # There's nothing to read from the client, we don't have to do anything
+              next
             elsif client_command_with_args.strip.empty?
               puts "Empty request received from #{ client }"
             else
