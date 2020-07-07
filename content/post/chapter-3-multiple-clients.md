@@ -195,15 +195,15 @@ Let's go through the main changes:
 
 ### `Thread.new` in the constructor
 
-As soon as the server starts, we create a new thread, which does only one thing, accept new clients. This second thread starts an infinite loop, inside the loop we call `accept`, and block until it returns a new client. When we do receive a new client, we store in the `@clients` instance variable, so that it can be used from the main thread, in the main loop.
+As soon as the server starts, we create a new thread, which does only one thing, accept new clients. This second thread starts an infinite loop, inside the loop we call `accept`, and block until it returns a new client. When we do receive a new client, we add it to the `@clients` instance variable, so that it can be used from the main thread, in the main loop.
 
-By moving the blocking call to `accept` to a different thread, we're not blocking the main loop anymore. Not with `accept` at least, there are still issues with this implementation, and `gets` is also a blocking call. We're improving things one step at a time.
+By moving the blocking call to `accept` to a different thread, we're not blocking the main loop with the `accept` call anymore. There are still issues with this implementation, `gets` is also a blocking call. We're improving things one step at a time.
 
 ### `client_command_with_args.nil?`
 
-The main loop is pretty different now. We start by iterating through the `@clients` array. The idea being that on each iteration of `loop`, we want to give each of the connected clients a change to be handled.
+The main loop is pretty different now. We start by iterating through the `@clients` array. The idea being that on each iteration of `loop`, we want to give each of the connected clients a chance to be handled.
 
-A `nil` value returned by gets means that we reached the end of the file, often called `EOF`. We can learn more about this through the `eof?` method defined on [`IO`][ruby-doc-io-eof?], the documentation describes it as:
+A `nil` value returned by gets means that we reached the end of the file, often called `EOF`. We can learn more about this in the documentation of the `eof?` method defined on [`IO`][ruby-doc-io-eof?], it is describes as:
 
 > Returns true if ios is at end of file that means there are no more data to read. The stream must be opened for reading or an IOError will be raised.
 
@@ -213,7 +213,7 @@ This condition is essentially a first check to make sure that the client referen
 
 One way to think about it is to imagine a phone call, if you started a phone call, left your phone on your desk to go pick up a pen and came back, you would probably resume by asking something like: "Are you still there?" and only if the person on the other end says yes, you would proceed to continue the conversation, if you don't hear anything, you would assume they hung up. If you only know smartphones, then this analogy might not make a lot of sense, because the screen would tell you if the call is still on. Believe me, there were phones without screen at some point, but you could also imagine that the screen was locked when you picked up the phone. Work with me here, please!
 
-If `eof?` returns true, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
+If `gets` returns `nil`, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
 
 ### `rescue Errno::ECONNRESET`
 
@@ -234,9 +234,9 @@ When dealing with clients & servers, that is, code running in different processe
 
 In concrete terms, it means that when we write code that will run on the server part, which is what we're doing here, we always have to keep in mind that a client that has connected in the past, may have disconnected by the time the server tries to communicate with it. There might be various reasons, to name a few, the client may have explicitly closed the connection, a network issue may have happened, causing the connection to be accidentally closed, or maybe the client code had an internal error, such as an exception being thrown and the process died.
 
-After creating the `client` variable, we have absolutely no guarantee that the client process on the other side is still connected. It is reasonable to assume that the client is still connected two lines below when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
+After creating the `client` variable, we have absolutely no guarantee that the client process on the other side is still connected. It is reasonable to assume that the client is still connected soon after when we call `client.gets`, and while unlikely, it's still important to keep in mind that the network communication might still fail.
 
-But what about later on, on the next iteration, and so on? We always have to expect that things might fail if we want our server to handle all the possible scenarios it might find itself in.
+But what about later on, on the next iteration, and so on? We always have to expect that things might fail if we want our server to handle all the possible scenarios it might find itself in. This is what the check for `nil` and what the `rescue Errno::ECONNRESET` do.
 
 {{% /admonition %}}
 
@@ -247,29 +247,29 @@ The `else` branch inside the main loop is identical to what we started this chap
 
 ### Still problematic
 
-We made a lot progress but there are still many issues with the last version we looked at. `gets` is a blocking call, and iterate over the connected. If two clients connect to the server, client1 and client2, but client1 never sends a command, client2 will never get a chance to communicate with the server.
+We made a lot progress but there are still many issues with the last version we looked at. `gets` is a blocking call, and we iterate over the connected clients sequentially. If two clients connect to the server, client1 first and client2 second, but client1 never sends a command, client2 will never get a chance to communicate with the server. The server will wait forever on the `client.gets` call for client1.
 
 We need to fix this.
 
-## Accept in a thread, gets with a timeout
+## Trying timeouts again
 
 There are different ways to make sure that all the connected clients get a chance to communicate with the server and to send their commands. Let's start with an approach we looked at earlier, timeouts.
 
 The pros and cons of using timeouts here are the same as they were when explored it as an option to prevent `accept` from blocking the server.
 
-Additionally, it would be fairly inefficient to do so, even with a short timeout, we would wait for the timeout duration on each client, even when there's nothing to read. It might fine with a handful of clients, but with a hundred clients, even a short timeout would be problematic.
+It would be fairly inefficient to do so, even with a short timeout, we would wait for the timeout duration on each client, even when there's nothing to read. It might be fine with a handful of clients, but with a hundred clients, even a short timeout would be problematic.
 
-Even with a timeout of 10ms, if all the clients are quietly waiting, not sending any commands, and only the 100th connected client sent a command, it would have to 990ms (99 * 10) before its command being read by the server.
+Even with a timeout of 10ms, if all the clients are waiting, not sending any commands, and only the 100th connected client sends a command, it would have to wait 990ms (99 clients * 10 ms) before its command is read by the server.
 
 I don't think it is that interesting to spend that much time with this approach since we've already established that it wasn't a good one, but you can experiment with it if you're interested. It is [in the `code` folder on GitHub][gets-with-timeout-gh]
 
 ## Read without blocking
 
-The title of this section says it all, we are going to use a non-blocking alternative, the explicitly named [`read_nonblock`][ruby-doc-io-read-nonblock]. A key difference is that it requires an int argument to set the maximum number of bytes that will be read from the socket. For reasons that I can't explain, it seems to be common practice to set it as a power of two. We could set it to a very low value, like 4, but then we wouldn't even be able to read a whole `SET` command in on call. `SET 1 2` is seven bytes long. We could also set it to a very high value, like 4,294,967,296 (2^32), but then we would expose ourselves to instantiating a String of up to that length if a client were to send it.
+The title of this section says it all, we are going to use a non-blocking alternative, the explicitly named [`read_nonblock`][ruby-doc-io-read-nonblock]. A key difference is that it requires an int argument to set the maximum number of bytes that will be read from the socket. For reasons that I can't explain, it seems to be common practice to set it as a power of two. We could set it to a very low value, like 4, but then we wouldn't be able to read a whole `SET` command in one call. `SET 1 2` is seven bytes long. We could also set it to a very high value, like 4,294,967,296 (2^32), but then we would expose ourselves to instantiating a String of up to that length if a client decided to send one that large.
 
-As a quick non-scientific example, this would require about 4GB of RAM. I confirmed this by creating an `irb` shell and monitoring its memory usage, either with `ps aux <pid>`, `top -o MEM` on macOS (`top -o %MEM` on linux) or the Activity Monitor app on macOS, creating a 1,000,000,000 byte long string, with `"a" * 1_000_000_000;`. The semi-colon is important, here to make sure it evaluates to nil and does not try to print the string. I then watched the memory consumption jump from a few megabytes to about one gigabyte.
+As a quick non-scientific example, this would require about 4GB of RAM on the machine running the server. I confirmed this by opening an `irb` shell and monitoring its memory usage, either with `ps aux <pid>`, `top -o MEM` on macOS (`top -o %MEM` on linux) or the Activity Monitor app on macOS, creating a 1,000,000,000 byte long string, with `"a" * 1_000_000_000;`. The semi-colon is important, it returns `nil` and does not try to print the string to the terminal, which would take a little while. I then watched the memory consumption jump from a few megabytes to about one gigabyte.
 
-It seems to be common to choose an arbitrary length, that should "long enough". Let's pick 256 for now, because we never expect commands to be longer than seven bytes for now, 256 gives us a lot to play with for now.
+It seems to be common to choose an arbitrary length, one that is "long enough". Let's pick 256 for now, because we never expect commands to be longer than seven bytes for now, 256 gives us a lot to play with for now.
 
 ``` ruby
 def initialize
@@ -296,13 +296,13 @@ end
 
 Only the content of the main loop changed. It starts the same way, by iterating through the `@clients` array, but the content of the `each` loop is different.
 
-We start by calling `read_nonblock`, with 256 as the `maxlen` argument. The default behavior of `read_nonblock` is to throw different exceptions depending on some potential output, the `exception: false` argument allows us to only rely on the return value:
+We start by calling `read_nonblock`, with 256 as the `maxlen` argument. The default behavior of `read_nonblock` is to throw different exceptions when encountering eof and when nothing can be read, the `exception: false` argument allows us to instead only rely on the return value:
 
-- If the value is `nil`, that means that we reached `EOF`. It would have raised `EOFError` without the `exception: false` argument
-- If the value is the symbol `:wait_readable`, that means that there is nothing to read at the moment. It would have raised `IO::WaitReadable` without the `exception: false` argument.
+- If the value is `nil`, we reached `EOF`. It would have raised `EOFError` without the `exception: false` argument
+- If the value is the symbol `:wait_readable`, there is nothing to read at the moment. It would have raised `IO::WaitReadable` without the `exception: false` argument.
 - Otherwise, it returns up to 256 bytes read from the socket
 
-A major improvement! No more explicit timeouts. That being said, we're still being fairly inefficient by manually cycling through all the clients. Sure, we're not doing that much if there's nothing to read, but we're still doing _something_, that is, calling `read_nonblock`, when we would ideally not do anything given that there's nothing to read.
+A major improvement! No more explicit timeouts. That being said, we're still being fairly inefficient by manually cycling through all the clients. Sure, we're not doing that much if there's nothing to read, but we're still doing _something_, calling `read_nonblock`, when we would ideally not do anything given that there's nothing to read.
 
 There's a syscall for that! `select`, described in `man 2 select` as:
 
@@ -310,18 +310,22 @@ There's a syscall for that! `select`, described in `man 2 select` as:
 
 ## Let's use `select`
 
-The `select` syscall is available in Ruby as a class method on the `IO` class : [`IO.select`][ruby-doc-io-select]. It accepts between one and four arguments and returns an array containing three items, each of them being an array as well. Let's look closely at what all these arrays mean:
+The `select` syscall is available in Ruby as a class method on the `IO` class : [`IO.select`][ruby-doc-io-select]. It is *blocking by default* and accepts between one and four arguments and returns an array containing three items, each of them being an array as well. Let's look closely at what all these arrays mean:
 
 - The first argument is mandatory, it is an array of sockets, `select` will look through all of them and, for each socket that has _something_ that can be read, will return it in the first of the three arrays returned.
 - The second argument is optional, it is also an array of sockets. `select` will look through all of them and, for each socket that can be written to, will return it in the second of the three arrays returned.
 - The third argument is optional as well, it is again an array of sockets. `select` will look through all of them and, for each socket that have pending exceptions, will return it in the third of the three arrays returned.
 - The fourth argument is optional. By default `select` is blocking, this argument is an integer telling `select` the maximum duration to wait for, and it will return `nil` if it wasn't able to return anything in time.
 
-As of this writing, I am not aware of any conditions that would cause a socket to "have a pending exception".
+{{% admonition warning "Third argument to select" %}}
 
-The main use case we're interested in is the one related to the first argument. Our `@clients` array is a list of socket. If we give to `select` as the first argument, it will return a list of sockets that can be read from.
+As of this writing, I am not aware of any conditions that would cause a socket to "have a pending exception". I will update this chapter if I learn more about it.
 
-I did mention above how setting timeouts is often a best practice. Here is a good example of when a timeout is not needed. It does not matter if our server waits forever to read for clients, it would only happen if no clients are sending commands. By blocking forever here we're not preventing the server from doing else, we're waiting because there is nothing else to do.
+{{% /admonition %}}
+
+The main use case we're interested in is the one related to the first argument. Our `@clients` array is a list of socket. If we pass it to `select` as the first argument, it will return a list of sockets that can be read from.
+
+In Chapter 1 we mentioned how setting timeouts is often a best practice. Here is a good example of when a timeout is not needed. It does not matter if our server waits forever to read for clients, it would only happen if no clients are sending commands. By blocking forever here we're not preventing the server from doing else, we're waiting because there is nothing else to do.
 
 ``` ruby
 def initialize
@@ -336,8 +340,6 @@ def initialize
     result[0].each do |client|
       client_command_with_args = client.read_nonblock(1024, exception: false)
       if client_command_with_args.nil?
-        puts "Found a client at eof, closing and removing"
-        client.close
         @clients.delete(client)
       elsif client_command_with_args == :wait_readable
         # There's nothing to read from the client, we don't have to do anything
@@ -353,13 +355,13 @@ def initialize
 end
 ```
 
-It's worth mentioning that the `each` loop that we removed did not exactly disappear, we actually delegated the iteration to the operating system. We have to assume that `select` does something similar internally, it has to iterate over the given array of file descriptors and do something with them. The difference is that by delegating such operation to the OS, we're not reinventing the wheel but we're also relying on an implementation that we can assume is well optimized.
+It's worth mentioning that the `each` loop that we removed did not exactly disappear, we delegated the iteration to the operating system. We have to assume that `select` does something similar internally, it has to iterate over the given array of file descriptors and do something with them. The difference is that by delegating such operation to the OS, we're not reinventing the wheel but we're also relying on an implementation that we can assume is well optimized.
 
-There's one more problem, and I swear, the next version will be the last one in this chapter. As previously mentioned `select` blocks, so if one clients connects, and never sends a command, the call to `IO.select` will never return. Meanwhile the thread dedicated to accepting new clients is still accepting clients, appending them to the `@clients` array.
+There's one more problem, and I swear, the next version will be the last one in this chapter. As previously mentioned, `select` blocks by default. If one clients connects, and never sends a command, the call to `IO.select` will never return. Meanwhile the thread dedicated to accepting new clients is still accepting clients, appending them to the `@clients` array.
 
-We could use the timeout argument, handle the case where the return value is nil, but as we discussed through the chapters, using a timeout would be inefficient. Imagine that two clients connect around the same time, the first one to connect does not send a command, the second one does. Regardless of the timeout, the second client would have to wait for it until the server acknowledges it. It would be great if the server could be more reactive, and not wait for timeouts.
+We could use the timeout argument, handle the case where the return value is nil, but as we discussed through the chapter, using a timeout would be inefficient. Imagine that two clients connect around the same time, the first one to connect does not send a command, the second one does. Regardless of the timeout, the second client would have to wait for the timeout to ellapse until the server acknowledges it. It would be great if the server could be more reactive, and not wait for timeouts.
 
-And the solution to that is ... `select` again! I know this was anticlimactic, but `select` is very versatile.
+And the solution is ... `select`, again! I know, I know, this was anticlimactic, but `select` is very versatile.
 
 ## `select` everything
 
@@ -375,9 +377,9 @@ irb(main):003:0> IO.select [server]
 => [[#<TCPServer:fd 10, AF_INET6, ::, 2000>], [], []]
 ```
 
-The `select` call will only return after you connect to the server. In the previous example, I used our good friend `nc` from Chapter 1: `nc -v localhost 2000`.
+The `select` call will only return after a client connects to the server. In the previous example, I used our good friend `nc` from Chapter 1: `nc -v localhost 2000`.
 
-Let's apply this to our server to remove the `accept` thread:
+Let's use this to remove the `accept` thread:
 
 ``` ruby
 def initialize
@@ -388,8 +390,6 @@ def initialize
   puts "Server started at: #{ Time.now }"
 
   loop do
-    # Selecting blocks, so if there's no client, we don't have to call it, which would
-    # block, we can just keep looping
     result = IO.select(@clients + [server])
     result[0].each do |socket|
       if socket.is_a?(TCPServer)
@@ -416,24 +416,24 @@ def initialize
 end
 ```
 
-And we finally have it, on each loop we check if any of the connected clients has sent anything as well as whether or not there are new clients.
+And we finally have it, on each iteration we check if any of the connected clients has sent anything as well as whether or not there are new clients attempting to connect.
 
 
 ## But what about the real Redis?
 
-I'm glad you asked, we haven't mentioned Redis in a while, you know the thing we're trying to replicate. So, how does Redis handle its clients?
+I'm glad you asked, we haven't mentioned Redis in a while, you know, the thing we're trying to replicate. So, how does Redis handle its clients?
 
 Well, I don't know if you're going to like the answer, but ... it depends.
 
-Redis uses different multiplexers (`select` is described in the man page as doing "synchronous I/O mutiplexing"), and tries to find the most efficient one. `select` is [apparently known to have limitations][select-problems] and seems to be limited to 1024 sockets. While it is not a problem for us to be limited to 1023 connected clients (keeping one for the server), we could easily imagine that Redis would want to support more.
+Redis uses different multiplexers (`select` is described in the man page as doing "synchronous I/O mutiplexing"), and tries to find the most efficient one. `select` is [apparently known to have limitations][select-problems] and seems to be limited to 1024 sockets. While it is not a problem for us to be limited to 1023 connected clients (keeping one for the server), it is reasonable to imagine that Redis would want to support more.
 
 It turns out that there are better alternatives, [kqueue][kqueue] on macOS and BSD, [epoll][epoll] on linux and evport on Solaris (I could not find a link for it).
 
-Redis defines its own even library, `ae`, in the [`ae.c` file][redis-ae]. The interface for `ae` is then implemented with each of the libraries mentioned above, [in `ae_epoll.c`][ae-epoll], [in `ae_kqueue.c`][ae-kqueue], [in `ae_evport.c`][ae-evport] and [in `ae_select.c`][ae-select].
+Redis defines its own even library, [`ae`][redis-ae], in the [`ae.c` file][redis-source-ae]. The interface for `ae` is then implemented with each of the libraries mentioned above, [in `ae_epoll.c`][ae-epoll], [in `ae_kqueue.c`][ae-kqueue], [in `ae_evport.c`][ae-evport] and [in `ae_select.c`][ae-select].
 
 Redis [defines constants depending on what is available at compile time][redis-source-multiplexer-constants] and chooses the implementation [in server.c][redis-source-multiplexer-choice].
 
-So, does Redis use `select`, probably not, but it could, if nothing else is available on the system it is being compiled on.
+So, does Redis use `select`, probably not, but it could, if nothing else is available on the system it is being compiled on. The important part is that even if it doesn't, it uses alternatives that are conceptually similar to `select`.
 
 ## Conclusion
 
@@ -460,6 +460,7 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [kqueue]:https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
 [epoll]:https://linux.die.net/man/4/epoll
 [redis-ae]:https://redis.io/topics/internals-rediseventlib
+[redis-source-ae]:https://github.com/redis/redis/blob/6.0/src/ae.c
 [ae-epoll]:https://github.com/redis-io/redis/blob/6.0/src/ae_epoll.c
 [ae-select]:https://github.com/redis-io/redis/blob/6.0/src/ae_select.c
 [ae-kqueue]:https://github.com/redis-io/redis/blob/6.0/src/ae_kqueue.c

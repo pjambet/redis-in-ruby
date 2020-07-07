@@ -23,28 +23,24 @@ class BasicServer
 
     loop do
       @clients.each do |client|
-        if client.closed?
-          @clients.delete(client)
-        else
-          begin
-            Timeout::timeout(0.1) do
-              client_command_with_args = client.gets
-              if client_command_with_args.nil?
-                puts "Found a client at eof, closing and removing"
-                @clients.delete(client)
-              elsif client_command_with_args.strip.empty?
-                puts "Empty request received from #{ client }"
-              else
-                response = handle_client_command(client_command_with_args.strip)
-                client.puts response
-              end
+        begin
+          Timeout::timeout(0.1) do
+            client_command_with_args = client.gets
+            if client_command_with_args.nil?
+              puts "Found a client at eof, closing and removing"
+              @clients.delete(client)
+            elsif client_command_with_args.strip.empty?
+              puts "Empty request received from #{ client }"
+            else
+              response = handle_client_command(client_command_with_args.strip)
+              client.puts response
             end
-          rescue Timeout::Error
-            puts "Did not receive anything from client after 0.1s, moving on"
-            next
-          rescue Errno::ECONNRESET
-            @clients.delete(client)
           end
+        rescue Timeout::Error
+          puts "Did not receive anything from client after 0.1s, moving on"
+          next
+        rescue Errno::ECONNRESET
+          @clients.delete(client)
         end
       end
     end
