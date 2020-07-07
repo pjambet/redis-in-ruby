@@ -215,7 +215,7 @@ One way to think about it is to imagine a phone call, if you started a phone cal
 
 If `gets` returns `nil`, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
 
-### `rescue Errno::ECONNRESET`
+### rescue ECONNRESET
 
 I am honestly not entirely sure about all the conditions that can cause this error, but I was able to trigger it if the client disconnects while we're blocked on the `gets` call, but only once some data was previously sent. In this case an `Errno::ECONNRESET` exception is raised. We catch it and remove the client we were handling when this happens, as it means that the connection cannot be used anymore.
 
