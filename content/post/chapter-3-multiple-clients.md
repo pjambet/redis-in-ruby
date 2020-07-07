@@ -150,7 +150,7 @@ Let's go through the main changes:
 
 ### `Thread.new` in the constructor
 
-As soon as the server starts, we create a new thread, which does only thing, accept new clients. This second thread starts an infinite loop, inside the loop we call `accept`, and block until it returns a new client. When we do receive a new client, we store in the `@client` instance variable, so that it can be used from the main thread, in the main loop.
+As soon as the server starts, we create a new thread, which does only one thing, accept new clients. This second thread starts an infinite loop, inside the loop we call `accept`, and block until it returns a new client. When we do receive a new client, we store in the `@client` instance variable, so that it can be used from the main thread, in the main loop.
 
 By moving the blocking call to `accept` to a different thread, we're not blocking the main loop anymore. Not with `accept` at least, there are still issues with this implementation, and `gets` is also a blocking call. We're improving things one step at a time.
 
