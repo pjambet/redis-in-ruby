@@ -11,9 +11,7 @@ categories: []
 
 # Welcome!
 
-This website is a free, "online book" about attempting to rewrite Redis in Ruby. It is still a work in progress, the
-first three chapters are currently available, but you can see the planned table of content on the [chapters
-page](/chapters)
+This website is a free, "online book" about attempting to rewrite [Redis](https://redis.io/) in Ruby. It is still a work in progress, the first three chapters are currently available, but you can see the planned table of content on the [chapters page](/chapters).
 
 Start reading the first [chapter below](#posts), or head to the [chapters list](/chapters/)
 
