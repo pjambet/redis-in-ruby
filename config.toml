@@ -49,7 +49,7 @@ copyright = ""            # default: author.name ↓
 #   identifier = "categories"
 #   url = "/categories/"
 [[menu.main]]
-  name = "Table of Content"
+  name = "Table of Contents"
   weight = 20
   identifier = "chapters"
   url = "/chapters/"
