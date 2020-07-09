@@ -52,7 +52,13 @@ copyright = ""            # default: author.name ↓
   name = "Table of Content"
   weight = 20
   identifier = "chapters"
-  url = "/chapters/"  
+  url = "/chapters/"
+
+[[menu.main]]
+  name = "About"
+  weight = 40
+  identifier = "about"
+  url = "/about/"
 
 [params]
   version = "4.x"           # Used to give a friendly message when you have an incompatible update
