@@ -14,7 +14,7 @@ description: "List of all chapters"
 
 Coming Soon
 
-- [Chapter 4 - Completing set and more String commands](/)
+- [Chapter 4 - Finishing SET and more String commands](/)
 - [Chapter 5 - Rewriting the hashing algorithm](/)
 - [Chapter 6 - Deeper dive in the Redis Protocol](/)
 - [Chapter 7 - Lists](/)
@@ -23,6 +23,7 @@ Coming Soon
 - [Chapter 10 - Ranges](/)
 - [Chapter 11 - Bitmaps](/)
 - [Chapter 12 - HyperLogLogs](/)
-- [Chapter 13 - Pub/Sub](/)
-- [Chapter 14 - Pipelining](/)
-- [Chapter 15 - Redis as an LRU cache](/)
+- [Chapter 13 - GEO* commands](/)
+- [Chapter 14 - Pub/Sub](/)
+- [Chapter 15 - Pipelining](/)
+- [Chapter 16 - Redis as an LRU cache](/)
