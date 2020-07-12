@@ -41,6 +41,6 @@ slightly to the left, so intermediate-ish.
 [http]:https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol
 [tcp]:https://en.wikipedia.org/wiki/Transmission_Control_Protocol
 [wikipedia-threads]:https://en.wikipedia.org/wiki/Thread_(computing)
-[wikipedia-processes]:[https://en.wikipedia.org/wiki/Process_(computing)]
+[wikipedia-processes]:https://en.wikipedia.org/wiki/Process_(computing)
 [ruby-doc-thread]:https://ruby-doc.org/core-2.7.1/Thread.html
 [ruby-doc-process]:https://ruby-doc.org/core-2.7.1/Process.html
