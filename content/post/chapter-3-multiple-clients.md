@@ -213,7 +213,7 @@ This condition is essentially a first check to make sure that the client referen
 
 One way to think about it is to imagine a phone call, if you started a phone call, left your phone on your desk to go pick up a pen and came back, you would probably resume by asking something like: "Are you still there?" and only if the person on the other end says yes, you would proceed to continue the conversation, if you don't hear anything, you would assume they hung up. If you only know smartphones, then this analogy might not make a lot of sense, because the screen would tell you if the call is still on. Believe me, there were phones without screens at some point, but you could also imagine that the screen was locked when you picked up the phone. Work with me here, please!
 
-If `gets` returns `nil`, there's no one on the other end anymore, the client hung up, we remove the entry for the list of connected clients.
+If `gets` returns `nil`, there's no one on the other end anymore, the client hung up, we remove the entry from the list of connected clients.
 
 ### rescue ECONNRESET
 
