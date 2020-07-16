@@ -436,7 +436,7 @@ $ gcc server.c -o server
 $ gcc client.c -o client
 ```
 
-We're going to need to shells, start the server in the first one, `./server`. It should log the following:
+We're going to need two shells, start the server in the first one, `./server`. It should log the following:
 
 ``` bash
 Socket successfully created..
