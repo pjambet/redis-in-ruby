@@ -16,7 +16,7 @@ pygmentsCodefencesGuessSyntax = true
 
 hasCJKLanguage = false
 paginate = 5
-disqusShortname = ""      # disqus_shortname
+disqusShortname = "redis-in-ruby"      # disqus_shortname
 googleAnalytics = ""      # UA-XXXXXXXX-X
 copyright = ""            # default: author.name ↓
 
@@ -33,11 +33,16 @@ copyright = ""            # default: author.name ↓
   weight = 10
   identifier = "home"
   url = "/"
+# [[menu.main]]
+  # name = "Archives"
+  # weight = 30
+  # identifier = "archives"
+  # url = "/post/"
 [[menu.main]]
-  name = "Archives"
+  name = "Discussion"
   weight = 30
-  identifier = "archives"
-  url = "/post/"
+  identifier = "discussion"
+  url = "/discussion/"
 # [[menu.main]]
 #   name = "Tags"
 #   weight = 30

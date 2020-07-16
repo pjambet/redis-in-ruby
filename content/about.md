@@ -1,3 +1,8 @@
+---
+title: About me
+comment: false
+description: About me
+---
 # About me
 
 Hey! My name is Pierre, I'm a French software engineer based in NYC. I write about tech stuff [on my blog](https://blog.pjam.me) and I also write about the thing when I don't write code, or write about writing code, running on [this other site](https://pacing.pjam.me).

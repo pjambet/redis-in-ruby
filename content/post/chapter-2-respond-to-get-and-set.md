@@ -2,6 +2,7 @@
 title: "Chapter 2 - Respond to Get and Set"
 date: 2020-05-17T21:28:17-04:00
 lastmod: 2020-06-25T14:27:12-04:00
+comment: false
 summary: >
   In this chapter, we'll build on the foundations we established in the previous chapter. We now know how to start a TCP
   server using the built-in `TCPServer` class. In this chapter we'll build a basic client using another built-in class,

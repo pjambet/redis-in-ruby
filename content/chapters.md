@@ -3,6 +3,7 @@ title: "Chapters"
 date: 2020-05-17T23:45:33-04:00
 lastmod: 2020-05-17T23:45:33-04:00
 draft: false
+comment: false
 keywords: []
 description: "List of all chapters"
 
@@ -14,7 +15,7 @@ description: "List of all chapters"
 
 Coming Soon
 
-- [Chapter 4 - Finishing SET and more String commands](/)
+- [Chapter 4 - Finishing SET and more String commands](/post/chapter-4-completing-set-and-more-string-commands/)
 - [Chapter 5 - Rewriting the hashing algorithm](/)
 - [Chapter 6 - Deeper dive in the Redis Protocol](/)
 - [Chapter 7 - Lists](/)

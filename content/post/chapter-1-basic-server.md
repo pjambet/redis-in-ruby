@@ -2,6 +2,7 @@
 title: "Chapter 1 - A basic TCP server"
 date: 2020-05-16T15:54:30-04:00
 lastmod: 2020-06-25T10:25:41-04:00
+comment: false
 draft: false
 summary: >
   This chapter will cover the creation of a TCP server in ruby, as well as how to interact with it with `netcat`, a
