@@ -11,7 +11,7 @@ categories: []
 
 # Welcome!
 
-This website is a free, "online book" about attempting to rewrite [Redis](https://redis.io/) in Ruby. It is still a work in progress, the first three chapters are currently available, but you can see the planned table of content on the [chapters page](/chapters).
+This website is a free, "online book" about attempting to rewrite [Redis™*](https://redis.io/) in Ruby. It is still a work in progress, the first three chapters are currently available, but you can see the planned table of content on the [chapters page](/chapters).
 
 Start reading the first [chapter below](#posts), or head to the [chapters list](/chapters/)
 
@@ -44,3 +44,5 @@ slightly to the left, so intermediate-ish.
 [wikipedia-processes]:https://en.wikipedia.org/wiki/Process_(computing)
 [ruby-doc-thread]:https://ruby-doc.org/core-2.7.1/Thread.html
 [ruby-doc-process]:https://ruby-doc.org/core-2.7.1/Process.html
+
+_\* Redis is a trademark of Redis Labs Ltd. Any rights therein are reserved to Redis Labs Ltd. Any use by this website is for referential purposes only and does not indicate any sponsorship, endorsement or affiliation between Redis and this website_
