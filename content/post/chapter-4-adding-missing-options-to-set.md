@@ -1,11 +1,11 @@
 ---
-title: "Chapter 4 - Completing Set and more string commands"
+title: "Chapter 4 - Adding the missing options to SET"
 date: 2020-07-23T10:27:27-04:00
 lastmod: 2020-07-23T10:27:27-04:00
 draft: true
 keywords: []
-description: ""
-comment: true
+description: "In this chapter we add the missing features to the SET command we implemented in chapter 2, EX, PX, NX, XX & KEEPTTL"
+comment: false
 ---
 
 ## What we'll cover
@@ -14,7 +14,7 @@ We implemented a simplified version of `SET` in [Chapter 2][chapter-2], in this 
 
 ## Completing the SET command
 
-The `SET` commands accepts the following options:
+The [`SET`][redis-doc-set] commands accepts the following options:
 
 
 - EX seconds -- Set the specified expire time, in seconds.
@@ -39,6 +39,10 @@ OK
 ```
 
 `TTL` returned 8 in both cases, because it took me about 2s to type the `TTL` command, and by that time about 8s where left, of the initial 10.
+
+---
+
+---
 
 - INCR / INCRBY
 - DECR / DECRBY

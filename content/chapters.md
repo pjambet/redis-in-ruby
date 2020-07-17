@@ -15,7 +15,7 @@ description: "List of all chapters"
 
 Coming Soon
 
-- [Chapter 4 - Finishing SET and more String commands](/post/chapter-4-completing-set-and-more-string-commands/)
+- [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
 - [Chapter 5 - Rewriting the hashing algorithm](/)
 - [Chapter 6 - Deeper dive in the Redis Protocol](/)
 - [Chapter 7 - Lists](/)
