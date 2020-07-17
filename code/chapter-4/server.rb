@@ -1,6 +1,9 @@
 require 'socket'
 require 'timeout'
 
+require_relative './get_command'
+require_relative './set_command'
+
 class BasicServer
 
   COMMANDS = [
@@ -80,18 +83,11 @@ class BasicServer
     args = command_parts[1..-1]
     if COMMANDS.include?(command)
       if command == 'GET'
-        if args.length != 1
-          "(error) ERR wrong number of arguments for '#{ command }' command"
-        else
-          @data_store.fetch(args[0], '(nil)')
-        end
+        get_command = GetCommand.new(@data_store, @expires, args)
+        get_command.call
       elsif command == 'SET'
-        if args.length != 2
-          "(error) ERR wrong number of arguments for '#{ command }' command"
-        else
-          @data_store[args[0]] = args[1]
-          'OK'
-        end
+        set_command = SetCommand.new(@data_store, @expires, args)
+        set_command.call
       end
     else
       formatted_args = args.map { |arg| "`#{ arg }`," }.join(' ')
@@ -104,8 +100,10 @@ class BasicServer
     keys_fetched = 0
 
     @expires.each do |key, value|
-      if @expires[key] < Time.now
+      if @expires[key] < Time.now.to_f * 1000
+        puts "Evicting #{ key }"
         @expires.delete(key)
+        @data_store.delete(key)
       end
 
       keys_fetched += 1
