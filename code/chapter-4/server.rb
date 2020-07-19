@@ -101,7 +101,7 @@ class BasicServer
 
     @expires.each do |key, value|
       if @expires[key] < Time.now.to_f * 1000
-        puts "Evicting #{ key }"
+        # puts "Evicting #{ key }"
         @expires.delete(key)
         @data_store.delete(key)
       end
@@ -113,6 +113,6 @@ class BasicServer
     end
 
     t1 = Time.now
-    puts sprintf("It tooks %.7f ms to process %i keys", (t1 - t0), keys_fetched)
+    # puts sprintf("It tooks %.7f ms to process %i keys", (t1 - t0), keys_fetched)
   end
 end

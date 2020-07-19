@@ -73,14 +73,40 @@ If Redis were to scan all the keys in the expires dictionary on every iteration 
 
 I think that it's worth stopping for a second to recognize the benefits of having two types of expiration. The lazy approach gets the job done as it guarantees that no expired keys will ever be returned, but if a key is set with a ttl and never read again it would still unnecessarily sit in memory. The incremental active approach solves this problem, while still being optimized for speed and does not pause the server to clean all the keys.
 
-#### Let's write some code!
+### The NX, XX & KEEPTTL options
+
+These options don't require all the digging we had to do for the previous two. We will add the necessary validations for the options, that is, checking that there is no arguments after either of these and based on the flag add the required check before inserting the value in the `@data_store` hash.
+
+The `KEEPTTL` options is also simpler. If it is present, we will not remove the matching entry in the `@expires` hash, if it is not present, we will.
+
+Most of the complexity resides in the validations of the command, to make sure that it has a valid format.
+
+### Let's write some code!
 
 We are making the following changes to the server:
 
 - Add our own, simplified event loop, including support for time events
-- Accepts options for the SET command, and support PX & EX
+- Accepts options for the expiration related options, EX & PX
+- Accepts options for the presence or absence of a key, NX & XX
 - Delete expired keys on read
+- Setting a key without KEEPTTL removes any previously set TTL
 
+``` ruby
+
+```
+_listing 4.1: server.rb_
+
+``` ruby
+
+```
+_listing 4.2: set_command.rb_
+
+``` ruby
+
+```
+_listing 4.3: get_command.rb_
+
+The `server.rb` started getting pretty big so we extracted the logic for `GET` & `SET` to different files, and gave them their own classes.
 
 ---
 
