@@ -24,14 +24,16 @@ describe 'BasicServer' do
     socket
   end
 
-  def with_server
+  def with_server(debug: false)
 
     child = Process.fork do
-      # We're effectively silencing the server with these two lines
-      # stderr would have logged something when it receives SIGINT, with a complete stacktrace
-      # $stderr = StringIO.new
-      # stdout would haev logged the "Server started ..." & "New client connected ..." lines
-      # $stdout = StringIO.new
+      unless debug
+        # We're effectively silencing the server with these two lines
+        # stderr would have logged something when it receives SIGINT, with a complete stacktrace
+        $stderr = StringIO.new
+        # stdout would have logged the "Server started ..." & "New client connected ..." lines
+        $stdout = StringIO.new
+      end
       BasicServer.new
     end
 
@@ -45,7 +47,7 @@ describe 'BasicServer' do
   end
 
   def assert_command_results(command_result_pairs)
-    with_server do
+    with_server(debug: !!ENV['DEBUG']) do
       command_result_pairs.each do |command, expected_result|
         if command.start_with?('sleep')
           sleep command.split[1].to_i
@@ -124,9 +126,33 @@ describe 'BasicServer' do
 
     it 'handles the PX option with a valid argument'
     it 'rejects the PX option with an invalid argument'
+
+    it 'handles the NX option' do
+      assert_command_results [
+        [ 'SET 1 2 NX', 'OK' ],
+        [ 'SET 1 2 NX', '(nil)' ],
+      ]
+    end
+
     it 'handles the XX option'
-    it 'handles the NX option'
-    it 'handles the KEEPTTL option'
+
+    it 'removes ttl without KEEPTTL' do
+      assert_command_results [
+        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 2', 'OK' ],
+        [ 'sleep 1' ],
+        [ 'GET 1', '2' ],
+      ]
+    end
+
+    it 'handles the KEEPTTL option' do
+      assert_command_results [
+        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 2 KEEPTTL', 'OK' ],
+        [ 'sleep 1' ],
+        [ 'GET 1', '(nil)' ],
+      ]
+    end
     it 'accepts multiple options'
     it 'rejects with both PX & EX'
     it 'rejects with both XX & NX'

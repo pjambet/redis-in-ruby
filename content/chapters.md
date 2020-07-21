@@ -16,8 +16,8 @@ description: "List of all chapters"
 Coming Soon
 
 - [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
-- [Chapter 5 - Rewriting the hashing algorithm](/)
-- [Chapter 6 - Deeper dive in the Redis Protocol](/)
+- [Chapter 5 - Deeper dive in the Redis Protocol](/)
+- [Chapter 6 - Rewriting the hashing algorithm](/)
 - [Chapter 7 - Lists](/)
 - [Chapter 8 - Hashes](/)
 - [Chapter 9 - Sets & Sorted Sets](/)
