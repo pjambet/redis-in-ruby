@@ -1,5 +1,6 @@
 require 'socket'
 require 'timeout'
+require 'logger'
 
 require_relative './get_command'
 require_relative './set_command'
@@ -14,13 +15,16 @@ class BasicServer
   MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
 
   def initialize
+    @logger = Logger.new(STDOUT)
+    @logger.level = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
+
     @clients = []
     @data_store = {}
     @expires = {}
 
     @server = TCPServer.new 2000
     @time_events = []
-    puts "Server started at: #{ Time.now }"
+    @logger.debug "Server started at: #{ Time.now }"
     add_time_event do
       server_cron
     end
@@ -58,10 +62,10 @@ class BasicServer
             # There's nothing to read from the client, we don't have to do anything
             next
           elsif client_command_with_args.strip.empty?
-            puts "Empty request received from #{ client }"
+            @logger.debug "Empty request received from #{ client }"
           else
             response = handle_client_command(client_command_with_args.strip)
-            puts "Response: #{ response }"
+            @logger.debug "Response: #{ response }"
             socket.puts response
           end
         else
@@ -96,7 +100,7 @@ class BasicServer
   end
 
   def server_cron
-    t0 = Time.now
+    start_timestamp = Time.now
     keys_fetched = 0
 
     @expires.each do |key, value|
@@ -112,7 +116,10 @@ class BasicServer
       end
     end
 
-    t1 = Time.now
-    # puts sprintf("It tooks %.7f ms to process %i keys", (t1 - t0), keys_fetched)
+    end_timestamp = Time.now
+    @logger.debug do
+      sprintf(
+        "It tooks %.7f ms to process %i keys", (end_timestamp - start_timestamp), keys_fetched)
+    end
   end
 end

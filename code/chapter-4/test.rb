@@ -34,7 +34,12 @@ describe 'BasicServer' do
         # stdout would have logged the "Server started ..." & "New client connected ..." lines
         $stdout = StringIO.new
       end
-      BasicServer.new
+
+      begin
+        BasicServer.new
+      rescue Interrupt => e
+        # Expected code path given we call kill with 'INT' below
+      end
     end
 
     yield
@@ -124,8 +129,20 @@ describe 'BasicServer' do
       ]
     end
 
-    it 'handles the PX option with a valid argument'
-    it 'rejects the PX option with an invalid argument'
+    it 'handles the PX option with a valid argument' do
+      assert_command_results [
+        [ 'SET 1 3 PX 1000', 'OK' ],
+        [ 'GET 1', '3' ],
+        [ 'sleep 1' ],
+        [ 'GET 1', '(nil)' ],
+      ]
+    end
+
+    it 'rejects the PX option with an invalid argument' do
+      assert_command_results [
+        [ 'SET 1 3 PX foo', '(error) ERR value is not an integer or out of range']
+      ]
+    end
 
     it 'handles the NX option' do
       assert_command_results [
@@ -134,7 +151,13 @@ describe 'BasicServer' do
       ]
     end
 
-    it 'handles the XX option'
+    it 'handles the XX option' do
+      assert_command_results [
+        [ 'SET 1 2 XX', '(nil)'],
+        [ 'SET 1 2', 'OK'],
+        [ 'SET 1 2 XX', 'OK'],
+      ]
+    end
 
     it 'removes ttl without KEEPTTL' do
       assert_command_results [
@@ -153,9 +176,28 @@ describe 'BasicServer' do
         [ 'GET 1', '(nil)' ],
       ]
     end
-    it 'accepts multiple options'
-    it 'rejects with both PX & EX'
-    it 'rejects with both XX & NX'
+
+    it 'accepts multiple options' do
+      assert_command_results [
+        [ 'SET 1 3 NX EX 1', 'OK' ],
+        [ 'GET 1', '3' ],
+        [ 'SET 1 3 XX KEEPTTL', 'OK' ],
+      ]
+    end
+
+    it 'rejects with more than one expire related option' do
+      assert_command_results [
+        [ 'SET 1 3 PX 1 EX 2', '(error) ERR syntax error'],
+        [ 'SET 1 3 PX 1 KEEPTTL', '(error) ERR syntax error'],
+        [ 'SET 1 3 KEEPTTL EX 2', '(error) ERR syntax error'],
+      ]
+    end
+
+    it 'rejects with both XX & NX' do
+      assert_command_results [
+        [ 'SET 1 3 NX XX', '(error) ERR syntax error'],
+      ]
+    end
   end
 
   describe 'Unknown commands' do
