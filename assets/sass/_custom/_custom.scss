@@ -15,3 +15,11 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
 .content .post .post-content a {
     word-break: break-word;
 }
+
+.highlight + p:has(> em) {
+  color: red;
+}
+
+.highlight + p > em {
+  font-size: 0.9em;
+}

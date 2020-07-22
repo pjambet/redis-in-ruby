@@ -12,7 +12,7 @@ comment: false
 
 We implemented a simplified version of `SET` in [Chapter 2][chapter-2], in this chapter, we will complete the command, and implement all [its options][redis-doc-set]. Note that we're still not following the [Redis Protocol][redis-protocol], we will do that in a later chapter. Doing so will require some significant refactoring,
 
-## Completing the SET command
+## Planning our changes
 
 The [`SET`][redis-doc-set] commands accepts the following options:
 
@@ -81,7 +81,27 @@ The `KEEPTTL` options is also simpler. If it is present, we will not remove the 
 
 Most of the complexity resides in the validations of the command, to make sure that it has a valid format.
 
-### Let's write some code!
+### Adding validation
+
+Before adding these options, validating the `SET` command did not require a lot of work. In its simple form, it requires a key and value. If both are present, the command is valid, if one is missing, it is a "wrong number of arguments" error.
+
+This rule still applies but we need to add more to support the different combinations of possible options. Let's look at the rules we need to support:
+
+- You can only specify the PX or the EX option, not both. Note that the `redis-cli` has a user friendly interface that hints at this constraints by displaying the following `key value [EX seconds|PX milliseconds] [NX|XX] [KEEPTTL]` when you start typing `SET`. The `|` character between `EX seconds` & `PX milliseconds` expresses the or condition.
+- Following the hints from redis-cli, we can only specify `NX` or `XX`, not both.
+- The redis-cli hint does not make this obvious, but you can only specify `KEEPTTL` if neither `EX` or `PX` or present. The following command `SET 1 2 EX 1 KEEPTTL` returns `(error) ERR syntax error`
+
+It's also worth mentioning that the order is not important, both commands are equivalent:
+
+```
+SET a-key a-value NX EX 10
+```
+
+```
+SET a-key a-value EX 10 NX
+```
+
+## Let's write some code!
 
 We are making the following changes to the server:
 
@@ -92,17 +112,282 @@ We are making the following changes to the server:
 - Setting a key without KEEPTTL removes any previously set TTL
 
 ``` ruby
+require 'socket'
+require 'timeout'
+require 'logger'
 
+require_relative './get_command'
+require_relative './set_command'
+
+class BasicServer
+
+  COMMANDS = [
+    'GET',
+    'SET',
+  ]
+
+  MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
+
+  def initialize
+    @logger = Logger.new(STDOUT)
+    @logger.level = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
+
+    @clients = []
+    @data_store = {}
+    @expires = {}
+
+    @server = TCPServer.new 2000
+    @time_events = []
+    @logger.debug "Server started at: #{ Time.now }"
+    add_time_event do
+      server_cron
+    end
+
+    start_event_loop
+  end
+
+  private
+
+  def add_time_event(&block)
+    @time_events << block
+  end
+
+  def start_event_loop
+    loop do
+      # Selecting blocks, so if there's no client, we don't have to call it, which would
+      # block, we can just keep looping
+      result = IO.select(@clients + [@server], [], [], 1)
+      sockets = result ? result[0] : []
+      process_poll_events(sockets)
+      process_time_events
+    end
+  end
+
+  def process_poll_events(sockets)
+    sockets.each do |socket|
+      begin
+        if socket.is_a?(TCPServer)
+          @clients << @server.accept
+        elsif socket.is_a?(TCPSocket)
+          client_command_with_args = socket.read_nonblock(1024, exception: false)
+          if client_command_with_args.nil?
+            @clients.delete(socket)
+          elsif client_command_with_args == :wait_readable
+            # There's nothing to read from the client, we don't have to do anything
+            next
+          elsif client_command_with_args.strip.empty?
+            @logger.debug "Empty request received from #{ client }"
+          else
+            response = handle_client_command(client_command_with_args.strip)
+            @logger.debug "Response: #{ response }"
+            socket.puts response
+          end
+        else
+          raise "Unknown socket type: #{ socket }"
+        end
+      rescue Errno::ECONNRESET
+        @clients.delete(socket)
+      end
+    end
+  end
+
+  def process_time_events
+    @time_events.each { |time_event| time_event.call }
+  end
+
+  def handle_client_command(client_command_with_args)
+    command_parts = client_command_with_args.split
+    command = command_parts[0]
+    args = command_parts[1..-1]
+    if COMMANDS.include?(command)
+      if command == 'GET'
+        get_command = GetCommand.new(@data_store, @expires, args)
+        get_command.call
+      elsif command == 'SET'
+        set_command = SetCommand.new(@data_store, @expires, args)
+        set_command.call
+      end
+    else
+      formatted_args = args.map { |arg| "`#{ arg }`," }.join(' ')
+      "(error) ERR unknown command `#{ command }`, with args beginning with: #{ formatted_args }"
+    end
+  end
+
+  def server_cron
+    start_timestamp = Time.now
+    keys_fetched = 0
+
+    @expires.each do |key, value|
+      if @expires[key] < Time.now.to_f * 1000
+        @logger.debug "Evicting #{ key }"
+        @expires.delete(key)
+        @data_store.delete(key)
+      end
+
+      keys_fetched += 1
+      if keys_fetched >= MAX_EXPIRE_LOOKUPS_PER_CYCLE
+        break
+      end
+    end
+
+    end_timestamp = Time.now
+    @logger.debug do
+      sprintf(
+        "It took %.7f ms to process %i keys", (end_timestamp - start_timestamp), keys_fetched)
+    end
+  end
+end
 ```
 _listing 4.1: server.rb_
 
 ``` ruby
+class SetCommand
 
+  ValidationError = Class.new(StandardError)
+
+  CommandOption = Struct.new(:kind)
+  CommandOptionWithValue = Struct.new(:kind, :validator)
+
+  IDENTITY = ->(value) { value }
+
+  OPTIONS = {
+    'EX' => CommandOptionWithValue.new(
+      'expire',
+      ->(value) { validate_integer(value) * 1000 },
+    ),
+    'PX' => CommandOptionWithValue.new(
+      'expire',
+      ->(value) { validate_integer(value) },
+    ),
+    'KEEPTTL' => CommandOption.new('expire'),
+    'NX' => CommandOption.new('presence'),
+    'XX' => CommandOption.new('presence'),
+  }
+
+  ERRORS = {
+    'expire' => '(error) ERR value is not an integer or out of range',
+  }
+
+  def self.validate_integer(str)
+    Integer(str)
+  rescue ArgumentError, TypeError
+    raise ValidationError, '(error) ERR value is not an integer or out of range'
+  end
+
+  def initialize(data_store, expires, args)
+    @data_store = data_store
+    @expires = expires
+    @args = args
+
+    @options = {}
+  end
+
+  def call
+    key, value = @args.shift(2)
+    if key.nil? || value.nil?
+      return "(error) ERR wrong number of arguments for 'SET' command"
+    end
+
+    parse_result = parse_options
+
+    if !parse_result.nil?
+      return parse_result
+    end
+
+    existing_key = @data_store[key]
+
+    if @options['presence'] == 'NX' && !existing_key.nil?
+      '(nil)'
+    elsif @options['presence'] == 'XX' && existing_key.nil?
+      '(nil)'
+    else
+
+      @data_store[key] = value
+      expire_option = @options['expire']
+
+      # The implied third branch is if expire_option == 'KEEPTTL', in which case we don't have
+      # to do anything
+      if expire_option.is_a? Integer
+        @expires[key] = (Time.now.to_f * 1000).to_i + expire_option
+      elsif expire_option.nil?
+        @expires.delete(key)
+      end
+
+      'OK'
+    end
+
+  rescue ValidationError => e
+    e.message
+  end
+
+  private
+
+  def parse_options
+    while @args.any?
+      option = @args.shift
+      option_detail = OPTIONS[option]
+
+      if option_detail
+        option_values = parse_option_arguments(option, option_detail)
+        existing_option = @options[option_detail.kind]
+
+        if existing_option
+          return '(error) ERR syntax error'
+        else
+          @options[option_detail.kind] = option_values
+        end
+      else
+        return '(error) ERR syntax error'
+      end
+    end
+  end
+
+  def parse_option_arguments(option, option_detail)
+
+    case option_detail
+    when CommandOptionWithValue
+      option_value = @args.shift
+      option_detail.validator.call(option_value)
+    when CommandOption
+      option
+    else
+      raise "Unknown command option type: #{ option_detail }"
+    end
+  end
+end
 ```
 _listing 4.2: set_command.rb_
 
 ``` ruby
+class GetCommand
 
+  def initialize(data_store, expires, args)
+    @logger = Logger.new(STDOUT)
+    @data_store = data_store
+    @expires = expires
+    @args = args
+  end
+
+  def call
+    if @args.length != 1
+      "(error) ERR wrong number of arguments for 'GET' command"
+    else
+      check_if_expired
+      @data_store.fetch(@args[0], '(nil)')
+    end
+  end
+
+  private
+
+  def check_if_expired
+    expires_entry = @expires[@args[0]]
+    if expires_entry && expires_entry < Time.now.to_f * 1000
+      logger.debug "evicting #{ @args[0] }"
+      @expires.delete(@args[0])
+      @data_store.delete(@args[0])
+    end
+  end
+end
 ```
 _listing 4.3: get_command.rb_
 
@@ -135,6 +420,10 @@ It loops through, starting at `timeEventHead`
 If timeEvent func returns `AE_NOMORE`, `-1`, event is removed on next iteration, otherwise, it's bumped by `restval` ms. `serverCron` returns `1000/server.hz`.
 
 in `evict.c`, in `freeMemoryIfNeeded`, keys might get deleted.
+
+### And a few more tests
+
+We changed a lot of code and added more features, this calls for more tests. Here is
 
 ---
 

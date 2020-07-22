@@ -55,7 +55,7 @@ describe 'BasicServer' do
     with_server(debug: !!ENV['DEBUG']) do
       command_result_pairs.each do |command, expected_result|
         if command.start_with?('sleep')
-          sleep command.split[1].to_i
+          sleep command.split[1].to_f
           next
         end
         begin
@@ -131,9 +131,9 @@ describe 'BasicServer' do
 
     it 'handles the PX option with a valid argument' do
       assert_command_results [
-        [ 'SET 1 3 PX 1000', 'OK' ],
+        [ 'SET 1 3 PX 100', 'OK' ],
         [ 'GET 1', '3' ],
-        [ 'sleep 1' ],
+        [ 'sleep 0.1' ],
         [ 'GET 1', '(nil)' ],
       ]
     end
@@ -161,18 +161,18 @@ describe 'BasicServer' do
 
     it 'removes ttl without KEEPTTL' do
       assert_command_results [
-        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 3 PX 100', 'OK' ],
         [ 'SET 1 2', 'OK' ],
-        [ 'sleep 1' ],
+        [ 'sleep 0.1' ],
         [ 'GET 1', '2' ],
       ]
     end
 
     it 'handles the KEEPTTL option' do
       assert_command_results [
-        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 3 PX 100', 'OK' ],
         [ 'SET 1 2 KEEPTTL', 'OK' ],
-        [ 'sleep 1' ],
+        [ 'sleep 0.1' ],
         [ 'GET 1', '(nil)' ],
       ]
     end

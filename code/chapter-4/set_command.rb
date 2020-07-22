@@ -32,6 +32,8 @@ class SetCommand
   end
 
   def initialize(data_store, expires, args)
+    @logger = Logger.new(STDOUT)
+    @logger.level = LOG_LEVEL
     @data_store = data_store
     @expires = expires
     @args = args
