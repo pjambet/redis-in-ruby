@@ -6,7 +6,7 @@ LOG_LEVEL = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
 require_relative './get_command'
 require_relative './set_command'
 
-class BasicServer
+class RedisServer
 
   COMMANDS = [
     'GET',
@@ -58,21 +58,23 @@ class BasicServer
     nearest
   end
 
+  def select_timeout
+    if @time_events.any?
+      nearest = nearest_time_event
+      now = (Time.now.to_f * 1000).truncate
+      if nearest.process_at < now
+        0
+      else
+        (nearest.process_at - now) / 1000.0
+      end
+    else
+      0
+    end
+  end
+
   def start_event_loop
     loop do
-      # Selecting blocks, so if there's no client, we don't have to call it, which would
-      # block, we can just keep looping
-      timeout = if @time_events.any?
-                  nearest = nearest_time_event
-                  now = (Time.now.to_f * 1000).truncate
-                  if nearest.process_at < now
-                    0
-                  else
-                    (nearest.process_at - now) / 1000.0
-                  end
-                else
-                  0
-                end
+      timeout = select_timeout
       @logger.debug "select with a timeout of #{ timeout }"
       result = IO.select(@clients + [@server], [], [], timeout)
       sockets = result ? result[0] : []

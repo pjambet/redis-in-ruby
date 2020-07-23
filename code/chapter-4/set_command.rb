@@ -5,8 +5,6 @@ class SetCommand
   CommandOption = Struct.new(:kind)
   CommandOptionWithValue = Struct.new(:kind, :validator)
 
-  IDENTITY = ->(value) { value }
-
   OPTIONS = {
     'EX' => CommandOptionWithValue.new(
       'expire',
@@ -102,7 +100,6 @@ class SetCommand
   end
 
   def parse_option_arguments(option, option_detail)
-
     case option_detail
     when CommandOptionWithValue
       option_value = @args.shift

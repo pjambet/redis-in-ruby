@@ -3,7 +3,7 @@ require 'timeout'
 require 'stringio'
 require './server'
 
-describe 'BasicServer' do
+describe 'RedisServer' do
 
   def connect_to_server
     socket = nil
@@ -24,10 +24,10 @@ describe 'BasicServer' do
     socket
   end
 
-  def with_server(debug: false)
+  def with_server
 
     child = Process.fork do
-      unless debug
+      unless !!ENV['DEBUG']
         # We're effectively silencing the server with these two lines
         # stderr would have logged something when it receives SIGINT, with a complete stacktrace
         $stderr = StringIO.new
@@ -36,7 +36,7 @@ describe 'BasicServer' do
       end
 
       begin
-        BasicServer.new
+        RedisServer.new
       rescue Interrupt => e
         # Expected code path given we call kill with 'INT' below
       end
@@ -52,7 +52,7 @@ describe 'BasicServer' do
   end
 
   def assert_command_results(command_result_pairs)
-    with_server(debug: !!ENV['DEBUG']) do
+    with_server do
       command_result_pairs.each do |command, expected_result|
         if command.start_with?('sleep')
           sleep command.split[1].to_f
