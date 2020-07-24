@@ -8,6 +8,10 @@ summary: "In this chapter we add the missing features to the SET command we impl
 comment: false
 ---
 
+## WIP Warning:
+
+This chapter was just publicly released, it's still under review for typos, grammatical mistakes, etc ... so expect to find some if you decide to read it now. If you find errors, feel free to reach out. It should take about a day to go through the final review.
+
 ## What we'll cover
 
 We implemented a simplified version of the `SET` command in [Chapter 2][chapter-2], in this chapter we will complete the command by implementing all [its options][redis-doc-set]. Note that we're still not following the [Redis Protocol][redis-protocol], we will address that in the next chapter.
