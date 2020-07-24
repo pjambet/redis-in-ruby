@@ -1,16 +1,16 @@
 ---
-title: "Chapter 4 - Adding the missing options to SET"
+title: "Chapter 4 - Adding the missing options to the SET command"
 date: 2020-07-23T10:27:27-04:00
 lastmod: 2020-07-23T10:27:27-04:00
-draft: true
+draft: false
 keywords: []
-description: "In this chapter we add the missing features to the SET command we implemented in chapter 2, EX, PX, NX, XX & KEEPTTL"
+summary: "In this chapter we add the missing features to the SET command we implemented in chapter 2, EX, PX, NX, XX & KEEPTTL"
 comment: false
 ---
 
 ## What we'll cover
 
-We implemented a simplified version of `SET` in [Chapter 2][chapter-2], in this chapter, we will complete the command, and implement all [its options][redis-doc-set]. Note that we're still not following the [Redis Protocol][redis-protocol], we will do that in a later chapter. Doing so will require some significant refactoring,
+We implemented a simplified version of the `SET` command in [Chapter 2][chapter-2], in this chapter we will complete the command by implementing all [its options][redis-doc-set]. Note that we're still not following the [Redis Protocol][redis-protocol], we will address that in the next chapter.
 
 ## Planning our changes
 
@@ -20,10 +20,10 @@ The [`SET`][redis-doc-set] commands accepts the following options:
 - EX seconds -- Set the specified expire time, in seconds.
 - PX milliseconds -- Set the specified expire time, in milliseconds.
 - NX -- Only set the key if it does not already exist.
-- XX -- Only set the key if it already exist.
-- KEEPTTL -- Retain the time to live associated with the key.
+- XX -- Only set the key if it already exists.
+- KEEPTTL -- Retain the Time To Live (TTL) associated with the key
 
-As noted in the documentation, there is some overlap with some of the options above and the following commands: [SETNX][redis-doc-setnx], [SETEX][redis-doc-setex], [PSETEX][redis-doc-psetex]. As of this writing these three commands are not officially deprecated, but the documentation mentions that they might soon. Given that we can access the same features through the `NX`, `EX` & `PX` options respectively, we will not implement these three commands.
+As noted in the documentation, there is some overlap with some of the options above and the following commands: [SETNX][redis-doc-setnx], [SETEX][redis-doc-setex], [PSETEX][redis-doc-psetex]. As of this writing these three commands are not officially deprecated, but the documentation mentions that it might happen soon. Given that we can access the same features through the `NX`, `EX` & `PX` options respectively, we will not implement these three commands.
 
 `SET a-key a-value EX 10` is equivalent to `SETEX a-key 10 a-value`, which you can demonstrate in a `redis-cli` session:
 
@@ -38,21 +38,32 @@ OK
 (integer) 8
 ```
 
-[`TTL`][redis-doc-ttl] returned 8 in both cases, because it took me about 2s to type the `TTL` command, and by that time about 8s where left, of the initial 10.
+[`TTL`][redis-doc-ttl] returned 8 in both cases, because it took me about 2s to type the `TTL` command, and by that time about 8s were left of the initial 10.
 
 ### The EX & PX options
 
-We will first add support for the EX & PX options, both are followed by one argument, an integer for the number of the seconds and milliseconds specifying how long the key will be readable for. Once the duration has elapsed, the key is deleted, and calling `GET` would return `(nil)` as if it was never set.
+We will first add support for the EX & PX options, both are followed by one argument, an integer for the number of the seconds and milliseconds specifying how long the key will be readable for. Once the duration has elapsed, the key is deleted, and calling `GET` would return `(nil)` as if it was never set or explicitly deleted by the `DEL` command.
 
-When a key is set with either of these two options, or through the `SETEX` & `PSETEX` commands, but we are ignoring these for the sake of simplicity, Redis adds the key to different dictionary, `db->expires`. This dictionary is dedicated to storing keys with a TTL, the key is the same key and the value is the timestamp of the expiration, in milliseconds.
+When a key is set with either of these two options, or through the `SETEX` & `PSETEX` commands, but we are ignoring these for the sake of simplicity, Redis adds the key to different dictionary, [`db->expires`][redis-source-db-expires]. This dictionary is dedicated to storing keys with a TTL, the key is the same key and the value is the timestamp of the expiration, in milliseconds.
 
-Redis uses two approaches, in two different places, to delete keys with a TTL. The first one is the lazy approach, when reading a key, it checks if it has a ttl, if it does and it is in the past, it deletes the key and does not proceed with the read.
+Redis uses two approaches to delete keys with a TTL. The first one is a lazy approach, when reading a key, it checks if it has a TTL, if it does and it is in the past, it deletes the key and does not proceed with the read.
 
-The other one is a more proactive approach, redis periodically scans the list of keys with a ttl value and deletes the expired one. This action, performed in `serverCron` is part of the [event loop][redis-doc-event-loop]. The event loop is defined in `ae.c` and starts in the `aeMain` function, it continuously executes the `aeProcessEvents` function in a while loop, until the `stop` flag is set to `1`, which essentially never happens when the server is running under normal circumstances. The `aeStop` function is the only function doing this and it is only used in `redis-benchmark.c` & `example-ae.c`.
+{{% admonition info "\"Lazy\" \& \"Eager\" in programming" %}}
 
-`aeProcessEvents` is a fairly big function, it would be hard to summarize it all here, but it first uses the `aeApiPoll` function, which is what we covered in the previous chapter. It processes the events coming from the poll, if any and then calls `processTimeEvents`.
+The terms lazy is often used in programming, it describes an operation that is put on the back-burner and delayed until it absolutely has to be performed.
 
-Redis maintains a list of time events, as described in the event loop documentation page, for periodic task. When the server is initialized, one time event is created, for the function `serverCron`. This function is responsible for a lot of things. This is how it is described in the [source code][redis-source-server-cron]:
+In the context of Redis, it makes sense to describe the eviction strategy described above as lazy since Redis might still store keys that are effectively expired and will only guarantee their deletion until they are accessed past their expiration timestamp.
+
+The opposite approach is "eager", where an operation is performed as soon as possible, whether or not it could be postponed.
+
+{{% /admonition %}}
+
+
+The other one is a more proactive approach, Redis periodically scans a subset of the list of keys with a TTL value and deletes the expired one. This action, performed in `serverCron` is part of the [event loop][redis-doc-event-loop]. The event loop is defined in `ae.c` and starts in the `aeMain` function, it continuously executes the `aeProcessEvents` function in a while loop, until the `stop` flag is set to `1`, which essentially never happens when the server is running under normal circumstances. The `aeStop` function is the only function doing this and it is only used in `redis-benchmark.c` & `example-ae.c`.
+
+`aeProcessEvents` is a fairly big function, it would be hard to summarize it all here, but it first uses the `aeApiPoll` function, which is what we covered in the previous chapter. It processes the events from the poll result, if any and then calls `processTimeEvents`.
+
+Redis maintains a list of time events, as described in the event loop documentation page, for periodic task. When the server is initialized, one time event is created, for the `serverCron` function. This function is responsible for a lot of things, this is how it is described in the [source code][redis-source-server-cron]:
 
 > This is our timer interrupt, called server.hz times per second.\
 > Here is where we do a number of things that need to be done asynchronously.\
@@ -66,27 +77,29 @@ Redis maintains a list of time events, as described in the event loop documentat
 > - Replication reconnection.
 > - Many more...
 
-We're only interested in the first item in this list for now, the active expiration of keys. Redis runs on a single thread, which continuously runs the event loop described above. This means that each operation performed in the event loop effectively blocks the ones waiting to be processed. Redis tries to optimize for this by making all the operations as fast as possible.
+We're only interested in the first item in this list for now, the active expiration of keys. Redis runs on a single thread, which continuously runs the event loop described above. This means that each operation performed in the event loop effectively blocks the ones waiting to be processed. Redis tries to optimize for this by making all the operations performed in the event loop "fast".
 
-`serverCron` is first added to the time events with a time set to 1ms in the future. The return value of function executed as a time event dictates if it is removed from the time event queue or if it is rescheduled in the future. `serverCron` returns a value based on the frequency set as config. By default 100ms. That means that it won't run more than 10 times per second.
+This is one of the reasons why the documentation provides the time complexity for each commands. Most commands are O(1), and commands like [`KEYS`][redis-doc-keys], with an O(n) complexity are not recommended in a production environment, it would prevent the server from processing any incoming commands while iterating through all the keys.
 
-This is one of the reasons the documentation provides the time complexity for each commands. Most commands are O(1), and commands like [`KEYS`][redis-doc-keys], with an O(n) complexity are not recommended in a production environment.
+If Redis were to scan all the keys in the expires dictionary on every iteration of the event loop it would be an O(n) operation. Put differently, as you add keys with a TTL, you would slow down the process of active expiration. To prevent this, Redis only scans the expires up to certain amount. The `activeExpireCycle` contains a lot of optimizations that we will not explore for now for the sake of simplicity.
 
-If Redis were to scan all the keys in the expires dictionary on every iteration of the event loop it would be an O(n) operation. Put differently, as you add keys with a TTL, you would slow down the process of active expiration. To prevent this, Redis only scans the expires up to certain amount. The `activeExpireCycle` contains a lot of optimizations that we will not explore for now. [EXPLAIN WHY].
+One of these optimizations takes care of maintaining statistics about the server, among those Redis keeps track of an estimate of the number of keys that are expired but not yet deleted. Using this it will attempt to expire more keys to try to keep this number under control and prevent it from growing too fast if keys start expiring faster than the normal rate at which they get deleted.
 
-I think that it's worth stopping for a second to recognize the benefits of having two types of expiration. The lazy approach gets the job done as it guarantees that no expired keys will ever be returned, but if a key is set with a ttl and never read again it would still unnecessarily sit in memory. The incremental active approach solves this problem, while still being optimized for speed and does not pause the server to clean all the keys.
+`serverCron` is first added to the time events with a time set to 1ms in the future. The return value of functions executed as time events dictates if it is removed from the time event queue or if it is rescheduled in the future. `serverCron` returns a value based on the frequency set as config. By default 100ms. That means that it won't run more than 10 times per second.
+
+I think that it's worth stopping for a second to recognize the benefits of having two eviction strategies for expired keys. The lazy approach gets the job done as it guarantees that no expired keys will ever be returned, but if a key is set with a TTL and is never read again it would unnecessarily sit in memory, using space. The incremental active approach solves this problem, while still being optimized for speed and does not pause the server to clean all the keys.
 
 {{% admonition info "Big O Notation" %}}
 
 The [Big O Notation][big-o-notation] is used to describe the time complexity of operations. In other words, it describes how much slower, or not, the operation would be, as the size of the elements it operates on increases.
 
-The way that I like to think about it is to transcribe the O notation to a function with a single parameter n, that returns the value inside the parentheses after O. So O(n) — which is the complexity of the [`KEYS`][redis-doc-keys] command — would become `def fn(n); n; end;` if written in Ruby, or `let fn = (n) => n` in javascript. O(1) — which is the complexity of the [`SET`][redis-doc-set] command — would be `def fn(n); 1; end;` and O(logn)  — which is the complexity of the [`ZADD`][redis-doc-zadd] command — would become `def fn(n); Math.log(n); end;` and O(n^2)  — as far as I know, no Redis commands have such complexity — would become `def fn(n); n.pow(2); end;`.
+The way that I like to think about it is to transcribe the O notation to a function with a single parameter n, that returns the value inside the parentheses after O. So O(n) — which is the complexity of the [`KEYS`][redis-doc-keys] command — would become `def fn(n); n; end;` if written in Ruby, or `let fn = (n) => n` in javascript. O(1) — which is the complexity of the [`SET`][redis-doc-set] command — would be `def fn(n); 1; end;` and O(logn)  — which is the complexity of the [`ZADD`][redis-doc-zadd] command — would become `def fn(n); Math.log(n); end;` and O(n^2)  — as far as I know, no Redis command has such complexity — would become `def fn(n); n.pow(2); end;`.
 
-We can play with these functions to illustrate the complexity of the different commands. `SET` is O(1), commonly referred to as constant time. Regardless of the number of keys currently stored in Redis, the operations required to fulfill a `SET` command are the same, so whether we are operating on an empty Redis server or one with millions of keys, it'll take a similar amount of time.
+We can play with these functions to illustrate the complexity of the different commands. `SET` has a time complexity of O(1), commonly referred to as constant time. Regardless of the number of keys stored in Redis, the operations required to fulfill a `SET` command are the same, so whether we are operating on an empty Redis server or one with millions of keys, it'll take a similar amount of time. With the function defined above we can see that, if n is the number of keys, `fn(n)` will always return `1`, regardless of n.
 
-On the other hand `KEYS` has a complexity of O(n), where n is the number of keys stored in Redis — it's important to note that n is always context dependent and should be specified, which Redis does on each command page. `KEYS` is written in a way that will iterate through all the items in Redis and return all the keys. Running it on a server with a single key will first require to run operations independently of the number of keys stored, such as parsing the command, delegating it to the function handling the keys command, and only then look at all the keys, in this example, it'll be a
+On the other hand `KEYS` has a complexity of O(n), where n is the number of keys stored in Redis — it's important to note that n is always context dependent and should therefore always be specified, which Redis does on each command page. `KEYS` iterates through all the items in Redis and return all the keys. With the function defined above, we can see that `fn(1)` will return `1`, `fn(10)`, `10`, and so on. What this tells us is that the time required to execute `KEYS` will grow proportionally to the value of n.
 
-[FINISH THIS]
+Lastly, it's important to note that this does not necessarily mean that `KEYS` ran on a server with 100 items will be exactly 100 times slower than running against a server with one key. There are some operations that will have to be performed regardless, such as parsing the command and dispatching to the `keysCommand` function. These are in the category of "fixed cost", they always have to be performed. If it takes 1ms to run those and then 0.1ms per key — these are only illustrative numbers —, it would take Redis 1.1ms to run `KEYS` for one key and 10.1ms with 100 keys. It's not exactly 100 times more, but it is in the order of 100 times more.
 
 {{% /admonition %}}
 
@@ -100,11 +113,11 @@ Most of the complexity resides in the validations of the command, to make sure t
 
 Before adding these options, validating the `SET` command did not require a lot of work. In its simple form, it requires a key and value. If both are present, the command is valid, if one is missing, it is a "wrong number of arguments" error.
 
-This rule still applies but we need to add more to support the different combinations of possible options. Let's look at the rules we need to support:
+This rule still applies but we need to add more to support the different combinations of possible options. These are the rules we now need to support:
 
-- You can only specify the PX or the EX option, not both. Note that the `redis-cli` has a user friendly interface that hints at this constraints by displaying the following `key value [EX seconds|PX milliseconds] [NX|XX] [KEEPTTL]` when you start typing `SET`. The `|` character between `EX seconds` & `PX milliseconds` expresses the or condition.
+- You can only specify one of the PX or EX options, not both. Note that the `redis-cli` has a user friendly interface that hints at this constraints by displaying the following `key value [EX seconds|PX milliseconds] [NX|XX] [KEEPTTL]` when you start typing `SET`. The `|` character between `EX seconds` & `PX milliseconds` expresses the `OR` condition.
 - Following the hints from redis-cli, we can only specify `NX` or `XX`, not both.
-- The redis-cli hint does not make this obvious, but you can only specify `KEEPTTL` if neither `EX` or `PX` or present. The following command `SET 1 2 EX 1 KEEPTTL` returns `(error) ERR syntax error`
+- The redis-cli hint does not make this obvious, but you can only specify `KEEPTTL` if neither `EX` or `PX` or present. The following command `SET 1 2 EX 1 KEEPTTL` is invalid and returns `(error) ERR syntax error`
 
 It's also worth mentioning that the order is not important, both commands are equivalent:
 
@@ -125,6 +138,7 @@ We are making the following changes to the server:
 - Accepts options for the presence or absence of a key, NX & XX
 - Delete expired keys on read
 - Setting a key without KEEPTTL removes any previously set TTL
+- Implement the TTL & PTTL commands as they are useful to use alongside keys with a TTL
 
 I'm giving you the complete code first and we'll look at the interesting parts one by one afterwards:
 
@@ -134,15 +148,20 @@ require 'timeout'
 require 'logger'
 LOG_LEVEL = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
 
+require_relative './expire_helper'
 require_relative './get_command'
 require_relative './set_command'
+require_relative './ttl_command'
+require_relative './pttl_command'
 
 class RedisServer
 
-  COMMANDS = [
-    'GET',
-    'SET',
-  ]
+  COMMANDS = {
+    'GET' => GetCommand,
+    'SET' => SetCommand,
+    'TTL' => TtlCommand,
+    'PTTL' => PttlCommand,
+  }
 
   MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
   DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
@@ -264,19 +283,17 @@ class RedisServer
   def handle_client_command(client_command_with_args)
     @logger.debug "Received command: #{ client_command_with_args }"
     command_parts = client_command_with_args.split
-    command = command_parts[0]
+    command_str = command_parts[0]
     args = command_parts[1..-1]
-    if COMMANDS.include?(command)
-      if command == 'GET'
-        get_command = GetCommand.new(@data_store, @expires, args)
-        get_command.call
-      elsif command == 'SET'
-        set_command = SetCommand.new(@data_store, @expires, args)
-        set_command.call
-      end
+
+    command_class = COMMANDS[command_str]
+
+    if command_class
+      command = command_class.new(@data_store, @expires, args)
+      command.call
     else
       formatted_args = args.map { |arg| "`#{ arg }`," }.join(' ')
-      "(error) ERR unknown command `#{ command }`, with args beginning with: #{ formatted_args }"
+      "(error) ERR unknown command `#{ command_str }`, with args beginning with: #{ formatted_args }"
     end
   end
 
@@ -442,24 +459,96 @@ class GetCommand
     if @args.length != 1
       "(error) ERR wrong number of arguments for 'GET' command"
     else
-      check_if_expired
-      @data_store.fetch(@args[0], '(nil)')
-    end
-  end
-
-  private
-
-  def check_if_expired
-    expires_entry = @expires[@args[0]]
-    if expires_entry && expires_entry < Time.now.to_f * 1000
-      @logger.debug "evicting #{ @args[0] }"
-      @expires.delete(@args[0])
-      @data_store.delete(@args[0])
+      key = @args[0]
+      ExpireHelper.check_if_expired(@data_store, @expires, key)
+      @data_store.fetch(key, '(nil)')
     end
   end
 end
 ```
 _listing 4.3: get_command.rb_
+
+``` ruby
+class PttlCommand
+
+  def initialize(data_store, expires, args)
+    @logger = Logger.new(STDOUT)
+    @logger.level = LOG_LEVEL
+    @data_store = data_store
+    @expires = expires
+    @args = args
+  end
+
+  def call
+    if @args.length != 1
+      "(error) ERR wrong number of arguments for 'PTTL' command"
+    else
+      key = @args[0]
+      ExpireHelper.check_if_expired(@data_store, @expires, key)
+      key_exists = @data_store.include? key
+      if key_exists
+        ttl = @expires[key]
+        if ttl
+          (ttl - (Time.now.to_f * 1000)).round
+        else
+          -1
+        end
+      else
+        -2
+      end
+    end
+  end
+end
+```
+_listing 4.4: pttl_command.rb_
+
+``` ruby
+class TtlCommand
+
+  def initialize(data_store, expires, args)
+    @data_store = data_store
+    @expires = expires
+    @args = args
+  end
+
+  def call
+    if @args.length != 1
+      "(error) ERR wrong number of arguments for 'TTL' command"
+    else
+      pttl_command = PttlCommand.new(@data_store, @expires, @args)
+      result = pttl_command.call.to_i
+      if result > 0
+        (result / 1000.0).round
+      else
+        result
+      end
+    end
+  end
+end
+```
+_listing 4.5: ttl_command.rb_
+
+``` ruby
+module ExpireHelper
+
+  def self.check_if_expired(data_store, expires, key)
+    expires_entry = expires[key]
+    if expires_entry && expires_entry < Time.now.to_f * 1000
+      logger.debug "evicting #{ key }"
+      expires.delete(key)
+      data_store.delete(key)
+    end
+  end
+
+  def self.logger
+    @logger ||= Logger.new(STDOUT).tap do |l|
+      l.level = LOG_LEVEL
+    end
+  end
+end
+```
+_listing 4.6: expire_helper.rb_
+
 
 ### The changes
 
@@ -535,17 +624,40 @@ It _might_ be possible to use a regular expression here, given that the grammar 
 
 The `server_cron` time event takes care of cleaning up expired key every 100ms, but we also want to implement the "lazy eviction", the same way Redis does. That is, if `server_cron` hasn't had the chance to evict an expired key yet, and the server receives a `GET` command for the same key, we want to return nil and evict the key instead of returning it.
 
-This logic is implemented in the `GetCommand` class [FINISH ME]
+This logic is implemented in the `GetCommand` class. Before trying to read the `@data_store` hash, we first call `ExpireHelper.check_if_expired`. This function checks if there is an entry in the `@expires` hash, and if there is it compares its value, a timestamp in milliseconds with the current time. If the value in `@expires` is smaller, the key is expired and it deletes it. This will cause the `GetCommand` class to return `(nil)`.
+
+#### TTL & PTTL
+
+We added two new commands, `TTL` & `PTTL`. Both return the ttl of the given key as an integer, if it exists, the difference is that `TTL` returns the value in seconds, whereas `PTTL` returns it in milliseconds.
+
+Given the similarity of these two commands, we only implemented the logic in the `PttlCommand` class, and reused from the `TtlCommand` class where we transform the value in milliseconds to a value in seconds before returning it.
 
 #### Logger
 
-[FINISH ME]
+As the complexity of the codebase grew, it became useful to add logging statements. Such statements could be simple calls to `puts`, `print` or `p`, but it is useful to be able to conditionally turn them on and off based on their severity. Most of the logs we added are only useful when debugging an error and are otherwise really noisy. All these statements are logged with `@logger.debug`, and the severity of the logger is set based on the `DEBUG` environment variable. This allows us to enable all the debug logs by adding the `DEBUG=t` statement before running the server:
+
+``` bash
+DEBUG=true ruby -r"./server" -e "RedisServer.new"
+```
 
 ### And a few more tests
 
-We changed a lot of code and added more features, this calls for more tests. Here is the new tests.
+We changed a lot of code and added more features, this calls for more tests.
 
 We added a special instruction, `sleep <duration>` to allow us to easily write tests for the `SET` command with any of the expire based options. For instance, to test that `SET key value PX 100` actually works as expected, we want to wait at least 100ms, and assert that `GET key` returns `(nil)` instead of `value`.
+
+We also added a new way to specify assertion, with the syntax `[ 'PTTL key', '2000+/-20' ]`. This is useful for the `PTTL` command because it would be impossible to know exactly how long it'll take the computer running the tests to execute the `PTTL` command after running the `SET` command. We can however estimate a reasonable range. In this case, we are assuming that the machine running the test will take less than 20ms to run `PTTL` by leveraging the minitest assertion `assert_in_delta`.
+
+I also added the option to set the `DEBUG` environment variable, which you can use when running all the tests or an individual test:
+
+``` bash
+// All tests:
+DEBUG=t ruby test.rb // Any values will work, even "false", as long as it's not nil
+// Or a specific test
+DEBUG=t ruby test.rb --name "RedisServer::SET#test_0005_handles the PX option with a valid argument"
+```
+
+There is now a `begin/rescue` for `Interrupt` in the forked process. This is to prevent an annoying stacktrace from being logged when we kill the process with `Process.kill('INT', child)` after sending all the commands to the server.
 
 ``` ruby
 require 'minitest/autorun'
@@ -595,11 +707,81 @@ describe 'RedisServer' do
           socket = connect_to_server
           socket.puts command
           response = socket.gets
-          assert_equal expected_result + "\n", response
+          # Matches "2000+\-10", aka 2000 plus or minus 10
+          regexp_match = expected_result.match /(\d+)\+\/-(\d+)/
+          if regexp_match
+            # The result is a range
+            assert_in_delta regexp_match[1].to_i, response.to_i, regexp_match[2].to_i
+          else
+            assert_equal expected_result + "\n", response
+          end
         ensure
           socket.close if socket
         end
       end
+    end
+  end
+
+
+  # ...
+
+  describe 'TTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'TTL', '(error) ERR wrong number of arguments for \'TTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'TTL key', '2' ],
+        [ 'sleep 0.5' ],
+        [ 'TTL key', '1' ],
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'TTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'TTL key', '-2' ],
+      ]
+    end
+  end
+
+  describe 'PTTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'PTTL', '(error) ERR wrong number of arguments for \'PTTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL in ms for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'PTTL key', '2000+/-20' ], # Initial 2000ms +/- 20ms
+        [ 'sleep 0.5' ],
+        [ 'PTTL key', '1500+/-20' ], # Initial 2000ms, minus ~500ms of sleep, +/- 20ms
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'PTTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'PTTL key', '-2' ],
+      ]
     end
   end
 
@@ -715,46 +897,46 @@ redis-cli -p 2000
 
 And type the following:
 
-``` bash
+```
 SET key value EX 200
 ```
 
 And boom! It crashes!
 
-``` bash
+```
 Error: Protocol error, got "(" as reply type byte
 ```
 
-This is because `RedisServer` does not implement the [Redis Protocol][redis-protocol]. This is what the next chapter. At the end of chapter 5 we will be able to use `redis-cli` against our own server. Exciting!
+This is because `RedisServer` does not implement the [Redis Protocol, RESP][redis-protocol]. This is what the next chapter is all about. At the end of chapter 5 we will be able to use `redis-cli` against our own server. Exciting!
+
+## Code
+
+As usual, the code [is available on GitHub](https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-3).
 
 ## Appendix: Links to the Redis source code
 
-Note: See `db.c`, functions:
+If you're interested in digging into the Redis source code but would like some pointers as to where to start, you've come to the right place. The Redis source code is really well architected and overall relatively easy to navigate, so you are more than welcome to start the adventure on your own. That being said, it did take me a while to find the locations of functions I was interested in, such as: "where does redis handle the eviction of expired keys", and a few others.
 
-1. `server.c` defines all the commands in `redisCommand`:   https://github.com/antirez/redis/blob/6.0/src/server.c#L201-L203
-2. `t_string.c` defines the handler in `setCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L97-L147
-3  `t_string.c` defines a more specific handlers after options are parsed: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L71-L79 & https://github.com/antirez/redis/blob/6.0/src/t_string.c#L89
-4. `db.c` defines the `setExpire` function: https://github.com/antirez/redis/blob/6.0/src/db.c#L1190-L1206
+Before jumping in the code, you might want to read this article that explains some of the main data structures used by Redis: http://blog.wjin.org/posts/redis-internal-data-structure-dictionary.html.
 
-Keys are deleted on reads
+In no particular orders, the following is a list of links to the Redis source code on Github, for features related to the implementation of keys with expiration:
 
-1. `server.c` defines the handler for `GET`: https://github.com/antirez/redis/blob/6.0/src/server.c#L187-L189
-2. `t_string.c` defines the handler for `getCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L179-L181 & the generic one: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L164-L177
-3. `db.c` defines `lookupKeyReadOrReply`: https://github.com/antirez/redis/blob/6.0/src/db.c#L163-L167
-4. `db.c` defines `lookupKeyRead`  https://github.com/antirez/redis/blob/6.0/src/db.c#L143-L147 as well as `lookupKeyReadWithFlags`: https://github.com/antirez/redis/blob/6.0/src/db.c#L149-L157
-5. `db.c` defines `expireIfNeeded`: https://github.com/antirez/redis/blob/6.0/src/db.c#L1285-L1326
+### Handling of the SET command:
 
-In `expire.c`: `activeExpireCycleTryExpire`: https://github.com/antirez/redis/blob/6.0/src/expire.c#L35-L74
+- `server.c` defines all the commands in `redisCommand`:   https://github.com/antirez/redis/blob/6.0/src/server.c#L201-L203
+- `t_string.c` defines the handler in `setCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L97-L147
+-  `t_string.c` defines a more specific handlers after options are parsed: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L71-L79 & https://github.com/antirez/redis/blob/6.0/src/t_string.c#L89
+- `db.c` defines the `setExpire` function: https://github.com/antirez/redis/blob/6.0/src/db.c#L1190-L1206
 
-In `serverCron` and `databasesCron`, called from `arCreateTimeEvent`
+### Key deletion in `serverCron`
 
-On init, `aeCreateTimeEvent` is called, 1ms in the future. On each ae loop, we look at time events, `processTimeEvents`.
-
-It loops through, starting at `timeEventHead`
-If timeEvent func returns `AE_NOMORE`, `-1`, event is removed on next iteration, otherwise, it's bumped by `restval` ms. `serverCron` returns `1000/server.hz`.
-
-in `evict.c`, in `freeMemoryIfNeeded`, keys might get deleted.
-
+- `server.c` defines the handler for `GET`: https://github.com/antirez/redis/blob/6.0/src/server.c#L187-L189
+- `t_string.c` defines the handler for `getCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L179-L181 & the generic one: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L164-L177
+- `db.c` defines `lookupKeyReadOrReply`: https://github.com/antirez/redis/blob/6.0/src/db.c#L163-L167
+- `db.c` defines `lookupKeyRead`  https://github.com/antirez/redis/blob/6.0/src/db.c#L143-L147 as well as `lookupKeyReadWithFlags`: https://github.com/antirez/redis/blob/6.0/src/db.c#L149-L157
+- `db.c` defines `expireIfNeeded`: https://github.com/antirez/redis/blob/6.0/src/db.c#L1285-L1326
+- `expire.c` defines `activeExpireCycleTryExpire` which implements the deletion of expired keys: https://github.com/antirez/redis/blob/6.0/src/expire.c#L35-L74
+- `expire.c` defines `activeExpireCycle` which implement the sampling of keys and the logic to make sure that there are not too many expired keys in the `expires` dict:https://github.com/redis/redis/blob/6.0/src/expire.c#L123
 
 
 [chapter-2]:/post/chapter-2-respond-to-get-and-set/
@@ -764,10 +946,13 @@ in `evict.c`, in `freeMemoryIfNeeded`, keys might get deleted.
 [redis-doc-setnx]:https://redis.io/commands/setnx
 [redis-doc-setex]:https://redis.io/commands/setex
 [redis-doc-psetex]:https://redis.io/commands/psetex
+[redis-doc-zadd]:http://redis.io/commands/zadd
 [redis-doc-ttl]:http://redis.io/commands/ttl
+[redis-doc-pttl]:http://redis.io/commands/pttl
 [redis-doc-event-loop]:https://redis.io/topics/internals-rediseventlib
 [redis-doc-keys]:https://redis.io/commands/keys
 [redis-source-server-cron]:https://github.com/antirez/redis/blob/6.0/src/server.c#L1826-L1843[
 [big-o-notation]:https://en.wikipedia.org/wiki/Big_O_notation
 [redis-doc-ae]:https://redis.io/topics/internals-rediseventlib
 [wikipedia-syntax]:https://en.wikipedia.org/wiki/Syntax_(programming_languages)
+[redis-source-db-expires]:https://github.com/redis/redis/blob/6.0/src/server.h#L646

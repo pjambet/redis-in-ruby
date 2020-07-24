@@ -3,15 +3,20 @@ require 'timeout'
 require 'logger'
 LOG_LEVEL = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
 
+require_relative './expire_helper'
 require_relative './get_command'
 require_relative './set_command'
+require_relative './ttl_command'
+require_relative './pttl_command'
 
 class RedisServer
 
-  COMMANDS = [
-    'GET',
-    'SET',
-  ]
+  COMMANDS = {
+    'GET' => GetCommand,
+    'SET' => SetCommand,
+    'TTL' => TtlCommand,
+    'PTTL' => PttlCommand,
+  }
 
   MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
   DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
@@ -133,19 +138,17 @@ class RedisServer
   def handle_client_command(client_command_with_args)
     @logger.debug "Received command: #{ client_command_with_args }"
     command_parts = client_command_with_args.split
-    command = command_parts[0]
+    command_str = command_parts[0]
     args = command_parts[1..-1]
-    if COMMANDS.include?(command)
-      if command == 'GET'
-        get_command = GetCommand.new(@data_store, @expires, args)
-        get_command.call
-      elsif command == 'SET'
-        set_command = SetCommand.new(@data_store, @expires, args)
-        set_command.call
-      end
+
+    command_class = COMMANDS[command_str]
+
+    if command_class
+      command = command_class.new(@data_store, @expires, args)
+      command.call
     else
       formatted_args = args.map { |arg| "`#{ arg }`," }.join(' ')
-      "(error) ERR unknown command `#{ command }`, with args beginning with: #{ formatted_args }"
+      "(error) ERR unknown command `#{ command_str }`, with args beginning with: #{ formatted_args }"
     end
   end
 

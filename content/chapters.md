@@ -12,10 +12,10 @@ description: "List of all chapters"
 - [Chapter 1 - A Basic Server](/post/chapter-1-basic-server/)
 - [Chapter 2 - Respond to Get & Set](/post/chapter-2-respond-to-get-and-set/)
 - [Chapter 3 - Multiple clients](/post/chapter-3-multiple-clients/)
+- [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
 
 Coming Soon
 
-- [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
 - [Chapter 5 - Deeper dive in the Redis Protocol](/)
 - [Chapter 6 - Rewriting the hashing algorithm](/)
 - [Chapter 7 - Lists](/)

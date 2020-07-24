@@ -62,7 +62,14 @@ describe 'RedisServer' do
           socket = connect_to_server
           socket.puts command
           response = socket.gets
-          assert_equal expected_result + "\n", response
+          # Matches "2000+\-10", aka 2000 plus or minus 10
+          regexp_match = expected_result.match /(\d+)\+\/-(\d+)/
+          if regexp_match
+            # The result is a range
+            assert_in_delta regexp_match[1].to_i, response.to_i, regexp_match[2].to_i
+          else
+            assert_equal expected_result + "\n", response
+          end
         ensure
           socket.close if socket
         end
@@ -97,6 +104,66 @@ describe 'RedisServer' do
       assert_command_results [
         [ 'SET 1 2', 'OK' ],
         [ 'GET 1', '2']
+      ]
+    end
+  end
+
+  describe 'TTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'TTL', '(error) ERR wrong number of arguments for \'TTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'TTL key', '2' ],
+        [ 'sleep 0.5' ],
+        [ 'TTL key', '1' ],
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'TTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'TTL key', '-2' ],
+      ]
+    end
+  end
+
+  describe 'PTTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'PTTL', '(error) ERR wrong number of arguments for \'PTTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL in ms for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'PTTL key', '2000+/-20' ], # Initial 2000ms +/- 20ms
+        [ 'sleep 0.5' ],
+        [ 'PTTL key', '1500+/-20' ], # Initial 2000ms, minus ~500ms of sleep, +/- 20ms
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'PTTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'PTTL key', '-2' ],
       ]
     end
   end
