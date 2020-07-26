@@ -451,8 +451,8 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [redis-documentation-quit]:https://redis.io/commands/quit
 [select-syscall]:https://man7.org/linux/man-pages/man2/select.2.html
 [sidekiq-timeout-blog]:https://www.mikeperham.com/2015/05/08/timeout-rubys-most-dangerous-api/
-[redis-source-multiplexer-choice]:https://github.com/redis-io/redis/blob/6.0/src/ae.c#L47-L61
-[redis-source-multiplexer-constants]:https://github.com/redis-io/redis/blob/6.0/src/config.h#L76-L90
+[redis-source-multiplexer-choice]:https://github.com/redis-io/redis/blob/6.0.0/src/ae.c#L47-L61
+[redis-source-multiplexer-constants]:https://github.com/redis-io/redis/blob/6.0.0/src/config.h#L76-L90
 [ruby-doc-io-eof?]:http://ruby-doc.org/core-2.7.1/IO.html#eof-3F-method
 [gets-with-timeout-gh]:https://github.com/pjambet/redis-in-ruby/blob/master/code/chapter-3/server_accept_thread_and_gets_timeout.rb
 [ruby-doc-io-read-nonblock]:http://ruby-doc.org/core-2.7.1/IO.html#read_nonblock-method
@@ -461,9 +461,9 @@ The code from this chapter is [available on GitHub](https://github.com/pjambet/r
 [kqueue]:https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
 [epoll]:https://linux.die.net/man/4/epoll
 [redis-ae]:https://redis.io/topics/internals-rediseventlib
-[redis-source-ae]:https://github.com/redis/redis/blob/6.0/src/ae.c
-[ae-epoll]:https://github.com/redis-io/redis/blob/6.0/src/ae_epoll.c
-[ae-select]:https://github.com/redis-io/redis/blob/6.0/src/ae_select.c
-[ae-kqueue]:https://github.com/redis-io/redis/blob/6.0/src/ae_kqueue.c
-[ae-evport]:https://github.com/redis-io/redis/blob/6.0/src/ae_evport.c
+[redis-source-ae]:https://github.com/redis/redis/blob/6.0.0/src/ae.c
+[ae-epoll]:https://github.com/redis-io/redis/blob/6.0.0/src/ae_epoll.c
+[ae-select]:https://github.com/redis-io/redis/blob/6.0.0/src/ae_select.c
+[ae-kqueue]:https://github.com/redis-io/redis/blob/6.0.0/src/ae_kqueue.c
+[ae-evport]:https://github.com/redis-io/redis/blob/6.0.0/src/ae_evport.c
 [ruby-doc-timeout]:http://ruby-doc.org/stdlib-2.7.1/libdoc/timeout/rdoc/Timeout.html

@@ -933,20 +933,20 @@ In no particular orders, the following is a list of links to the Redis source co
 
 ### Handling of the SET command:
 
-- `server.c` defines all the commands in `redisCommand`:   https://github.com/antirez/redis/blob/6.0/src/server.c#L201-L203
-- `t_string.c` defines the handler in `setCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L97-L147
--  `t_string.c` defines a more specific handlers after options are parsed: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L71-L79 & https://github.com/antirez/redis/blob/6.0/src/t_string.c#L89
-- `db.c` defines the `setExpire` function: https://github.com/antirez/redis/blob/6.0/src/db.c#L1190-L1206
+- `server.c` defines all the commands in `redisCommand`:   https://github.com/antirez/redis/blob/6.0.0/src/server.c#L182
+- `t_string.c` defines the handler in `setCommand`: https://github.com/antirez/redis/blob/6.0.0/src/t_string.c#L97-L147
+-  `t_string.c` defines a more specific handlers after options are parsed where expire values are handled: https://github.com/antirez/redis/blob/6.0.0/src/t_string.c#L71-L79 & https://github.com/antirez/redis/blob/6.0.0/src/t_string.c#L89
+- `db.c` defines the `setExpire` function: https://github.com/antirez/redis/blob/6.0.0/src/db.c#L1190-L1206
 
 ### Key deletion in `serverCron`
 
-- `server.c` defines the handler for `GET`: https://github.com/antirez/redis/blob/6.0/src/server.c#L187-L189
-- `t_string.c` defines the handler for `getCommand`: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L179-L181 & the generic one: https://github.com/antirez/redis/blob/6.0/src/t_string.c#L164-L177
-- `db.c` defines `lookupKeyReadOrReply`: https://github.com/antirez/redis/blob/6.0/src/db.c#L163-L167
-- `db.c` defines `lookupKeyRead`  https://github.com/antirez/redis/blob/6.0/src/db.c#L143-L147 as well as `lookupKeyReadWithFlags`: https://github.com/antirez/redis/blob/6.0/src/db.c#L149-L157
-- `db.c` defines `expireIfNeeded`: https://github.com/antirez/redis/blob/6.0/src/db.c#L1285-L1326
-- `expire.c` defines `activeExpireCycleTryExpire` which implements the deletion of expired keys: https://github.com/antirez/redis/blob/6.0/src/expire.c#L35-L74
-- `expire.c` defines `activeExpireCycle` which implement the sampling of keys and the logic to make sure that there are not too many expired keys in the `expires` dict:https://github.com/redis/redis/blob/6.0/src/expire.c#L123
+- `server.c` defines the handler for `GET`: https://github.com/antirez/redis/blob/6.0.0/src/server.c#L187-L189
+- `t_string.c` defines the handler for `getCommand`: https://github.com/antirez/redis/blob/6.0.0/src/t_string.c#L179-L181 & the generic one: https://github.com/antirez/redis/blob/6.0.0/src/t_string.c#L164-L177
+- `db.c` defines `lookupKeyReadOrReply`: https://github.com/antirez/redis/blob/6.0.0/src/db.c#L163-L167
+- `db.c` defines `lookupKeyRead`  https://github.com/antirez/redis/blob/6.0.0/src/db.c#L143-L147 as well as `lookupKeyReadWithFlags`: https://github.com/antirez/redis/blob/6.0.0/src/db.c#L149-L157
+- `db.c` defines `expireIfNeeded`: https://github.com/antirez/redis/blob/6.0.0/src/db.c#L1285-L1326
+- `expire.c` defines `activeExpireCycleTryExpire` which implements the deletion of expired keys: https://github.com/antirez/redis/blob/6.0.0/src/expire.c#L35-L74
+- `expire.c` defines `activeExpireCycle` which implement the sampling of keys and the logic to make sure that there are not too many expired keys in the `expires` dict: https://github.com/redis/redis/blob/6.0.0/src/expire.c#L123
 
 
 
