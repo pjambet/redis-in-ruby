@@ -630,6 +630,8 @@ SET 1 2 KEEPTTL XX EX 1
 
 It _might_ be possible to use a regular expression here, given that the grammar of the `SET` command does not allow that many permutations but even if it is, I don't think it'll be simpler than the solution we ended up with.
 
+For reference, [this is how Redis does it][redis-source-parse-set-options], in a way that it conceptually not that far from how we ended up doing it here. The main difference is that in the Redis source, it is one function, whereas we opted to separate the definition of the options, in the `OPTIONS` constant, from the actual code that consumes the characters from the string received from the client. I find the separated option a bit more readable and easier to reason about, but the approach used by Redis is definitely more efficient as there are less "things" being allocated, no extra resources to define what the options look like, just strings.
+
 #### Lazy evictions
 
 The `server_cron` time event takes care of cleaning up expired key every 100ms, but we also want to implement the "lazy eviction", the same way Redis does. That is, if `server_cron` hasn't had the chance to evict an expired key yet, and the server receives a `GET` command for the same key, we want to return nil and evict the key instead of returning it.
@@ -1006,3 +1008,4 @@ SET 1 2 XX
 [redis-doc-ae]:https://redis.io/topics/internals-rediseventlib
 [wikipedia-syntax]:https://en.wikipedia.org/wiki/Syntax_(programming_languages)
 [redis-source-db-expires]:https://github.com/redis/redis/blob/6.0.0/src/server.h#L645
+[redis-source-parse-set-options]:https://github.com/redis/redis/blob/6.0.0/src/t_string.c#L97-L147
