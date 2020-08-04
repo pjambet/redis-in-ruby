@@ -3,7 +3,7 @@ require 'timeout'
 require 'stringio'
 require './server'
 
-describe 'BasicServer' do
+describe 'RedisServer' do
 
   def connect_to_server
     socket = nil
@@ -24,17 +24,22 @@ describe 'BasicServer' do
     socket
   end
 
-  def with_server(debug: false)
+  def with_server
 
     child = Process.fork do
-      unless debug
+      unless !!ENV['DEBUG']
         # We're effectively silencing the server with these two lines
         # stderr would have logged something when it receives SIGINT, with a complete stacktrace
         $stderr = StringIO.new
         # stdout would have logged the "Server started ..." & "New client connected ..." lines
         $stdout = StringIO.new
       end
-      BasicServer.new
+
+      begin
+        RedisServer.new
+      rescue Interrupt => e
+        # Expected code path given we call kill with 'INT' below
+      end
     end
 
     yield
@@ -47,17 +52,24 @@ describe 'BasicServer' do
   end
 
   def assert_command_results(command_result_pairs)
-    with_server(debug: !!ENV['DEBUG']) do
+    with_server do
       command_result_pairs.each do |command, expected_result|
         if command.start_with?('sleep')
-          sleep command.split[1].to_i
+          sleep command.split[1].to_f
           next
         end
         begin
           socket = connect_to_server
           socket.puts command
           response = socket.gets
-          assert_equal expected_result + "\n", response
+          # Matches "2000+\-10", aka 2000 plus or minus 10
+          regexp_match = expected_result.match /(\d+)\+\/-(\d+)/
+          if regexp_match
+            # The result is a range
+            assert_in_delta regexp_match[1].to_i, response.to_i, regexp_match[2].to_i
+          else
+            assert_equal expected_result + "\n", response
+          end
         ensure
           socket.close if socket
         end
@@ -96,6 +108,66 @@ describe 'BasicServer' do
     end
   end
 
+  describe 'TTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'TTL', '(error) ERR wrong number of arguments for \'TTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'TTL key', '2' ],
+        [ 'sleep 0.5' ],
+        [ 'TTL key', '1' ],
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'TTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'TTL key', '-2' ],
+      ]
+    end
+  end
+
+  describe 'PTTL' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'PTTL', '(error) ERR wrong number of arguments for \'PTTL\' command' ],
+      ]
+    end
+
+    it 'returns the TTL in ms for a key with a TTL' do
+      assert_command_results [
+        [ 'SET key value EX 2', 'OK'],
+        [ 'PTTL key', '2000+/-20' ], # Initial 2000ms +/- 20ms
+        [ 'sleep 0.5' ],
+        [ 'PTTL key', '1500+/-20' ], # Initial 2000ms, minus ~500ms of sleep, +/- 20ms
+      ]
+    end
+
+    it 'returns -1 for a key without a TTL' do
+      assert_command_results [
+        [ 'SET key value', 'OK' ],
+        [ 'PTTL key', '-1' ],
+      ]
+    end
+
+    it 'returns -2 if the key does not exist' do
+      assert_command_results [
+        [ 'PTTL key', '-2' ],
+      ]
+    end
+  end
+
   describe 'SET' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
@@ -124,8 +196,20 @@ describe 'BasicServer' do
       ]
     end
 
-    it 'handles the PX option with a valid argument'
-    it 'rejects the PX option with an invalid argument'
+    it 'handles the PX option with a valid argument' do
+      assert_command_results [
+        [ 'SET 1 3 PX 100', 'OK' ],
+        [ 'GET 1', '3' ],
+        [ 'sleep 0.1' ],
+        [ 'GET 1', '(nil)' ],
+      ]
+    end
+
+    it 'rejects the PX option with an invalid argument' do
+      assert_command_results [
+        [ 'SET 1 3 PX foo', '(error) ERR value is not an integer or out of range']
+      ]
+    end
 
     it 'handles the NX option' do
       assert_command_results [
@@ -134,28 +218,53 @@ describe 'BasicServer' do
       ]
     end
 
-    it 'handles the XX option'
+    it 'handles the XX option' do
+      assert_command_results [
+        [ 'SET 1 2 XX', '(nil)'],
+        [ 'SET 1 2', 'OK'],
+        [ 'SET 1 2 XX', 'OK'],
+      ]
+    end
 
     it 'removes ttl without KEEPTTL' do
       assert_command_results [
-        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 3 PX 100', 'OK' ],
         [ 'SET 1 2', 'OK' ],
-        [ 'sleep 1' ],
+        [ 'sleep 0.1' ],
         [ 'GET 1', '2' ],
       ]
     end
 
     it 'handles the KEEPTTL option' do
       assert_command_results [
-        [ 'SET 1 3 EX 1', 'OK' ],
+        [ 'SET 1 3 PX 100', 'OK' ],
         [ 'SET 1 2 KEEPTTL', 'OK' ],
-        # [ 'sleep 1' ],
-        # [ 'GET 1', '(nil)' ],
+        [ 'sleep 0.1' ],
+        [ 'GET 1', '(nil)' ],
       ]
     end
-    it 'accepts multiple options'
-    it 'rejects with both PX & EX'
-    it 'rejects with both XX & NX'
+
+    it 'accepts multiple options' do
+      assert_command_results [
+        [ 'SET 1 3 NX EX 1', 'OK' ],
+        [ 'GET 1', '3' ],
+        [ 'SET 1 3 XX KEEPTTL', 'OK' ],
+      ]
+    end
+
+    it 'rejects with more than one expire related option' do
+      assert_command_results [
+        [ 'SET 1 3 PX 1 EX 2', '(error) ERR syntax error'],
+        [ 'SET 1 3 PX 1 KEEPTTL', '(error) ERR syntax error'],
+        [ 'SET 1 3 KEEPTTL EX 2', '(error) ERR syntax error'],
+      ]
+    end
+
+    it 'rejects with both XX & NX' do
+      assert_command_results [
+        [ 'SET 1 3 NX XX', '(error) ERR syntax error'],
+      ]
+    end
   end
 
   describe 'Unknown commands' do

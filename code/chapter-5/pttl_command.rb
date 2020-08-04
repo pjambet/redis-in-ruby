@@ -1,4 +1,4 @@
-class GetCommand
+class PttlCommand
 
   def initialize(data_store, expires, args)
     @logger = Logger.new(STDOUT)
@@ -10,11 +10,21 @@ class GetCommand
 
   def call
     if @args.length != 1
-      "(error) ERR wrong number of arguments for 'GET' command"
+      "(error) ERR wrong number of arguments for 'PTTL' command"
     else
       key = @args[0]
       ExpireHelper.check_if_expired(@data_store, @expires, key)
-      @data_store.fetch(key, nil)
+      key_exists = @data_store.include? key
+      if key_exists
+        ttl = @expires[key]
+        if ttl
+          (ttl - (Time.now.to_f * 1000)).round
+        else
+          -1
+        end
+      else
+        -2
+      end
     end
   end
 end
