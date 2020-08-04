@@ -1,3 +1,5 @@
+# Source: https://github.com/rubocop-hq/rubocop/blob/master/config/default.yml
+
 Style/Documentation:
   Description: 'Document classes and non-namespace modules.'
   Enabled: false
@@ -56,6 +58,22 @@ Layout/SpaceInsideStringInterpolation:
   VersionAdded: '0.49'
   EnforcedStyle: space
   SupportedStyles:
+    - space
+    - no_space
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Description: 'Checks the spacing inside array literal brackets.'
+  Enabled: true
+  VersionAdded: '0.52'
+  EnforcedStyle: space
+  SupportedStyles:
+    - space
+    - no_space
+    # 'compact' normally requires a space inside the brackets, with the exception
+    # that successive left brackets or right brackets are collapsed together
+    - compact
+  EnforcedStyleForEmptyBrackets: no_space
+  SupportedStylesForEmptyBrackets:
     - space
     - no_space
 

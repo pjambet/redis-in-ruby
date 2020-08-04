@@ -13,10 +13,10 @@ description: "List of all chapters"
 - [Chapter 2 - Respond to Get & Set](/post/chapter-2-respond-to-get-and-set/)
 - [Chapter 3 - Multiple clients](/post/chapter-3-multiple-clients/)
 - [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
+- [Chapter 5 - Deeper dive in the Redis Protocol](/post/chapter-5-redis-protocol-compatibility/)
 
 Coming Soon
 
-- [Chapter 5 - Deeper dive in the Redis Protocol](/)
 - [Chapter 6 - Rewriting the hashing algorithm](/)
 - [Chapter 7 - Lists](/)
 - [Chapter 8 - Hashes](/)

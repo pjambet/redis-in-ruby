@@ -1,9 +1,7 @@
 module Redis
-  class GetCommand
+  class TtlCommand
 
     def initialize(data_store, expires, args)
-      @logger = Logger.new(STDOUT)
-      @logger.level = LOG_LEVEL
       @data_store = data_store
       @expires = expires
       @args = args
@@ -11,30 +9,29 @@ module Redis
 
     def call
       if @args.length != 1
-        RESPError.new("ERR wrong number of arguments for 'GET' command")
+        RESPError.new("ERR wrong number of arguments for 'TTL' command")
       else
-        key = @args[0]
-        ExpireHelper.check_if_expired(@data_store, @expires, key)
-        value = @data_store[key]
-        if value.nil?
-          NullBulkStringInstance
+        pttl_command = PttlCommand.new(@data_store, @expires, @args)
+        result = pttl_command.call.to_i
+        if result > 0
+          RESPInteger.new((result / 1000.0).round)
         else
-          RESPBulkString.new(value)
+          RESPInteger.new(result)
         end
       end
     end
 
     def self.describe
       [
-        'get',
+        'ttl',
         2, # arity
         # command flags
-        [ 'readonly', 'fast' ].map { |s| RESPSimpleString.new(s) },
+        [ 'readonly', 'random', 'fast' ].map { |s| RESPSimpleString.new(s) },
         1, # position of first key in argument list
         1, # position of last key in argument list
         1, # step count for locating repeating keys
         # acl categories: https://github.com/antirez/redis/blob/6.0/src/server.c#L161-L166
-        [ '@read', '@string', '@fast' ].map { |s| RESPSimpleString.new(s) },
+        [ '@keyspace', '@read', '@fast' ].map { |s| RESPSimpleString.new(s) },
       ]
     end
   end
