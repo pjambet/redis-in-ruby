@@ -131,6 +131,7 @@ module Redis
               client.buffer += client_command_with_args
               split_commands(client.buffer) do |command_parts, command_length|
                 # Truncate the command we just parsed
+                puts "Truncating #{ command_length } chars"
                 client.buffer = client.buffer[command_length..-1]
                 response = handle_client_command(command_parts)
                 @logger.debug "Response: #{ response.class } / #{ response.inspect }"
@@ -145,6 +146,7 @@ module Redis
           @clients.delete_if { |client| client.socket == socket }
         rescue IncompleteCommand => e
           # Not clearing the buffer or anything
+          puts "Incomplete command #{ e }"
           next
         rescue ProtocolError => e
           socket.write e.serialize
@@ -190,14 +192,19 @@ module Redis
         expected_length = expected_length.to_i
         raise "Unexpected length for #{ scanner.string }" if expected_length <= 0
 
-        bulk_string = scanner.scan_until(/\r\n/)
-        raise IncompleteCommand, scanner.string if bulk_string.nil?
+        bulk_string = scanner.rest.slice(0, expected_length + 2) # Adding 2 for CR(\r) & LF(\n)
+        p bulk_string.inspect
+        p bulk_string.length
+        raise IncompleteCommand, scanner.string if bulk_string.nil? ||
+                                                   bulk_string.length - 2 != expected_length
         bulk_string.strip!
 
         if expected_length != bulk_string&.length
           raise "Length mismatch: #{ bulk_string } vs #{ expected_length }"
         end
-        bulk_string.strip
+        # last_charpos = scanner.charpos
+        scanner.pos += bulk_string.bytesize + 2
+        bulk_string
       # when '-'
         # RESPError.new(scanner.scan_until(/\r\n/).strip)
       when '*'

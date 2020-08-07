@@ -34,7 +34,7 @@ module Redis
 
   RESPBulkString = Class.new(SimpleDelegator) do
     def serialize
-      "$#{ length }\r\n#{ self }\r\n"
+      "$#{ bytesize }\r\n#{ self }\r\n"
     end
   end
 

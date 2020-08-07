@@ -1,3 +1,4 @@
+# coding: utf-8
 require 'minitest/autorun'
 require 'timeout'
 require 'stringio'
@@ -83,35 +84,39 @@ describe 'Redis::Server' do
 
           response = ""
           loop do
-            IO.select([socket], [], [], 0.1)
+            select_res = IO.select([socket], [], [], 0.1)
             last_response = socket.read_nonblock(1024, exception: false)
-            if last_response == :wait_readable
-              raise "Failed to read when asserting for #{ command_result_pairs }"
-            elsif last_response.nil?
+            if last_response == :wait_readable || last_response.nil? || select_res.nil?
+              response = nil
               break
             else
               response += last_response
               break if response.length < 1024
             end
           end
+          response&.force_encoding('utf-8')
           # Matches "2000+\-10", aka 2000 plus or minus 10
-          assertion_match = expected_result.match /(\d+)\+\/-(\d+)/
+          assertion_match = expected_result&.match /(\d+)\+\/-(\d+)/
           if assertion_match
             response_match = response.match /\A:(\d+)\r\n\z/
             assert response_match[0]
             assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
           else
-            unless %w(+ - : $ *).include?(expected_result[0])
+            if expected_result && !%w(+ - : $ *).include?(expected_result[0])
               # Convert to a Bulk String unless it is a simple string (starts with a +)
               # or an error (starts with -)
-              expected_result = "$#{ expected_result.length }\r\n#{ expected_result }\r\n"
+              expected_result = Redis::RESPBulkString.new(expected_result).serialize
             end
 
-            unless expected_result.end_with?("\r\n")
+            if expected_result && !expected_result.end_with?("\r\n")
               expected_result += "\r\n"
             end
 
-            assert_equal "#{ expected_result }", response
+            if expected_result.nil?
+              assert_nil response
+            else
+              assert_equal expected_result, response
+            end
           end
         end
       end
@@ -146,7 +151,9 @@ describe 'Redis::Server' do
     it 'returns the value previously set by SET' do
       assert_command_results [
         [ 'SET 1 2', '+OK' ],
-        [ 'GET 1', '2']
+        [ 'GET 1', '2'],
+        [ 'SET 1 😂', '+OK' ],
+        [ 'GET 1', '😂'],
       ]
     end
   end
@@ -335,6 +342,12 @@ describe 'Redis::Server' do
         [ [ "*2\r\n$3\r\nGET\r\n", "$9\r\nfirst-key\r\n" ], 'first-value' ],
         [ [ "*2\r\n$3\r\nGET\r\n", "$10\r\nsecond-key\r\n*2" ], 'second-value' ],
         [ [ "\r\n$3\r\nGET\r\n$9\r\nthird-key\r\n" ], 'third-value' ],
+      ]
+    end
+
+    it 'does not nothing if the command is incomplete' do
+      assert_command_results [
+        [ [ "*2\r\n$3\r\nGET\r\n$10\r\nincomple" ], nil ]
       ]
     end
   end
