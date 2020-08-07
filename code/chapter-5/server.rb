@@ -37,6 +37,11 @@ module Redis
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
     TimeEvent = Struct.new(:process_at, :block)
     IncompleteCommand = Class.new(StandardError)
+    ProtocolError = Class.new(StandardError) do
+      def serialize
+        RESPError.new(message).serialize
+      end
+    end
 
     def initialize
       @logger = Logger.new(STDOUT)
@@ -141,6 +146,10 @@ module Redis
         rescue IncompleteCommand => e
           # Not clearing the buffer or anything
           next
+        rescue ProtocolError => e
+          socket.write e.serialize
+          socket.close
+          @clients.delete(client)
         end
       end
     end
@@ -168,13 +177,13 @@ module Redis
     def parse_value_from_string(scanner)
       type_char = scanner.getch
       case type_char
-      when '+'
-        value = scanner.scan_until(/\r\n/)
-        if value.nil?
-          raise IncompleteCommand, scanner.string
-        else
-          value.strip
-        end
+      # when '+'
+        # value = scanner.scan_until(/\r\n/)
+        # if value.nil?
+        #   raise IncompleteCommand, scanner.string
+        # else
+        #   value.strip
+        # end
       when '$'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
@@ -189,8 +198,8 @@ module Redis
           raise "Length mismatch: #{ bulk_string } vs #{ expected_length }"
         end
         bulk_string.strip
-      when '-'
-        RESPError.new(scanner.scan_until(/\r\n/).strip)
+      # when '-'
+        # RESPError.new(scanner.scan_until(/\r\n/).strip)
       when '*'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
@@ -207,10 +216,10 @@ module Redis
         end
 
         array_result
-      when ':'
-        scanner.scan_until(/\r\n/).to_i
+      # when ':'
+        # scanner.scan_until(/\r\n/).to_i
       else
-        raise "Unknown data type #{ type_char }"
+        raise ProtocolError, "ERR Protocol error: expected '$', got '#{ type_char }'"
       end
     end
 

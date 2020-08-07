@@ -339,11 +339,25 @@ describe 'Redis::Server' do
     end
   end
 
+  describe 'protocol errors' do
+    it 'returns a protocol error when expecting a bulk string and not reading the leading $' do
+      assert_command_results [
+        [ [ "*2\r\n$3\r\nGET\r\na-key" ], "-ERR Protocol error: expected '$', got 'a'" ]
+      ]
+    end
+  end
+
   describe 'inline commands' do
     it 'accepts inline commands' do
       assert_command_results [
         [ [ "SET a-key a-value\r\n" ], '+OK' ],
         [ [ "GET a-key\r\n" ], "$7\r\na-value\r\n" ],
+      ]
+    end
+
+    it 'rejects everything that is not a command and does not start with a *' do
+      assert_command_results [
+        [ [ "-a\r\n" ], '-ERR unknown command `-a`, with args beginning with: ' ]
       ]
     end
   end
