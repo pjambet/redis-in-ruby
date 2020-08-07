@@ -131,7 +131,6 @@ module Redis
               client.buffer += client_command_with_args
               split_commands(client.buffer) do |command_parts, command_length|
                 # Truncate the command we just parsed
-                puts "Truncating #{ command_length } chars"
                 client.buffer = client.buffer[command_length..-1]
                 response = handle_client_command(command_parts)
                 @logger.debug "Response: #{ response.class } / #{ response.inspect }"
@@ -146,7 +145,6 @@ module Redis
           @clients.delete_if { |client| client.socket == socket }
         rescue IncompleteCommand => e
           # Not clearing the buffer or anything
-          puts "Incomplete command #{ e }"
           next
         rescue ProtocolError => e
           socket.write e.serialize
@@ -157,13 +155,12 @@ module Redis
     end
 
     def split_commands(client_buffer)
-      @logger.debug "Full result from read: '#{ client_buffer }'"
+      @logger.debug "Full result from read: '#{ client_buffer.inspect }'"
       if client_buffer[0] == '*'
         total_chars = client_buffer.length
         scanner = StringScanner.new(client_buffer)
 
         until scanner.eos?
-          @logger.debug "Parsing: #{ scanner.inspect } / #{ scanner.string.inspect }"
           command_parts = parse_value_from_string(scanner)
           raise "Not an array #{ client_buffer }" unless command_parts.is_a?(Array)
 
@@ -176,16 +173,11 @@ module Redis
       end
     end
 
+    # We're not parsing integers, errors or simple strings since none of the implemented
+    # commands use these data types
     def parse_value_from_string(scanner)
       type_char = scanner.getch
       case type_char
-      # when '+'
-        # value = scanner.scan_until(/\r\n/)
-        # if value.nil?
-        #   raise IncompleteCommand, scanner.string
-        # else
-        #   value.strip
-        # end
       when '$'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
@@ -193,20 +185,16 @@ module Redis
         raise "Unexpected length for #{ scanner.string }" if expected_length <= 0
 
         bulk_string = scanner.rest.slice(0, expected_length + 2) # Adding 2 for CR(\r) & LF(\n)
-        p bulk_string.inspect
-        p bulk_string.length
+
         raise IncompleteCommand, scanner.string if bulk_string.nil? ||
                                                    bulk_string.length - 2 != expected_length
+
         bulk_string.strip!
 
-        if expected_length != bulk_string&.length
-          raise "Length mismatch: #{ bulk_string } vs #{ expected_length }"
-        end
-        # last_charpos = scanner.charpos
+        raise "Length mismatch: #{ bulk_string } vs #{ expected_length }" if expected_length != bulk_string&.length
+
         scanner.pos += bulk_string.bytesize + 2
         bulk_string
-      # when '-'
-        # RESPError.new(scanner.scan_until(/\r\n/).strip)
       when '*'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
@@ -223,8 +211,6 @@ module Redis
         end
 
         array_result
-      # when ':'
-        # scanner.scan_until(/\r\n/).to_i
       else
         raise ProtocolError, "ERR Protocol error: expected '$', got '#{ type_char }'"
       end
