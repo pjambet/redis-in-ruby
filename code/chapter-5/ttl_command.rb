@@ -20,5 +20,19 @@ module Redis
         end
       end
     end
+
+    def self.describe
+      [
+        'ttl',
+        2, # arity
+        # command flags
+        [ 'readonly', 'random', 'fast' ].map { |s| RESPSimpleString.new(s) },
+        1, # position of first key in argument list
+        1, # position of last key in argument list
+        1, # step count for locating repeating keys
+        # acl categories: https://github.com/antirez/redis/blob/6.0/src/server.c#L161-L166
+        [ '@keyspace', '@read', '@fast' ].map { |s| RESPSimpleString.new(s) },
+      ]
+    end
   end
 end

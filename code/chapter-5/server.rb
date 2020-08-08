@@ -18,13 +18,6 @@ module Redis
 
   class Server
 
-    Client = Struct.new(:socket, :buffer) do
-      def initialize(socket)
-        self.socket = socket
-        self.buffer = ''
-      end
-    end
-
     COMMANDS = {
       'COMMAND' => CommandCommand,
       'GET' => GetCommand,
@@ -32,16 +25,24 @@ module Redis
       'TTL' => TtlCommand,
       'PTTL' => PttlCommand,
     }
-
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
-    TimeEvent = Struct.new(:process_at, :block)
+
     IncompleteCommand = Class.new(StandardError)
     ProtocolError = Class.new(StandardError) do
       def serialize
         RESPError.new(message).serialize
       end
     end
+
+    TimeEvent = Struct.new(:process_at, :block)
+    Client = Struct.new(:socket, :buffer) do
+      def initialize(socket)
+        self.socket = socket
+        self.buffer = ''
+      end
+    end
+
 
     def initialize
       @logger = Logger.new(STDOUT)

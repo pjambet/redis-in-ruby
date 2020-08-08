@@ -78,6 +78,20 @@ module Redis
       RESPError.new(e.message)
     end
 
+    def self.describe
+      [
+        'set',
+        -3, # arity
+        # command flags
+        [ 'write', 'denyoom' ].map { |s| RESPSimpleString.new(s) },
+        1, # position of first key in argument list
+        1, # position of last key in argument list
+        1, # step count for locating repeating keys
+        # acl categories: https://github.com/antirez/redis/blob/6.0/src/server.c#L161-L166
+        [ '@write', '@string', '@slow' ].map { |s| RESPSimpleString.new(s) },
+      ]
+    end
+
     private
 
     def parse_options

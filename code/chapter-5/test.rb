@@ -29,7 +29,6 @@ describe 'Redis::Server' do
   end
 
   def with_server
-
     child = Process.fork do
       unless !!ENV['DEBUG']
         # We're effectively silencing the server with these two lines
@@ -320,7 +319,8 @@ describe 'Redis::Server' do
   describe 'COMMAND' do
     it 'describes all the supported commands' do
       assert_command_results [
-        [ 'COMMAND', "*1\r\n*7\r\n$3\r\nget\r\n:2\r\n*2\r\n+readonly\r\n+fast\r\n:1\r\n:1\r\n:1\r\n*3\r\n+@read\r\n+@string\r\n+@fast\r\n" ],
+        # Results from: echo "COMMAND INFO COMMAND GET SET TTL PTTL" | nc -c -v localhost 6379
+        [ 'COMMAND', "*5\r\n*7\r\n$7\r\ncommand\r\n:-1\r\n*3\r\n+random\r\n+loading\r\n+stale\r\n:0\r\n:0\r\n:0\r\n*2\r\n+@slow\r\n+@connection\r\n*7\r\n$3\r\nget\r\n:2\r\n*2\r\n+readonly\r\n+fast\r\n:1\r\n:1\r\n:1\r\n*3\r\n+@read\r\n+@string\r\n+@fast\r\n*7\r\n$3\r\nset\r\n:-3\r\n*2\r\n+write\r\n+denyoom\r\n:1\r\n:1\r\n:1\r\n*3\r\n+@write\r\n+@string\r\n+@slow\r\n*7\r\n$3\r\nttl\r\n:2\r\n*3\r\n+readonly\r\n+random\r\n+fast\r\n:1\r\n:1\r\n:1\r\n*3\r\n+@keyspace\r\n+@read\r\n+@fast\r\n*7\r\n$4\r\npttl\r\n:2\r\n*3\r\n+readonly\r\n+random\r\n+fast\r\n:1\r\n:1\r\n:1\r\n*3\r\n+@keyspace\r\n+@read\r\n+@fast\r\n" ],
       ]
     end
   end
