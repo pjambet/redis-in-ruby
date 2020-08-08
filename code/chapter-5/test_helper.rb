@@ -60,7 +60,7 @@ ensure
   end
 end
 
-# The argumens in an array of array of the form
+# The arguments in an array of array of the form
 # [
 #   [ [ "COMMAND-PART-I", "COMMAND-PART-II", ... ], "EXPECTED_RESULT" ],
 #   ...
@@ -142,4 +142,8 @@ def read_response(server_socket)
     end
   end
   response&.force_encoding('utf-8')
+end
+
+def to_query(*command_parts)
+  [ Redis::RESPArray.new(command_parts).serialize ]
 end

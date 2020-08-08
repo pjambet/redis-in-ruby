@@ -2,6 +2,7 @@ module Redis
   class SetCommand
 
     ValidationError = Class.new(StandardError)
+    SyntaxError = Class.new(StandardError)
 
     CommandOption = Struct.new(:kind)
     CommandOptionWithValue = Struct.new(:kind, :validator)
@@ -19,10 +20,6 @@ module Redis
       'nx' => CommandOption.new('presence'),
       'xx' => CommandOption.new('presence'),
     }
-
-    # ERRORS = {
-      # 'expire' => Redis::RESPError.new('ERR value is not an integer or out of range'),
-    # }
 
     def self.validate_integer(str)
       Integer(str)
@@ -48,10 +45,6 @@ module Redis
 
       parse_result = parse_options
 
-      if !parse_result.nil?
-        return parse_result
-      end
-
       existing_key = @data_store[key]
 
       if @options['presence'] == 'NX' && !existing_key.nil?
@@ -75,6 +68,8 @@ module Redis
       end
 
     rescue ValidationError => e
+      RESPError.new(e.message)
+    rescue SyntaxError => e
       RESPError.new(e.message)
     end
 
@@ -104,12 +99,12 @@ module Redis
           existing_option = @options[option_detail.kind]
 
           if existing_option
-            return RESPError.new('ERR syntax error')
+            raise SyntaxError, 'ERR syntax error'
           else
             @options[option_detail.kind] = option_values
           end
         else
-          return RESPError.new('ERR syntax error')
+          raise SyntaxError, 'ERR syntax error'
         end
       end
     end

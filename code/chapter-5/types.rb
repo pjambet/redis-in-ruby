@@ -1,3 +1,5 @@
+require 'delegate'
+
 module Redis
   NullArray = Class.new do
     def serialize
@@ -52,7 +54,6 @@ module Redis
           RESPArray.new(item).serialize
         end
       end
-      # p serialized_items
       "*#{ length }\r\n#{ serialized_items.join }"
     end
   end

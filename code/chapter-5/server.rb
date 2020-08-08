@@ -1,7 +1,6 @@
 require 'socket'
 require 'timeout'
 require 'logger'
-require 'delegate'
 require 'strscan'
 
 LOG_LEVEL = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
@@ -125,13 +124,11 @@ module Redis
             elsif client_command_with_args == :wait_readable
               # There's nothing to read from the client, we don't have to do anything
               next
-            elsif client_command_with_args.strip.empty?
+            elsif client_command_with_args.empty?
               @logger.debug "Empty request received from #{ socket }"
             else
               client.buffer += client_command_with_args
               split_commands(client.buffer) do |command_parts, command_length|
-                # Truncate the command we just parsed
-                client.buffer = client.buffer[command_length..-1]
                 response = handle_client_command(command_parts)
                 @logger.debug "Response: #{ response.class } / #{ response.inspect }"
                 @logger.debug "Writing: '#{ response.serialize.inspect }'"
@@ -156,19 +153,25 @@ module Redis
 
     def split_commands(client_buffer)
       @logger.debug "Full result from read: '#{ client_buffer.inspect }'"
+
+      scanner = StringScanner.new(client_buffer)
       if client_buffer[0] == '*'
         total_chars = client_buffer.length
-        scanner = StringScanner.new(client_buffer)
 
         until scanner.eos?
           command_parts = parse_value_from_string(scanner)
-          raise "Not an array #{ client_buffer }" unless command_parts.is_a?(Array)
+          raise ProtocolError, "ERR Protocol Error: not an array" unless command_parts.is_a?(Array)
 
-          yield command_parts, scanner.charpos
+          yield command_parts, 0
+          client_buffer.slice!(0, scanner.charpos)
         end
       else
-        client_buffer.split("\n").map(&:strip).each do |command|
+        until scanner.eos?
+          command = scanner.scan_until(/\r\n/)
+          raise IncompleteCommand, scanner.string if command.nil?
+
           yield command.split.map(&:strip), client_buffer.length
+          client_buffer.slice!(0, scanner.charpos)
         end
       end
     end
@@ -183,16 +186,13 @@ module Redis
         raise IncompleteCommand, scanner.string if expected_length.nil?
 
         expected_length = expected_length.to_i
-        raise "Unexpected length for #{ scanner.string }" if expected_length <= 0
+        # Redis does not error on length == 0
+        raise ProtocolError, 'ERR Protocol error: invalid bulk length' if expected_length <= 0
 
-        bulk_string = scanner.rest.slice(0, expected_length + 2) # Adding 2 for CR(\r) & LF(\n)
+        bulk_string = scanner.rest.slice(0, expected_length)
 
         raise IncompleteCommand, scanner.string if bulk_string.nil? ||
-                                                   bulk_string.length - 2 != expected_length
-
-        bulk_string.strip!
-
-        raise "Length mismatch: #{ bulk_string } vs #{ expected_length }" if expected_length != bulk_string&.length
+                                                   bulk_string.length != expected_length
 
         scanner.pos += bulk_string.bytesize + 2
         bulk_string
@@ -201,7 +201,8 @@ module Redis
         raise IncompleteCommand, scanner.string if expected_length.nil?
 
         expected_length = expected_length.to_i
-        raise "Unexpected length for #{ scanner.string }" if expected_length < 0
+        # Redis does not return for zero or less array lengths
+        raise ProtocolError, 'ERR Protocol error: invalid array length' if expected_length < 0
 
         array_result = []
 

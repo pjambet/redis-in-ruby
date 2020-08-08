@@ -1,14 +1,14 @@
 # coding: utf-8
+
 require_relative './test_helper'
 
 describe 'Redis::Server' do
-
   describe 'when initialized' do
     it 'listens on port 2000' do
       with_server do
         # lsof stands for "list open files", see for more info https://stackoverflow.com/a/4421674
         lsof_result = `lsof -nP -i4TCP:2000 | grep LISTEN`
-        assert_match "ruby", lsof_result
+        assert_match 'ruby', lsof_result
       end
     end
   end
@@ -18,7 +18,7 @@ describe 'Redis::Server' do
       assert_command_results [
         [ 'gEt 1', NULL_BULK_STRING ],
         [ 'set 1 2', '+OK' ],
-        [ 'get 1', '2' ]
+        [ 'get 1', '2' ],
       ]
     end
   end
@@ -39,9 +39,9 @@ describe 'Redis::Server' do
     it 'returns the value previously set by SET' do
       assert_command_results [
         [ 'SET 1 2', '+OK' ],
-        [ 'GET 1', '2'],
+        [ 'GET 1', '2' ],
         [ 'SET 1 😂', '+OK' ],
-        [ 'GET 1', '😂'],
+        [ 'GET 1', '😂' ],
       ]
     end
   end
@@ -55,7 +55,7 @@ describe 'Redis::Server' do
 
     it 'returns the TTL for a key with a TTL' do
       assert_command_results [
-        [ 'SET key value EX 2', '+OK'],
+        [ 'SET key value EX 2', '+OK' ],
         [ 'TTL key', ':2' ],
         [ 'sleep 0.5' ],
         [ 'TTL key', ':1' ],
@@ -85,7 +85,7 @@ describe 'Redis::Server' do
 
     it 'returns the TTL in ms for a key with a TTL' do
       assert_command_results [
-        [ 'SET key value EX 2', '+OK'],
+        [ 'SET key value EX 2', '+OK' ],
         [ 'PTTL key', '2000+/-20' ], # Initial 2000ms +/- 20ms
         [ 'sleep 0.5' ],
         [ 'PTTL key', '1500+/-20' ], # Initial 2000ms, minus ~500ms of sleep, +/- 20ms
@@ -130,7 +130,7 @@ describe 'Redis::Server' do
 
     it 'rejects the EX option with an invalid argument' do
       assert_command_results [
-        [ 'SET 1 3 EX foo', '-ERR value is not an integer or out of range']
+        [ 'SET 1 3 EX foo', '-ERR value is not an integer or out of range' ]
       ]
     end
 
@@ -145,7 +145,7 @@ describe 'Redis::Server' do
 
     it 'rejects the PX option with an invalid argument' do
       assert_command_results [
-        [ 'SET 1 3 px foo', '-ERR value is not an integer or out of range']
+        [ 'SET 1 3 px foo', '-ERR value is not an integer or out of range' ]
       ]
     end
 
@@ -158,9 +158,9 @@ describe 'Redis::Server' do
 
     it 'handles the XX option' do
       assert_command_results [
-        [ 'SET 1 2 XX', NULL_BULK_STRING],
-        [ 'SET 1 2', '+OK'],
-        [ 'SET 1 2 XX', '+OK'],
+        [ 'SET 1 2 XX', NULL_BULK_STRING ],
+        [ 'SET 1 2', '+OK' ],
+        [ 'SET 1 2 XX', '+OK' ],
       ]
     end
 
@@ -192,15 +192,15 @@ describe 'Redis::Server' do
 
     it 'rejects with more than one expire related option' do
       assert_command_results [
-        [ 'SET 1 3 PX 1 EX 2', '-ERR syntax error'],
-        [ 'SET 1 3 PX 1 KEEPTTL', '-ERR syntax error'],
-        [ 'SET 1 3 KEEPTTL EX 2', '-ERR syntax error'],
+        [ 'SET 1 3 PX 1 EX 2', '-ERR syntax error' ],
+        [ 'SET 1 3 PX 1 KEEPTTL', '-ERR syntax error' ],
+        [ 'SET 1 3 KEEPTTL EX 2', '-ERR syntax error' ],
       ]
     end
 
     it 'rejects with both XX & NX' do
       assert_command_results [
-        [ 'SET 1 3 NX XX', '-ERR syntax error'],
+        [ 'SET 1 3 NX XX', '-ERR syntax error' ],
       ]
     end
   end
@@ -225,14 +225,14 @@ describe 'Redis::Server' do
   describe 'partial commands' do
     it 'accepts commands received through multiple reads' do
       assert_command_results [
-        [ 'SET first-key first-value', '+OK'],
-        [ 'SET second-key second-value', '+OK'],
-        [ 'SET third-key third-value', '+OK'],
+        [ 'SET first-key first-value', '+OK' ],
+        [ 'SET second-key second-value', '+OK' ],
+        [ 'SET third-key third-value', '+OK' ],
       ]
       assert_multipart_command_results [
-        [ [Redis::RESPArray.new([ 'SET', 'first-key', 'first-value' ]).serialize], '+OK'],
-        [ [Redis::RESPArray.new([ 'SET', 'second-key', 'second-value' ]).serialize], '+OK'],
-        [ [Redis::RESPArray.new([ 'SET', 'third-key', 'third-value' ]).serialize], '+OK'],
+        [ to_query('SET', 'first-key', 'first-value'), '+OK' ],
+        [ to_query('SET', 'second-key', 'second-value'), '+OK' ],
+        [ to_query('SET', 'third-key', 'third-value'), '+OK' ],
         [ [ "*2\r\n$3\r\nGET\r\n", "$9\r\nfirst-key\r\n" ], 'first-value' ],
         [ [ "*2\r\n$3\r\nGET\r\n", "$10\r\nsecond-key\r\n*2" ], 'second-value' ],
         [ [ "\r\n$3\r\nGET\r\n$9\r\nthird-key\r\n" ], 'third-value' ],
@@ -241,7 +241,7 @@ describe 'Redis::Server' do
 
     it 'does not nothing if the command is incomplete' do
       assert_command_results [
-        [ "*2\r\n$3\r\nGET\r\n$10\r\nincomple", nil ]
+        [ "*2\r\n$3\r\nGET\r\n$10\r\nincomple", nil ],
       ]
     end
   end
@@ -249,7 +249,7 @@ describe 'Redis::Server' do
   describe 'protocol errors' do
     it 'returns a protocol error when expecting a bulk string and not reading the leading $' do
       assert_command_results [
-        [ "*2\r\n$3\r\nGET\r\na-key\r\n", "-ERR Protocol error: expected '$', got 'a'" ]
+        [ "*2\r\n$3\r\nGET\r\na-key\r\n", "-ERR Protocol error: expected '$', got 'a'" ],
       ]
     end
   end
@@ -260,11 +260,17 @@ describe 'Redis::Server' do
         [ "SET a-key a-value\r\n", '+OK' ],
         [ "GET a-key\r\n", "$7\r\na-value\r\n" ],
       ]
+      assert_multipart_command_results [
+        [ [ "SET a-key a-value\r\nSET ", 'another-key' ], '+OK' ],
+        [ [ ' another-value', "\r\n" ], '+OK' ],
+        [ [ "GET a-key\r\n" ], 'a-value' ],
+        [ [ "GET another-key\r\n" ], 'another-value' ],
+      ]
     end
 
     it 'rejects everything that is not a command and does not start with a *' do
       assert_command_results [
-        [ "-a\r\n", '-ERR unknown command `-a`, with args beginning with: ' ]
+        [ "-a\r\n", '-ERR unknown command `-a`, with args beginning with: ' ],
       ]
     end
   end
