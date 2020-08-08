@@ -1,12 +1,7 @@
 module Redis
   class CommandCommand
 
-    def initialize(data_store, expires, args)
-      @logger = Logger.new(STDOUT)
-      @logger.level = LOG_LEVEL
-      @data_store = data_store
-      @expires = expires
-      @args = args
+    def initialize(_data_store, _expires, _args)
     end
 
     def call
