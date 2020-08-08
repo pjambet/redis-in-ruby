@@ -7,17 +7,17 @@ module Redis
     CommandOptionWithValue = Struct.new(:kind, :validator)
 
     OPTIONS = {
-      'EX' => CommandOptionWithValue.new(
+      'ex' => CommandOptionWithValue.new(
         'expire',
         ->(value) { validate_integer(value) * 1000 },
       ),
-      'PX' => CommandOptionWithValue.new(
+      'px' => CommandOptionWithValue.new(
         'expire',
         ->(value) { validate_integer(value) },
       ),
-      'KEEPTTL' => CommandOption.new('expire'),
-      'NX' => CommandOption.new('presence'),
-      'XX' => CommandOption.new('presence'),
+      'keepttl' => CommandOption.new('expire'),
+      'nx' => CommandOption.new('presence'),
+      'xx' => CommandOption.new('presence'),
     }
 
     # ERRORS = {
@@ -97,7 +97,7 @@ module Redis
     def parse_options
       while @args.any?
         option = @args.shift
-        option_detail = OPTIONS[option]
+        option_detail = OPTIONS[option.downcase]
 
         if option_detail
           option_values = parse_option_arguments(option, option_detail)

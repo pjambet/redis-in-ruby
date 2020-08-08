@@ -145,13 +145,13 @@ describe 'Redis::Server' do
 
     it 'rejects the PX option with an invalid argument' do
       assert_command_results [
-        [ 'SET 1 3 PX foo', '-ERR value is not an integer or out of range']
+        [ 'SET 1 3 px foo', '-ERR value is not an integer or out of range']
       ]
     end
 
     it 'handles the NX option' do
       assert_command_results [
-        [ 'SET 1 2 NX', '+OK' ],
+        [ 'SET 1 2 nX', '+OK' ],
         [ 'SET 1 2 NX', NULL_BULK_STRING ],
       ]
     end
@@ -186,7 +186,7 @@ describe 'Redis::Server' do
       assert_command_results [
         [ 'SET 1 3 NX EX 1', '+OK' ],
         [ 'GET 1', '3' ],
-        [ 'SET 1 3 XX KEEPTTL', '+OK' ],
+        [ 'SET 1 3 XX keepttl', '+OK' ],
       ]
     end
 
