@@ -4,7 +4,6 @@ require 'stringio'
 
 require_relative './server'
 
-
 NULL_BULK_STRING = "$-1\r\n"
 
 def connect_to_server
@@ -13,7 +12,7 @@ def connect_to_server
   # thread, in the parent process. Using timeout here guarantees that we won't wait more than 1s, which should
   # more than enough time for the server to start, and the retry loop inside, will retry to connect every 10ms
   # until it succeeds
-  Timeout::timeout(1) do
+  Timeout.timeout(1) do
     loop do
       begin
         socket = TCPSocket.new 'localhost', 2000
@@ -43,13 +42,16 @@ def with_server
     end
   end
 
-  yield
+  server_socket = connect_to_server
+
+  yield server_socket
 
 ensure
+  server_socket&.close
   if child
-    kill_res = Process.kill('TERM', child)
+    kill_res = Process.kill('INT', child)
     begin
-      Timeout::timeout(1) do
+      Timeout.timeout(1) do
         Process.wait(child)
       end
     rescue Timeout::Error
@@ -58,66 +60,86 @@ ensure
   end
 end
 
+# The argumens in an array of array of the form
+# [
+#   [ [ "COMMAND-PART-I", "COMMAND-PART-II", ... ], "EXPECTED_RESULT" ],
+#   ...
+# ]
+def assert_multipart_command_results(multipart_command_result_pairs)
+  with_server do |server_socket|
+    multipart_command_result_pairs.each do |command, expected_result|
+      command.each do |command_part|
+        server_socket.write command_part
+        # Sleep for one milliseconds to give a chance to the server to read
+        # the first partial command
+        sleep 0.001
+      end
+
+      response = read_response(server_socket)
+
+      assert_response(expected_result, response)
+    end
+  end
+end
+
 def assert_command_results(command_result_pairs)
-  with_server do
-    socket = connect_to_server
+  with_server do |server_socket|
     command_result_pairs.each do |command, expected_result|
       if command.is_a?(String) && command.start_with?('sleep')
         sleep command.split[1].to_f
         next
       end
-      begin
-        if command.is_a?(Array)
-          # The command is split between multiple sends
-          command.each do |command_part|
-            socket.write command_part
-            # Sleep for one milliseconds to give a chance to the server to read
-            # the first partial command
-            sleep 0.001
-          end
-        else
-          socket.write Redis::RESPArray.new(command.split).serialize
-        end
+      command_string = if command.start_with?('*')
+                         command
+                       else
+                         Redis::RESPArray.new(command.split).serialize
+                       end
+      server_socket.write command_string
 
-        response = ""
-        loop do
-          select_res = IO.select([socket], [], [], 0.1)
-          last_response = socket.read_nonblock(1024, exception: false)
-          if last_response == :wait_readable || last_response.nil? || select_res.nil?
-            response = nil
-            break
-          else
-            response += last_response
-            break if response.length < 1024
-          end
-        end
-        response&.force_encoding('utf-8')
-        # Matches "2000+\-10", aka 2000 plus or minus 10
-        assertion_match = expected_result&.match /(\d+)\+\/-(\d+)/
-        if assertion_match
-          response_match = response.match /\A:(\d+)\r\n\z/
-          assert response_match[0]
-          assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
-        else
-          if expected_result && !%w(+ - : $ *).include?(expected_result[0])
-            # Convert to a Bulk String unless it is a simple string (starts with a +)
-            # or an error (starts with -)
-            expected_result = Redis::RESPBulkString.new(expected_result).serialize
-          end
+      response = read_response(server_socket)
 
-          if expected_result && !expected_result.end_with?("\r\n")
-            expected_result += "\r\n"
-          end
-
-          if expected_result.nil?
-            assert_nil response
-          else
-            assert_equal expected_result, response
-          end
-        end
-      end
+      assert_response(expected_result, response)
     end
-  ensure
-    socket.close if socket
   end
+end
+
+def assert_response(expected_result, response)
+  assertion_match = expected_result&.match(/(\d+)\+\/-(\d+)/)
+  if assertion_match
+    response_match = response.match(/\A:(\d+)\r\n\z/)
+    assert response_match[0]
+    assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
+  else
+    if expected_result && !%w(+ - : $ *).include?(expected_result[0])
+      # Convert to a Bulk String unless it is a simple string (starts with a +)
+      # or an error (starts with -)
+      expected_result = Redis::RESPBulkString.new(expected_result).serialize
+    end
+
+    if expected_result && !expected_result.end_with?("\r\n")
+      expected_result += "\r\n"
+    end
+
+    if expected_result.nil?
+      assert_nil response
+    else
+      assert_equal expected_result, response
+    end
+  end
+end
+
+def read_response(server_socket)
+  response = ''
+  loop do
+    select_res = IO.select([server_socket], [], [], 0.1)
+    last_response = server_socket.read_nonblock(1024, exception: false)
+    if last_response == :wait_readable || last_response.nil? || select_res.nil?
+      response = nil
+      break
+    else
+      response += last_response
+      break if response.length < 1024
+    end
+  end
+  response&.force_encoding('utf-8')
 end

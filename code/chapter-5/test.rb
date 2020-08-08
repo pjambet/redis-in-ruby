@@ -228,6 +228,11 @@ describe 'Redis::Server' do
         [ 'SET first-key first-value', '+OK'],
         [ 'SET second-key second-value', '+OK'],
         [ 'SET third-key third-value', '+OK'],
+      ]
+      assert_multipart_command_results [
+        [ [Redis::RESPArray.new([ 'SET', 'first-key', 'first-value' ]).serialize], '+OK'],
+        [ [Redis::RESPArray.new([ 'SET', 'second-key', 'second-value' ]).serialize], '+OK'],
+        [ [Redis::RESPArray.new([ 'SET', 'third-key', 'third-value' ]).serialize], '+OK'],
         [ [ "*2\r\n$3\r\nGET\r\n", "$9\r\nfirst-key\r\n" ], 'first-value' ],
         [ [ "*2\r\n$3\r\nGET\r\n", "$10\r\nsecond-key\r\n*2" ], 'second-value' ],
         [ [ "\r\n$3\r\nGET\r\n$9\r\nthird-key\r\n" ], 'third-value' ],
@@ -236,7 +241,7 @@ describe 'Redis::Server' do
 
     it 'does not nothing if the command is incomplete' do
       assert_command_results [
-        [ [ "*2\r\n$3\r\nGET\r\n$10\r\nincomple" ], nil ]
+        [ "*2\r\n$3\r\nGET\r\n$10\r\nincomple", nil ]
       ]
     end
   end
@@ -244,7 +249,7 @@ describe 'Redis::Server' do
   describe 'protocol errors' do
     it 'returns a protocol error when expecting a bulk string and not reading the leading $' do
       assert_command_results [
-        [ [ "*2\r\n$3\r\nGET\r\na-key" ], "-ERR Protocol error: expected '$', got 'a'" ]
+        [ "*2\r\n$3\r\nGET\r\na-key\r\n", "-ERR Protocol error: expected '$', got 'a'" ]
       ]
     end
   end
@@ -252,14 +257,14 @@ describe 'Redis::Server' do
   describe 'inline commands' do
     it 'accepts inline commands' do
       assert_command_results [
-        [ [ "SET a-key a-value\r\n" ], '+OK' ],
-        [ [ "GET a-key\r\n" ], "$7\r\na-value\r\n" ],
+        [ "SET a-key a-value\r\n", '+OK' ],
+        [ "GET a-key\r\n", "$7\r\na-value\r\n" ],
       ]
     end
 
     it 'rejects everything that is not a command and does not start with a *' do
       assert_command_results [
-        [ [ "-a\r\n" ], '-ERR unknown command `-a`, with args beginning with: ' ]
+        [ "-a\r\n", '-ERR unknown command `-a`, with args beginning with: ' ]
       ]
     end
   end
