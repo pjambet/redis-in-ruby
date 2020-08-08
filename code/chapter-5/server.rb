@@ -43,7 +43,6 @@ module Redis
       end
     end
 
-
     def initialize
       @logger = Logger.new(STDOUT)
       @logger.level = LOG_LEVEL
@@ -182,6 +181,7 @@ module Redis
       when '$'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
+
         expected_length = expected_length.to_i
         raise "Unexpected length for #{ scanner.string }" if expected_length <= 0
 
@@ -199,6 +199,7 @@ module Redis
       when '*'
         expected_length = scanner.scan_until(/\r\n/)
         raise IncompleteCommand, scanner.string if expected_length.nil?
+
         expected_length = expected_length.to_i
         raise "Unexpected length for #{ scanner.string }" if expected_length < 0
 
@@ -206,8 +207,10 @@ module Redis
 
         expected_length.times do
           raise IncompleteCommand, scanner.string if scanner.eos?
+
           parsed_value = parse_value_from_string(scanner)
           raise IncompleteCommand, scanner.string if parsed_value.nil?
+
           array_result << parsed_value
         end
 
@@ -269,8 +272,11 @@ module Redis
 
       end_timestamp = Time.now
       @logger.debug do
-        sprintf(
-          "Processed %i keys in %.3f ms", keys_fetched, (end_timestamp - start_timestamp) * 1000)
+        format(
+          'Processed %<number_of_keys>i keys in %<duration>.3f ms',
+          number_of_keys: keys_fetched,
+          duration: (end_timestamp - start_timestamp) * 1000,
+        )
       end
 
       1000 / DEFAULT_FREQUENCY
