@@ -19,11 +19,11 @@ module Redis
   class Server
 
     COMMANDS = {
-      'COMMAND' => CommandCommand,
-      'GET' => GetCommand,
-      'SET' => SetCommand,
-      'TTL' => TtlCommand,
-      'PTTL' => PttlCommand,
+      'command' => CommandCommand,
+      'get' => GetCommand,
+      'set' => SetCommand,
+      'ttl' => TtlCommand,
+      'pttl' => PttlCommand,
     }
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
@@ -238,7 +238,7 @@ module Redis
       command_str = command_parts[0]
       args = command_parts[1..-1]
 
-      command_class = COMMANDS[command_str]
+      command_class = COMMANDS[command_str.downcase]
 
       if command_class
         command = command_class.new(@data_store, @expires, args)
