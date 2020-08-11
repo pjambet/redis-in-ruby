@@ -134,6 +134,15 @@ module Redis
                 @logger.debug "Writing: '#{ response.serialize.inspect }'"
                 socket.write response.serialize
               end
+              extra_byte = socket.read_nonblock(1, exception: false)
+              if extra_byte.nil?
+                @clients.delete(client)
+                socket.close
+              elsif extra_byte == :wait_readable
+                next
+              else
+                client.buffer += extra_byte
+              end
             end
           else
             raise "Unknown socket type: #{ socket }"
