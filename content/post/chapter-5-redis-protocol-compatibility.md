@@ -31,7 +31,7 @@ RESP3 is supported as of Redis 6.0, as indicated in [the release notes][release-
 
 The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a different protocol. As we can see below, only two versions are currently supported, 2 & 3. We can also see the new map type in action, `hello 2` returned an array with 14 items, representing 7 key/value pairs, whereas `hello 3` leveraged the new map type to return a map with 7 key/value pairs.
 
-```
+``` bash
 127.0.0.1:6379> hello 2
  1) "server"
  2) "redis"
@@ -49,7 +49,7 @@ The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a
 14) (empty array)
 ```
 
-```
+``` bash
 127.0.0.1:6379> hello 3
 1# "server" => "redis"
 2# "version" => "6.0.6"
@@ -60,12 +60,12 @@ The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a
 7# "modules" => (empty array)
 ```
 
-```
+``` bash
 127.0.0.1:6379> hello 1
 (error) NOPROTO unsupported protocol version
 ```
 
-```
+``` bash
 127.0.0.1:6379> hello 4
 (error) NOPROTO unsupported protocol version
 ```
@@ -115,28 +115,30 @@ The common `"OK"` string, returned by the `SET` command upon success is therefor
 
 `redis-cli` does the work of detecting the type of the response and only shows us the actual string, `OK`, as we can see in the example below:
 
-```
+``` bash
 127.0.0.1:6379> SET 1 2
 OK
 ```
 
 Using `nc`, we can see what the full response sent back from Redis is:
 
-```
+``` bash
 > nc -v localhost 6379
 SET 1 2
 +OK
 
 ```
 
-`nc` does not no anything unusual with invisible characters such as `CR` & `LF`, so it is hard to see them, beside the newline printed after `+OK`. The `hexdump` command is useful here, it allows us to see all the bytes:
+`nc` does not explicitly display invisible characters such as `CR` & `LF`, so it is hard to know for sure that they were returned, beside the newline printed after `+OK`. The `hexdump` command is useful here, it allows us to see all the bytes:
 
-```
+``` bash
 echo "SET 1 2" | nc -v localhost 6379 | hexdump -C
 # ...
 00000000  2b 4f 4b 0d 0a                                    |+OK..|
 00000005
 ```
+
+The interesting part is the middle one, `2b 4f 4b 0d 0a`, these are the 5 bytes returned by Redis. The part to the right, between pipe characters (`|`) is their ASCII representation. We can see five characters there, `+` is the ASCII representation of `2b`, `O` is for `4f`, `K` is for `4d`, and the last two bytes do not have a visual representation so they're displayed as `.`.
 
 `2b` is the hex notation of 43 (`'2b'.to_i(16)` in `irb`), and 43 maps to `+` in the [ASCII table][ascii-table]. `4f` is the equivalent of 79, and the capital letter `O`, `4b`, the number 75 and the capital letter `K`.
 
@@ -150,7 +152,7 @@ Errors are very similar to simple strings, they also cannot contain new line cha
 
 Similarly to simple strings, an errors ends with a carriage return and a line feed, let's see it in action:
 
-```
+``` bash
 ❯ echo "GET 1 2" | nc -c -v localhost 6379 | hexdump -C
 # ...
 00000000  2d 45 52 52 20 77 72 6f  6e 67 20 6e 75 6d 62 65  |-ERR wrong numbe|
@@ -172,7 +174,7 @@ An example of integer reply is with the `TTL` and `PTTL` commands
 
 The key `key-with-ttl` was set with the command: `SET key-with-ttl value EX 1000`.
 
-```
+``` bash
 > echo "TTL key-with-ttl" | nc -c -v localhost 6379 | hexdump -C
 # ...
 00000000  3a 39 38 38 0d 0a                                 |:988..|
@@ -181,7 +183,7 @@ The key `key-with-ttl` was set with the command: `SET key-with-ttl value EX 1000
 
 The key `not-a-key` does not exist.
 
-```
+``` bash
 > echo "TTL not-a-key" | nc -c -v localhost 6379 | hexdump -C
 # ...
 00000000  3a 2d 32 0d 0a                                    |:-2..|
@@ -190,7 +192,7 @@ The key `not-a-key` does not exist.
 
 The key `key-without-ttl` was set with the command: `SET key-without-ttl value`.
 
-```
+``` bash
 > echo "TTL key-without-ttl" | nc -c -v localhost 6379 | hexdump -C
 # ...
 00000000  3a 2d 31 0d 0a                                    |:-1..|
@@ -213,7 +215,7 @@ Interestingly, it seems like Redis does not care that much about the final `CRLF
 
 The following first sends the command `GET a` to redis as a multi bulk string, followed by the non existent command `NOT A COMMAND`. The response first contains the `-1` integer, followed by the error.
 
-```
+```ruby
 irb(main):029:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\na\r\n*1\r\n$13\r\nNOT A COMMAND\r\n")
 => 35
 irb(main):028:0> socket.read_nonblock(1024, exception: false)
@@ -222,17 +224,42 @@ irb(main):028:0> socket.read_nonblock(1024, exception: false)
 
 The following is handled identically by Redis, despite the fact the `a` bulk string is not terminated by `CRLF`. We can see that Redis ignored the `b` and `c` characters and proceeded with the following command, the non existent `NOT A COMMAND`. I am assuming that the code in charge of reading input first reads the length, then grabs that many bytes and jumps by two characters, regardless of what these characters are.
 
-```
+```ruby
 irb(main):027:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\nabc*1\r\n$13\r\nNOT A COMMAND\r\n")
 => 35
 irb(main):030:0> socket.read_nonblock(1024, exception: false)
 => "$-1\r\n-ERR unknown command `NOT`, with args beginning with: `A`, `COMMAND`, \r\n"
-
 ```
+
+There's a special value for Bulk Strings, the null Bulk String. It is commonly returned when a Bulk String would otherwise be expected, but there was no value to return. This happens in many cases, such as when there are no values for the key passed to the `GET` command. RESP represents it as a string with a length of -1: `$-1\r\n`.
 
 **Arrays**
 
-Arrays can contain values of any types, including other nested arrays.
+Arrays can contain values of any types, including other nested arrays. Similarly to Bulk Strings, arrays must first declare their lengths, followed by `CRLF`, and all items come afterwards, in their regular serialized form. The following is a JSON representation of an arbitrary array:
+
+
+``` json
+[ 1, "a-string", [ "another-string-in-a-nested-array" ], "a-string-with\r\n-newlines" ]
+```
+
+The following is the RESP representation of the same array:
+
+```
+*4\r\n:1\r\n$8\r\na-string\r\n*1\r\n$32\r\nanother-string-in-a-nested-array\r\n$24\r\na-string-with\r\n-newlines\r\n
+```
+
+We can include newlines and indentation for the sake of readability
+
+```
+*4\r\n
+  :1\r\n
+  $8\r\na-string\r\n
+  *1\r\n
+    $32\r\nanother-string-in-a-nested-array\r\n
+  $24\r\na-string-with\r\n-newlines\r\n
+```
+
+RESP has a special notation for the NULL array: `*-1\r\n`. The existence of two different NULL values, one for Bulk Strings and one for Bulk Arrays is confusing and is one of the many changes in RESP3. RESP3 has a single null value.
 
 ### Inline Protocol
 
@@ -242,7 +269,7 @@ Anything that does not start with a `*` character — which is the first charact
 
 Let's try this quickly with `nc`:
 
-```
+``` bash
 > nc -c -v localhost 6379
 # ...
 SET 1 2
@@ -255,7 +282,7 @@ $1
 
 As we're about to see, RESP's main mode of operations is more complicated. This complexity is necessary because inline commands are severely limited. It is impossible to store a key or a value that contains the carriage return and line feed characters since they're use as delimiters even though Redis does support any things as keys and values as seen in the following example:
 
-```
+``` bash
 > redis-cli
 127.0.0.1:6379> SET a-key "foo\nbar"
 OK
@@ -265,7 +292,7 @@ OK
 
 Let's double check with `nc` to see what Redis stored:
 
-```
+``` bash
 > nc -c -v localhost 6379
 # ...
 GET a-key
@@ -277,8 +304,8 @@ bar
 
 We could also use `hexdump` to triple check:
 
-```
-echo "GET a-key" | nc -c -v localhost 6379 | hexdump -C
+``` bash
+> echo "GET a-key" | nc -c -v localhost 6379 | hexdump -C
 # ...
 00000000  24 37 0d 0a 66 6f 6f 0a  62 61 72 0d 0a           |$7..foo.bar..|
 0000000d
@@ -288,18 +315,228 @@ We can see the `0a` byte between `o`/`6f` & `b`/`62`
 
 ### Requests & Responses
 
-We have not yet added support for pipelining and pub/sub, so we will ignore their impact on our implementation of the Redis Protocol for now. Future chapters will add support for these two supports and will follow the RESP specification.
+Requests are send as arrays of bulk strings. The command `GET a-key` should be sent as `*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n`, or in plain English: "An array of length 2, where the first string is of length 3 and is GET and the second string is of length 5 and is a-key".
 
+We can illustrate this by sending this string with the `TCPSocket` class in ruby:
 
-## Making RedisServer speak RESP
+```ruby
+irb(main):001:0> require 'socket'
+=> true
+irb(main):002:0> socket = TCPSocket.new 'localhost', 6379
+irb(main):003:0> socket.write "*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n"
+=> 24
+irb(main):004:0> socket.read_nonblock 1024
+=> "$-1\r\n"
+```
 
-### Closing clients after a read if they closed the connection
+### Pub/Sub
+
+Redis supports a [Publish/Subscribe messaging paradigm][pub-sub-wikipedia], with the `SUBSCRIBE`, `UNSUBSCRIBE` &  `PUBLISH` commands, documented on [Pub/Sub page][redis-doc-pub-sub] of the official documentation.
+
+These commands have a significant impact of how data flows between clients and servers, and given that we have not yet added support for pipelining and pub/sub, we will ignore their impact on our implementation of the Redis Protocol for now. Future chapters will add support for these two supports and will follow the RESP specification.
+
+## Making Redis::Server speak RESP
+
+As far as I know there is no official test suite that we could run our server against to validate that it correctly follows RESP. What we can do instead is rely on `redis-cli` as a way to test the RESP implementation of our `Redis::Server` class. Let's see what happens when we try it with the current server, first let's start the server from Chapter 4:
+
+```
+DEBUG=t ruby -r"./server" -e "RedisServer.new"
+```
+
+and in another shell, let's open `redis-cli` on port 2000:
+
+```
+> redis-cli -p 2000
+```
+
+You should see the following the server logs:
+
+```
+D, [2020-08-12T16:11:42.461645 #91271] DEBUG -- : Received command: *1
+D, [2020-08-12T16:11:42.461688 #91271] DEBUG -- : Response: (error) ERR unknown command `*1`, with args beginning with:
+D, [2020-08-12T16:11:42.461925 #91271] DEBUG -- : Received command: $7
+D, [2020-08-12T16:11:42.461960 #91271] DEBUG -- : Response: (error) ERR unknown command `$7`, with args beginning with:
+D, [2020-08-12T16:11:42.462005 #91271] DEBUG -- : Received command: COMMAND
+D, [2020-08-12T16:11:42.462036 #91271] DEBUG -- : Response: (error) ERR unknown command `COMMAND`, with args beginning with:
+```
+
+The server received the string `"*1\r\n$7\r\nCOMMAND\r\n"`, which is the RESP representation of the string `"COMMAND"` in a single item array, `[ "COMMAND" ]` in JSON.
+
+The [`COMMAND` command][redis-doc-command] is useful when running Redis [in a cluster][redis-doc-cluster]. Given that we have not yet implementer cluster capabilities, going into details about the `COMMAND` command is a little bit out of scope. In short the `COMMAND` command is useful to provide meta information about each command, such as information about the positions of they keys. This is useful because in cluster mode, clients have to route requests to the different nodes in the cluster. It is common for a command to have the key as the second element, the one coming directly after the command itself. This happens to be the case for all the commands we've implemented so far. But some commands have different semantics. For instance [`MSET`][redis-doc-mset] can contain multiple keys, so clients need to know where the keys are in the command. While rare, some commands have the first key at a different index, this is the case for the [`OBJECT` command][redis-doc-object].
+
+If you then try to send a command, `GET 1` for instance, `redis-cli` will crash after printing the following error:
+
+```
+Error: Protocol error, got "(" as reply type byte
+```
+
+This is because our server writes the string `(nil)` when it does find an try for the given key. But as we've seen, the correct response should `$-1\r\n` to follow RESP. This is what `redis-cli` tells us before stopping, it expected a "type byte", one of `+`, `-`, `:`, `$` or `*`, but instead got `(`.
+
+So we now what we have to do, implement the `COMMAND` command, since `redis-cli` seems to use it by default, and change how process client input, to support "real" RESP and the inline version, as well as serializing responses following RESP.
+
+Let's get to it!
 
 ### Parsing Input
 
+**Modules & Namespaces**
+
+Most of the changes here will take pace in `server.rb`. As the code started to grow, I thought it would be easier to start using ruby modules, so I nested the `Server` class under the `Redis` namespace. This will allow us to create other classes & modules under the `Redis` namespace as well. All the other classes have been updated to be under the `Redis` namespace as well. `ExpireHelper` is now `Redis::ExpireHelper`:
+
+``` ruby
+module Redis
+  module ExpireHelper
+
+    def self.check_if_expired(data_store, expires, key)
+      # ...
+    end
+  end
+end
+```
+_listing 5.x: expire_helper.rb_
+
+**Storing partial client buffer**
+
+As of the previous chapter we never stored the client input. We would read from the socket when `IO.select` would tell us there is something to read. Read until the end of the line, and process the result as a command.
+
+It turns out that this approach is a bit too aggressive. Clients should be able to send a single command in two parts, there's no reason to treat that as an error.
+
+In order to do this, we are going to create a `Client` struct to hold the client socket as well a string containing all the pending input we have not process yet:
+
+``` ruby
+Client = Struct.new(:socket, :buffer) do
+  def initialize(socket)
+    self.socket = socket
+    self.buffer = ''
+  end
+end
+```
+_listing 5.x: server.rb_
+
+We need to adapt `process_poll_events` to use this new class instead of the raw socket coming as a result of `TCPServer#accept`:
+
+``` ruby
+def process_poll_events(sockets)
+  sockets.each do |socket|
+    begin
+      if socket.is_a?(TCPServer)
+        @clients << Client.new(@server.accept)
+      elsif socket.is_a?(TCPSocket)
+        client = @clients.find { |client| client.socket == socket }
+        client_command_with_args = socket.read_nonblock(1024, exception: false)
+        if client_command_with_args.nil?
+          @clients.delete(client)
+          socket.close
+        elsif client_command_with_args == :wait_readable
+          # ...
+        else
+          # We now need to parse the input as a RESP array
+          # ...
+        end
+      else
+        # ...
+      end
+    rescue Errno::ECONNRESET
+      @clients.delete_if { |client| client.socket == socket }
+    end
+  end
+end
+```
+_listing 5.x: server.rb_
+
+**Parsing commands as RESP Arrays**
+
+Going back to `process_poll_events`, let's delegate the processing of the client input to a different method:
+
+``` ruby
+def process_poll_events(sockets)
+  sockets.each do |socket|
+    begin
+      elsif socket.is_a?(TCPSocket)
+        # ...
+        else
+          client.buffer += client_command_with_args
+          split_commands(client.buffer) do |command_parts, command_length|
+            response = handle_client_command(command_parts)
+            @logger.debug "Response: #{ response.class } / #{ response.inspect }"
+            @logger.debug "Writing: '#{ response.serialize.inspect }'"
+            socket.write response.serialize
+          end
+        end
+      else
+        # ...
+      end
+      # ...
+    end
+  end
+end
+
+def split_commands(client_buffer)
+  @logger.debug "Full result from read: '#{ client_buffer.inspect }'"
+
+  scanner = StringScanner.new(client_buffer)
+  if client_buffer[0] == '*'
+    until scanner.eos?
+      command_parts = parse_value_from_string(scanner)
+      raise ProtocolError, "ERR Protocol Error: not an array" unless command_parts.is_a?(Array)
+
+      yield command_parts, 0
+    end
+  else
+    until scanner.eos?
+      command = scanner.scan_until(/\r\n/)
+      raise IncompleteCommand, scanner.string if command.nil?
+
+      yield command.split.map(&:strip), client_buffer.length
+    end
+  end
+
+  # Remove the processed commands from the client buffer, and leave either nothing or
+  # the beginning of an incomplete command
+  client_buffer.slice!(0, scanner.charpos)
+end
+```
+
+`split_commands` is in charge of splitting the client input into multiple commands, which is necessary to support pipelining.
+
+It also handles the two different versions of commands, inline, or "regular", as RESP Arrays. We use the `StringScanner` class, which is really convenient to process data from a string, from left to right.
+
+We first peek at the first character, if it is `*`, the following should be a RESP array, and we process it as such. Otherwise, we assume that we're dealing with an inline command
+
+
 ### Case insensitivity
 
-both commands and options
+It is not explicitly mentioned in the RESP v2 documentation, but Redis treats commands and options as case insensitive. The following are valid: `get 1`, `GeT 1`, `set key value EX 1 nx`.
+
+In order to apply the same handling logic, we changed the keys in the `COMMANDS` constant to be lower case, and we always lower case the client input when attempting to find a handler for the command:
+
+``` ruby
+COMMANDS = {
+  'command' => CommandCommand,
+  'get' => GetCommand,
+  'set' => SetCommand,
+  'ttl' => TtlCommand,
+  'pttl' => PttlCommand,
+}
+# ...
+
+def handle_client_command(command_parts)
+  @logger.debug "Received command: #{ command_parts }"
+  command_str = command_parts[0]
+  args = command_parts[1..-1]
+
+  command_class = COMMANDS[command_str.downcase]
+
+  # ...
+end
+```
+_listing 5.x: server.rb_
+
+We also need to update the `Redis::SetCommand` class to handle options regardless of the case chosen by clients:
+
+``` ruby
+
+```
+_listing 5.x: set_command.rb_
 
 ### Something else?
 
@@ -323,3 +560,9 @@ d
 [ascii-table]:http://www.asciitable.com/
 [redis-ruby-client]:https://github.com/redis/redis-rb
 [redis-pipelining]:https://redis.io/topics/pipelining
+[redis-doc-object]:http://redis.io/commands/object
+[redis-doc-mset]:http://redis.io/commands/mset
+[redis-doc-command]:http://redis.io/commands/command
+[pub-sub-wikipedia]:http://en.wikipedia.org/wiki/Publish/subscribe
+[redis-doc-pub-sub]:https://redis.io/topics/pubsub
+[ruby-doc-string-scanner]:http://ruby-doc.org/stdlib-2.7.1/libdoc/strscan/rdoc/StringScanner.html
