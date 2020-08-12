@@ -121,6 +121,7 @@ module Redis
             client_command_with_args = socket.read_nonblock(1024, exception: false)
             if client_command_with_args.nil?
               @clients.delete(client)
+              socket.close
             elsif client_command_with_args == :wait_readable
               # There's nothing to read from the client, we don't have to do anything
               next
@@ -133,15 +134,6 @@ module Redis
                 @logger.debug "Response: #{ response.class } / #{ response.inspect }"
                 @logger.debug "Writing: '#{ response.serialize.inspect }'"
                 socket.write response.serialize
-              end
-              extra_byte = socket.read_nonblock(1, exception: false)
-              if extra_byte.nil?
-                @clients.delete(client)
-                socket.close
-              elsif extra_byte == :wait_readable
-                next
-              else
-                client.buffer += extra_byte
               end
             end
           else
