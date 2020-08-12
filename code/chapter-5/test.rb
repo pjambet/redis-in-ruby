@@ -13,6 +13,17 @@ describe 'Redis::Server' do
     end
   end
 
+  describe 'closing closed connections' do
+    it 'explicitly closes the connection' do
+      with_server do
+        Timeout.timeout(1) do
+          nc_result = `echo "GET 1" | nc -c localhost 2000`
+          assert_match "$-1\r\n", nc_result
+        end
+      end
+    end
+  end
+
   describe 'case sensitivity' do
     it 'ignores it' do
       assert_command_results [
