@@ -235,11 +235,6 @@ describe 'Redis::Server' do
 
   describe 'partial commands' do
     it 'accepts commands received through multiple reads' do
-      assert_command_results [
-        [ 'SET first-key first-value', '+OK' ],
-        [ 'SET second-key second-value', '+OK' ],
-        [ 'SET third-key third-value', '+OK' ],
-      ]
       assert_multipart_command_results [
         [ to_query('SET', 'first-key', 'first-value'), '+OK' ],
         [ to_query('SET', 'second-key', 'second-value'), '+OK' ],
@@ -261,6 +256,20 @@ describe 'Redis::Server' do
     it 'returns a protocol error when expecting a bulk string and not reading the leading $' do
       assert_command_results [
         [ "*2\r\n$3\r\nGET\r\na-key\r\n", "-ERR Protocol error: expected '$', got 'a'" ],
+      ]
+    end
+  end
+
+  describe 'pipelining' do
+    it 'works with both inline & regular commands when starting with an inline command' do
+      assert_multipart_command_results [
+        [ [ "GET a\r\n*2\r\n$3\r\nGET\r\n$1\r\nb\r\n" ], "$-1\r\n$-1\r\n" ],
+      ]
+    end
+
+    it 'works with both inline & regular commands when starting with a regular command' do
+      assert_multipart_command_results [
+        [ [ "*2\r\n$3\r\nGET\r\n$1\r\nb\r\nGET a\r\n" ], "$-1\r\n$-1\r\n" ],
       ]
     end
   end

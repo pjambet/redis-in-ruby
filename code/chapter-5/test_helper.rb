@@ -77,6 +77,13 @@ def assert_multipart_command_results(multipart_command_result_pairs)
 
       response = read_response(server_socket)
 
+      if response.length < expected_result.length
+        # If the response we got is shorter, maybe we need to give the server a bit more time
+        # to finish processing everything we wrote, so give it another shot
+        sleep 0.1
+        response += read_response(server_socket)
+      end
+
       assert_response(expected_result, response)
     end
   end
@@ -131,7 +138,7 @@ end
 def read_response(server_socket)
   response = ''
   loop do
-    select_res = IO.select([server_socket], [], [], 0.1)
+    select_res = IO.select([ server_socket ], [], [], 0.1)
     last_response = server_socket.read_nonblock(1024, exception: false)
     if last_response == :wait_readable || last_response.nil? || select_res.nil?
       response = nil

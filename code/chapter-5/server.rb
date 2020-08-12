@@ -129,7 +129,7 @@ module Redis
               @logger.debug "Empty request received from #{ socket }"
             else
               client.buffer += client_command_with_args
-              split_commands(client.buffer) do |command_parts, command_length|
+              split_commands(client.buffer) do |command_parts|
                 response = handle_client_command(command_parts)
                 @logger.debug "Response: #{ response.class } / #{ response.inspect }"
                 @logger.debug "Writing: '#{ response.serialize.inspect }'"
@@ -141,7 +141,7 @@ module Redis
           end
         rescue Errno::ECONNRESET
           @clients.delete_if { |client| client.socket == socket }
-        rescue IncompleteCommand => e
+        rescue IncompleteCommand
           # Not clearing the buffer or anything
           next
         rescue ProtocolError => e
@@ -155,26 +155,35 @@ module Redis
     def split_commands(client_buffer)
       @logger.debug "Full result from read: '#{ client_buffer.inspect }'"
 
-      scanner = StringScanner.new(client_buffer)
-      if client_buffer[0] == '*'
-        total_chars = client_buffer.length
-
-        until scanner.eos?
-          command_parts = parse_value_from_string(scanner)
-          raise ProtocolError, "ERR Protocol Error: not an array" unless command_parts.is_a?(Array)
-
-          yield command_parts, 0
-          client_buffer.slice!(0, scanner.charpos)
+      scanner = StringScanner.new(client_buffer.dup)
+      until scanner.eos?
+        if scanner.peek(1) == '*'
+          yield parse_as_resp_array(client_buffer, scanner)
+        else
+          yield parse_as_inline_command(client_buffer, scanner)
         end
-      else
-        until scanner.eos?
-          command = scanner.scan_until(/\r\n/)
-          raise IncompleteCommand, scanner.string if command.nil?
-
-          yield command.split.map(&:strip), client_buffer.length
-          client_buffer.slice!(0, scanner.charpos)
-        end
+        client_buffer.slice!(0, scanner.charpos)
       end
+    end
+
+    def parse_as_resp_array(client_buffer, scanner)
+      command_parts = parse_value_from_string(scanner)
+      unless command_parts.is_a?(Array)
+        client_buffer.slice!(0, scanner.charpos)
+        raise ProtocolError, 'ERR Protocol Error: not an array'
+      end
+
+      command_parts
+    end
+
+    def parse_as_inline_command(client_buffer, scanner)
+      command = scanner.scan_until(/\r\n/)
+      if command.nil?
+        # client_buffer.slice!(0, scanner.charpos)
+        raise IncompleteCommand
+      end
+
+      command.split.map(&:strip)
     end
 
     # We're not parsing integers, errors or simple strings since none of the implemented
@@ -184,7 +193,7 @@ module Redis
       case type_char
       when '$'
         expected_length = scanner.scan_until(/\r\n/)
-        raise IncompleteCommand, scanner.string if expected_length.nil?
+        raise IncompleteCommand if expected_length.nil?
 
         expected_length = expected_length.to_i
         # Redis does not error on length == 0
@@ -192,14 +201,13 @@ module Redis
 
         bulk_string = scanner.rest.slice(0, expected_length)
 
-        raise IncompleteCommand, scanner.string if bulk_string.nil? ||
-                                                   bulk_string.length != expected_length
+        raise IncompleteCommand if bulk_string.nil? || bulk_string.length != expected_length
 
         scanner.pos += bulk_string.bytesize + 2
         bulk_string
       when '*'
         expected_length = scanner.scan_until(/\r\n/)
-        raise IncompleteCommand, scanner.string if expected_length.nil?
+        raise IncompleteCommand if expected_length.nil?
 
         expected_length = expected_length.to_i
         # Redis does not return for zero or less array lengths
@@ -208,10 +216,10 @@ module Redis
         array_result = []
 
         expected_length.times do
-          raise IncompleteCommand, scanner.string if scanner.eos?
+          raise IncompleteCommand if scanner.eos?
 
           parsed_value = parse_value_from_string(scanner)
-          raise IncompleteCommand, scanner.string if parsed_value.nil?
+          raise IncompleteCommand if parsed_value.nil?
 
           array_result << parsed_value
         end
