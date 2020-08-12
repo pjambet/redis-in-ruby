@@ -18,15 +18,13 @@ One such client is the `redis-cli` utility, that ships with Redis, it'll look li
 
 In this demo the client crashes when we attempt to use the `DEL` command. This is because the command is not implemented by the server
 
-## The Redis Protocol V2 (RESP)
-
 [RESP v2][resp-spec] has been the protocol used by Redis since version 2.0, to quote the documentation:
 
 > 1.2 already supported it, but Redis 2.0 was the first version to talk only this protocol)
 
-### RESP3
+## RESP3
 
-This chapter will focus on RESP v2, but a new version, called RESP3 has been released in 2018. RESP3 improves many different aspects of RESP v2, such as adding new types for maps — often called dictionary, and a lot more. The spec is [on GitHub][resp3-spec] and explains in details [the background behind it][resp3-spec-background].
+RESP v2 is the default version, but not the latest one. RESP3 has been released in 2018, it improves many different aspects of RESP v2, such as adding new types for maps — often called dictionary — and a lot more. The spec is [on GitHub][resp3-spec] and explains in details [the background behind it][resp3-spec-background].
 RESP3 is supported as of Redis 6.0, as indicated in [the release notes][release-notes-6-0]:
 
 > Redis now supports a new protocol called RESP3, which returns more semantical replies: new clients using this protocol can understand just from the reply what type to return to the calling program.
@@ -72,19 +70,22 @@ The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a
 (error) NOPROTO unsupported protocol version
 ```
 
-Adding support for the `HELLO` command and both protocols, RESP v2 and RESP3 might be added later on but it's not currently on the initial roadmap of this online book.
+Support for the `HELLO` command and RESP3 might be added later on but it's not currently on the roadmap of this online book.
 
-### Back to RESP v2
+## Back to RESP v2
 
-The [official specification][redis-spec] goes into details about the protocol and is still reasonably short and approachable, so feel free to read it, but here are the main elements that will drive the changes to our `RedisServer` class:
-
-
-#### Inline Protocol
-
-Redis also supports a convenient inline mode
+The [official specification][resp-spec] goes into details about the protocol and is still reasonably short and approachable, so feel free to read it, but here are the main elements that will drive the changes to our `RedisServer` class:
 
 
-#### The 5 data types
+### Pipelining
+
+RESP clients can send multiple requests at once and the RESP server will write multiple responses back, this is called [pipelining][redis-pipelining]. The only constraint is that commands must be processed in the same ordered they were received, so that clients can associate the responses back to each request.
+
+### Pub/Sub
+
+The semantics of RESP are different when a client subscribes to a topic using the `SUB` command. We have not yet implemented the `PUB` & `SUB` command and will therefore ignore their implications for now.
+
+### The 5 data types
 
 RESP v2 defines five data types:
 
@@ -104,7 +105,7 @@ The type of a serialized RESP data is determined by the first byte:
 
 The data that follows the type byte depends on each type, let's look at each of them one by one.
 
-##### Simple Strings
+**Simple Strings**
 
 A simple string cannot contain a new line. One its main use case is to return `OK` back to the client. The full format of a simple string is "A `+` character, followed directly by the content of the string, followed by a carriage return (often written as `CR` or `\r`) and a line feed (often written as `LF` or `\n`).
 
@@ -143,7 +144,7 @@ echo "SET 1 2" | nc -v localhost 6379 | hexdump -C
 
 Redis follows the Redis Protocol, that's a good start!
 
-##### Errors
+**Errors**
 
 Errors are very similar to simple strings, they also cannot contain new line characters. The main difference is that clients should treat them as errors instead of successful results. In languages with exceptions, a client library might decide to throw an exception when receiving an error from Redis. This is what [the official ruby library][redis-ruby-client] does.
 
@@ -163,13 +164,13 @@ There are more bytes, to represent the string: "Err wrong number of arguments fo
 
 And finally, the response ends with `0d0a`, respectively `CR` & `LF`.
 
-##### Integers
+**Integers**
 
 Integers have a similar representation to simple strings and errors. The actual integer comes after the `:` character and is followed by the `CR` & `LF` characters.
 
 An example of integer reply is with the `TTL` and `PTTL` commands
 
-The key `key-with-tll` was set with the command: `SET key-with-ttl value EX 1000`.
+The key `key-with-ttl` was set with the command: `SET key-with-ttl value EX 1000`.
 
 ```
 > echo "TTL key-with-ttl" | nc -c -v localhost 6379 | hexdump -C
@@ -187,7 +188,7 @@ The key `not-a-key` does not exist.
 00000005
 ```
 
-The key `key-without-tll` was set with the command: `SET key-without-ttl value`.
+The key `key-without-ttl` was set with the command: `SET key-without-ttl value`.
 
 ```
 > echo "TTL key-without-ttl" | nc -c -v localhost 6379 | hexdump -C
@@ -202,7 +203,7 @@ The rest of the data, before the `0d` & `0a` bytes, is the actual integer data, 
 
 A ruby client parsing this data would extract the string between `:` and `\r\n` and call `to_i` on it: `'988'.to_i == 988`.
 
-##### Bulk Strings
+**Bulk Strings**
 
 In order to work for any strings, bulk strings need to first declare their length, and only then the actual data. This lets the receiver know how many bytes to expect, instead of reading anything until it finds `CRLF` the way it does for a simple string.
 
@@ -210,10 +211,10 @@ The length of the string is sent directly after the dollar sign, and is delimite
 
 Interestingly, it seems like Redis does not care that much about the final `CRLF`, as long as it finds two characters there, it assumes it's the end of the bulk string and tries to process what comes after:
 
-The following first sends the command `GET a` to redis as a multi bulk string, followed by the non existent `NOT A COMMAND` in the inline format. The response first contains the `-1` integer, followed by the error.
+The following first sends the command `GET a` to redis as a multi bulk string, followed by the non existent command `NOT A COMMAND`. The response first contains the `-1` integer, followed by the error.
 
 ```
-irb(main):027:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\nabcNOT A COMMAND\r\n")
+irb(main):029:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\na\r\n*1\r\n$13\r\nNOT A COMMAND\r\n")
 => 35
 irb(main):028:0> socket.read_nonblock(1024, exception: false)
 => "$-1\r\n-ERR unknown command `NOT`, with args beginning with: `A`, `COMMAND`, \r\n"
@@ -222,18 +223,70 @@ irb(main):028:0> socket.read_nonblock(1024, exception: false)
 The following is handled identically by Redis, despite the fact the `a` bulk string is not terminated by `CRLF`. We can see that Redis ignored the `b` and `c` characters and proceeded with the following command, the non existent `NOT A COMMAND`. I am assuming that the code in charge of reading input first reads the length, then grabs that many bytes and jumps by two characters, regardless of what these characters are.
 
 ```
-irb(main):029:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\na\r\nNOT A COMMAND\r\n")
+irb(main):027:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\nabc*1\r\n$13\r\nNOT A COMMAND\r\n")
 => 35
 irb(main):030:0> socket.read_nonblock(1024, exception: false)
 => "$-1\r\n-ERR unknown command `NOT`, with args beginning with: `A`, `COMMAND`, \r\n"
 
 ```
 
-##### Arrays
+**Arrays**
 
-a
+Arrays can contain values of any types, including other nested arrays.
 
-#### Requests & Responses
+### Inline Protocol
+
+RESP's main mode of operation is following a request/response model described below. It also supports a simpler alternative, called "Inline Commands", which is useful for manual tests or interactions with a server. This is similar to how we've used `nc` in this book so far.
+
+Anything that does not start with a `*` character — which is the first character of an array, the format Redis expects for a command, more on that below — is treated as an inline command. Redis will read everything until a newline is detected and attempts to parse that as a command. This is essentially what we've been doing so far when implementing the `RedisServer` class.
+
+Let's try this quickly with `nc`:
+
+```
+> nc -c -v localhost 6379
+# ...
+SET 1 2
++OK
+GET 1
+$1
+2
+
+```
+
+As we're about to see, RESP's main mode of operations is more complicated. This complexity is necessary because inline commands are severely limited. It is impossible to store a key or a value that contains the carriage return and line feed characters since they're use as delimiters even though Redis does support any things as keys and values as seen in the following example:
+
+```
+> redis-cli
+127.0.0.1:6379> SET a-key "foo\nbar"
+OK
+127.0.0.1:6379> GET a-key
+"foo\nbar"
+```
+
+Let's double check with `nc` to see what Redis stored:
+
+```
+> nc -c -v localhost 6379
+# ...
+GET a-key
+$7
+foo
+bar
+
+```
+
+We could also use `hexdump` to triple check:
+
+```
+echo "GET a-key" | nc -c -v localhost 6379 | hexdump -C
+# ...
+00000000  24 37 0d 0a 66 6f 6f 0a  62 61 72 0d 0a           |$7..foo.bar..|
+0000000d
+```
+
+We can see the `0a` byte between `o`/`6f` & `b`/`62`
+
+### Requests & Responses
 
 We have not yet added support for pipelining and pub/sub, so we will ignore their impact on our implementation of the Redis Protocol for now. Future chapters will add support for these two supports and will follow the RESP specification.
 
@@ -269,3 +322,4 @@ d
 [redis-doc-hello]:http://redis.io/commands/hello
 [ascii-table]:http://www.asciitable.com/
 [redis-ruby-client]:https://github.com/redis/redis-rb
+[redis-pipelining]:https://redis.io/topics/pipelining
