@@ -12,7 +12,7 @@ require_relative './set_command'
 require_relative './ttl_command'
 require_relative './pttl_command'
 
-module Redis
+module BYORedis
 
   class Server
 
@@ -190,9 +190,10 @@ module Redis
 
     def parse_as_resp_bulk_string(scanner)
       type_char = scanner.getch
-      unless type_char== '$'
+      unless type_char == '$'
         raise ProtocolError, "ERR Protocol error: expected '$', got '#{ type_char }'"
       end
+
       expected_length = scanner.scan_until(/\r\n/)
       raise IncompleteCommand if expected_length.nil?
 

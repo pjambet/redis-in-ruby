@@ -1,7 +1,7 @@
 ---
-title: "Chapter 5 Redis Protocol Compatibility"
+title: "Chapter 5 - Redis Protocol Compatibility"
 date: 2020-08-14T10:53:06-04:00
-lastmod: 2020-08-14T10:53:10-04:00
+lastmod: 2020-08-17T13:28:40-04:00
 draft: false
 comment: false
 keywords: []
@@ -12,7 +12,7 @@ summary: "In this chapter we will focus on making RedisServer speak the Redis Pr
 
 By the end of this chapter `RedisServer` will speak [the Redis Protocol, `RESP v2`][resp-spec]. Doing this will allow any clients that was written to communicate with the real Redis to also communicate with our own server, granted that the commands it uses are within the small subset of the ones we implemented.
 
-One such client is the `redis-cli` utility, that ships with Redis, it'll look like this:
+One such client is the `redis-cli` utility that ships with Redis, it'll look like this:
 
 ![redis-cli-gif](/redis.gif/)
 
@@ -29,7 +29,7 @@ RESP3 is supported as of Redis 6.0, as indicated in [the release notes][release-
 
 > Redis now supports a new protocol called RESP3, which returns more semantical replies: new clients using this protocol can understand just from the reply what type to return to the calling program.
 
-The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a different protocol. As we can see below, only two versions are currently supported, 2 & 3. We can also see the new map type in action, `hello 2` returned an array with 14 items, representing 7 key/value pairs, whereas `hello 3` leveraged the new map type to return a map with 7 key/value pairs.
+The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a different protocol version. As we can see below, only two versions are currently supported, 2 & 3. We can also see the new map type in action, `hello 2` returned an array with 14 items, representing 7 key/value pairs, whereas `hello 3` leveraged the new map type to return a map with 7 key/value pairs.
 
 ``` bash
 127.0.0.1:6379> hello 2
@@ -70,11 +70,11 @@ The [`HELLO`][redis-doc-hello] command can be used to switch the connection to a
 (error) NOPROTO unsupported protocol version
 ```
 
-Support for the `HELLO` command and RESP3 might be added later on but it's not currently on the roadmap of this online book.
+Support for the `HELLO` command and RESP3 might be added in a later chapter but it's not currently on the roadmap of this online book.
 
 ## Back to RESP v2
 
-The [official specification][resp-spec] goes into details about the protocol and is still reasonably short and approachable, so feel free to read it, but here are the main elements that will drive the changes to our `RedisServer` class:
+The [official specification][resp-spec] goes into details about the protocol and is still reasonably short and approachable, so feel free to read it, but here are the main elements that will drive the changes to our server.
 
 
 ### The 5 data types
@@ -89,7 +89,7 @@ RESP v2 defines five data types:
 
 The type of a serialized RESP data is determined by the first byte:
 
-- Simple strings start with `+`
+- Simple Strings start with `+`
 - Errors start with `-`
 - Integers start with `:`
 - Bulk Strings start with `$`
@@ -99,11 +99,11 @@ The data that follows the type byte depends on each type, let's look at each of 
 
 **Simple Strings**
 
-A simple string cannot contain a new line. One of its main use case is to return `OK` back to the client. The full format of a simple string is "A `+` character, followed directly by the content of the string, followed by a carriage return (often written as `CR` or `\r`) and a line feed (often written as `LF` or `\n`).
+A Simple String cannot contain a new line. One of its main use cases is to return `OK` back to the client. The full format of a Simple String is "A `+` character, followed directly by the content of the string, followed by a carriage return (often written as `CR` or `\r`) and a line feed (often written as `LF` or `\n`).
 
 This is why Simple Strings cannot contain multiples lines, a newline would create confusion given that it is also use a delimiter.
 
-The `"OK"` string, returned by the `SET` command upon success is therefore serialized as `+OK\r\n`.
+The `"OK"` string, here shown in its JSON form, returned by the `SET` command upon success is therefore serialized as `+OK\r\n`.
 
 `redis-cli` does the work of detecting the type of the response and only shows us the actual string, `OK`, as we can see in the example below:
 
@@ -140,12 +140,12 @@ Redis follows the Redis Protocol, that's a good start!
 
 **Errors**
 
-Errors are very similar to simple strings, they also cannot contain new line characters. The main difference is that clients should treat them as errors instead of successful results. In languages with exceptions, a client library might decide to throw an exception when receiving an error from Redis. This is what [the official ruby library][redis-ruby-client] does.
+Errors are very similar to Simple Strings, they also cannot contain new line characters. The main difference is that clients should treat them as errors instead of successful results. In languages with exceptions, a client library might decide to throw an exception when receiving an error from Redis. This is what [the official ruby library][redis-ruby-client] does.
 
-Similarly to simple strings, errors end with a carriage return and a line feed, let's see it in action:
+Similarly to Simple Strings, errors end with a carriage return and a line feed, let's see it in action:
 
 ``` bash
-❯ echo "GET 1 2" | nc localhost 6379 | hexdump -C
+> echo "GET 1 2" | nc localhost 6379 | hexdump -C
 00000000  2d 45 52 52 20 77 72 6f  6e 67 20 6e 75 6d 62 65  |-ERR wrong numbe|
 00000010  72 20 6f 66 20 61 72 67  75 6d 65 6e 74 73 20 66  |r of arguments f|
 00000020  6f 72 20 27 67 65 74 27  20 63 6f 6d 6d 61 6e 64  |or 'get' command|
@@ -159,7 +159,7 @@ And finally, the response ends with `0d0a`, respectively `CR` & `LF`.
 
 **Integers**
 
-Integers have a similar representation to simple strings and errors. The actual integer comes after the `:` character and is followed by the `CR` & `LF` characters.
+Integers have a similar representation to Simple Strings and errors. The actual integer comes after the `:` character and is followed by the `CR` & `LF` characters.
 
 An example of integer reply is with the `TTL` and `PTTL` commands
 
@@ -190,7 +190,7 @@ The key `key-without-ttl` was set with the command: `SET key-without-ttl value`.
 00000005
 ```
 
-All of these responses start with the `3a` byte, which is equivalent to 58, aka `:`. In the two cases where the response is a negative value, `-2` for a non existent key and `-1` for an existing key without a ttl the next byte is `2d`, equivalent to 45, aka `-`.
+All of these responses start with the `3a` byte, which is equivalent to 58, aka `:`. In the two cases where the response is a negative value, `-2` for a non existent key and `-1` for an existing key without a ttl, the next byte is `2d`, equivalent to 45, aka `-`.
 
 The rest of the data, before the `0d` & `0a` bytes, is the actual integer data, in ASCII format, `31` is the hex equivalent to 49, which is the character `1`, 32 is the hex equivalent to 50, which is the character `2`. `39` & `38` are respectively the hex equivalent to 57 & 56, the characters `9` & `8`.
 
@@ -202,14 +202,19 @@ In order to work for any strings, Bulk Strings need to first declare their lengt
 
 The length of the string is sent directly after the dollar sign, and is delimited by `CRLF`, the following is the actual string data, and another `CRLF` to end the string.
 
+The RESP Bulk String representation of the JSON string `"GET"` is: `$3\r\nGET\r\n`.
+
 Interestingly, it seems like Redis does not care that much about the final `CRLF`, as long as it finds two characters there, it assumes it's the end of the Bulk String and tries to process what comes after.
 
-The following first sends the command `GET a` to Redis as a an array of Bulk Strings, followed by the non existent command `NOT A COMMAND`. The response first contains the `-1` integer, followed by the error.
+In the following example, we first send the command `GET a` to Redis over port 6379, as a an array of Bulk Strings, followed by the non existent command `NOT A COMMAND`. The response first contains the `-1` integer, followed by the error.
 
 ```ruby
-irb(main):029:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\na\r\n*1\r\n$13\r\nNOT A COMMAND\r\n")
+irb(main):001:0> require 'socket'
+=> true
+irb(main):002:0> socket = TCPSocket.new 'localhost', 6379
+irb(main):004:0> socket.write("*2\r\n$3\r\nGET\r\n$1\r\na\r\n*1\r\n$13\r\nNOT A COMMAND\r\n")
 => 35
-irb(main):028:0> socket.read_nonblock(1024, exception: false)
+irb(main):005:0> socket.read_nonblock(1024, exception: false)
 => "$-1\r\n-ERR unknown command `NOT`, with args beginning with: `A`, `COMMAND`, \r\n"
 ```
 
@@ -252,11 +257,27 @@ We can include newlines and indentation for the sake of readability
 
 RESP has a special notation for the NULL array: `*-1\r\n`. The existence of two different NULL values, one for Bulk Strings and one for Bulk Arrays is confusing and is one of the many changes in RESP3. RESP3 has a single null value.
 
+### Requests & Responses
+
+As we saw in a previous example, requests are sent as arrays of Bulk Strings. The command `GET a-key` should be sent as `*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n`, or in plain English: "An array of length 2, where the first string is of length 3 and is GET and the second string is of length 5 and is a-key".
+
+We can illustrate this by sending this string with the `TCPSocket` class in ruby:
+
+```ruby
+irb(main):001:0> require 'socket'
+=> true
+irb(main):002:0> socket = TCPSocket.new 'localhost', 6379
+irb(main):003:0> socket.write "*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n"
+=> 24
+irb(main):004:0> socket.read_nonblock 1024
+=> "$-1\r\n"
+```
+
 ### Inline Protocol
 
-RESP's main mode of operation is following a request/response model described below. It also supports a simpler alternative, called "Inline Commands", which is useful for manual tests or interactions with a server. This is similar to how we've used `nc` in this book so far.
+RESP's main mode of operation is following a request/response model described above. It also supports a simpler alternative, called "Inline Commands", which is useful for manual tests or interactions with a server. This is similar to how we've used `nc` in this book so far.
 
-Anything that does not start with a `*` character — which is the first character of an array, the format Redis expects for a command, more on that below — is treated as an inline command. Redis will read everything until a newline is detected and attempts to parse that as a command. This is essentially what we've been doing so far when implementing the `RedisServer` class.
+Anything that does not start with a `*` character — which is the first character of an array, the format Redis expects for a command — is treated as an inline command. Redis will read everything until a newline is detected and attempts to parse that as a command. This is essentially what we've been doing so far when implementing the `RedisServer` class.
 
 Let's try this quickly with `nc`:
 
@@ -271,7 +292,7 @@ $1
 
 ```
 
-As we're about to see, RESP's main mode of operations is more complicated. This complexity is necessary because inline commands are severely limited. It is impossible to store a key or a value that contains the carriage return and line feed characters since they're use as delimiters even though Redis does support any strings as keys and values as seen in the following example:
+The reason RESP's main mode of operations is more complicated is because inline commands are severely limited. It is impossible to store a key or a value that contains the carriage return and line feed characters since they're use as delimiters even though Redis does support any strings as keys and values as seen in the following example:
 
 ``` bash
 > redis-cli
@@ -319,22 +340,6 @@ $1
 
 Note that we're using the `-c` flags, which tells `nc` to send `CRLF` characters when we type the return key, instead of the default of `LF`. As we've seen above, for RESP arrays, RESP expects `CRLF` delimiters.
 
-### Requests & Responses
-
-As we saw in the last example, requests are send as arrays of Bulk Strings. The command `GET a-key` should be sent as `*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n`, or in plain English: "An array of length 2, where the first string is of length 3 and is GET and the second string is of length 5 and is a-key".
-
-We can illustrate this by sending this string with the `TCPSocket` class in ruby:
-
-```ruby
-irb(main):001:0> require 'socket'
-=> true
-irb(main):002:0> socket = TCPSocket.new 'localhost', 6379
-irb(main):003:0> socket.write "*2\r\n$3\r\nGET\r\n$5\r\na-key\r\n"
-=> 24
-irb(main):004:0> socket.read_nonblock 1024
-=> "$-1\r\n"
-```
-
 ### Pub/Sub
 
 Redis supports a [Publish/Subscribe messaging paradigm][pub-sub-wikipedia], with the `SUBSCRIBE`, `UNSUBSCRIBE` &  `PUBLISH` commands, documented on [Pub/Sub page][redis-doc-pub-sub] of the official documentation.
@@ -363,7 +368,7 @@ The response we get from the server is a string containing the two responses, fi
 
 ## Making our Server speak RESP
 
-As far as I know there is no official test suite that we could run our server against to validate that it correctly follows RESP. What we can do instead is rely on `redis-cli` as a way to test the RESP implementation of our `Redis::Server` class. Let's see what happens when we try it with the current server, first let's start the server from Chapter 4:
+As far as I know there is no official test suite that we could run our server against to validate that it correctly follows RESP. What we can do instead is rely on `redis-cli` as a way to test the RESP implementation of our server. Let's see what happens when we try it with the current server. First let's start the server from Chapter 4:
 
 ```
 DEBUG=t ruby -r"./server" -e "RedisServer.new"
@@ -388,7 +393,7 @@ D, [2020-08-12T16:11:42.462036 #91271] DEBUG -- : Response: (error) ERR unknown 
 
 The server received the string `"*1\r\n$7\r\nCOMMAND\r\n"`, which is the RESP representation of the string `"COMMAND"` in a single item array, `[ "COMMAND" ]` in JSON.
 
-The [`COMMAND` command][redis-doc-command] is useful when running Redis [in a cluster][redis-doc-cluster]. Given that we have not yet implementer cluster capabilities, going into details about the `COMMAND` command is a little bit out of scope. In short the `COMMAND` command is useful to provide meta information about each command, such as information about the positions of they keys. This is useful because in cluster mode, clients have to route requests to the different nodes in the cluster. It is common for a command to have the key as the second element, the one coming directly after the command itself. This happens to be the case for all the commands we've implemented so far. But some commands have different semantics. For instance [`MSET`][redis-doc-mset] can contain multiple keys, so clients need to know where the keys are in the command. While rare, some commands have the first key at a different index, this is the case for the [`OBJECT` command][redis-doc-object].
+The [`COMMAND` command][redis-doc-command] is useful when running Redis [in a cluster][redis-doc-cluster]. Given that we have not yet implementer cluster capabilities, going into details about the `COMMAND` command is a little bit out of scope. In short the `COMMAND` command is useful to provide meta information about each command, such as information about the positions of the keys. This is useful because in cluster mode, clients have to route requests to the different nodes in the cluster. It is common for a command to have the key as the second element, the one coming directly after the command itself. This happens to be the case for all the commands we've implemented so far. But some commands have different semantics. For instance [`MSET`][redis-doc-mset] can contain multiple keys, so clients need to know where the keys are in the command. While rare, some commands have the first key at a different index, this is the case for the [`OBJECT` command][redis-doc-object].
 
 Back to `redis-cli` running against our Redis server, if you then try to send a command, `GET 1` for instance, `redis-cli` will crash after printing the following error:
 
@@ -399,7 +404,7 @@ Error: Protocol error, got "(" as reply type byte
 This is because our server writes the string `(nil)` when it does find an try for the given key. `(nil)` is what `redis-cli` displays when it receives a null Bulk String, as we can see with the following example, we first send the `GET 1` command with `redis-cli` and then with `nc` and observe the response in each case:
 
 ``` bash
-❯ nc -c localhost 6379
+> nc -c localhost 6379
 GET 1
 $-1
 # ...
@@ -418,11 +423,11 @@ Let's get to it!
 
 **Modules & Namespaces**
 
-Most of the changes will take place in `server.rb`. As the codebase started to grow, I thought it would be easier to start using ruby modules, so I nested the `Server` class under the `Redis` namespace. This will allow us to create other classes & modules under the `Redis` namespace as well. All the other classes have been updated to be under the `Redis` namespace as well, e.g. `ExpireHelper` is now `Redis::ExpireHelper`:
+Most of the changes will take place in `server.rb`. As the codebase started to grow, I thought it would be easier to start using ruby modules, so I nested the `Server` class under the `Redis` namespace. This will allow us to create other classes & modules under the `Redis` namespace as well. All the other classes have been updated to be under the `Redis` namespace as well, e.g. `ExpireHelper` is now `BYORedis::ExpireHelper`. `BYO` stands for **B**uild **Y**our **O**wn. I'm purposefully not using `Redis` as it is already used by the popular [`redis`][redis-gem] gem. We're not using both at the same time in the same project for now, so it wouldn't really have been a problem. But say that you would like to use the `redis` gem to communicate with the server we're building, we will prevent any kind of unexpected errors by using different names.
 
 ``` ruby
 # expire_helper.rb
-module Redis
+module BYORedis
   module ExpireHelper
 
     def self.check_if_expired(data_store, expires, key)
@@ -435,7 +440,7 @@ _listing 5.1: Nesting ExpireHelper under the Redis module_
 
 **Storing partial client buffer**
 
-As of the previous chapter we never stored the client input. We would read from the socket when `IO.select` would tell us there is something to read. Read until the end of the line, and process the result as a command.
+As of the previous chapter we never stored the client input. We would read from the socket when `IO.select` would tell us there is something to read, read until the end of the line, and process the result as a command.
 
 It turns out that this approach is a bit too aggressive. Clients should be able to send a single command in two parts, there's no reason to treat that as an error.
 
@@ -486,7 +491,7 @@ _listing 5.3: Updated handling of socket in server.rb_
 
 **Parsing commands as RESP Arrays**
 
-More things need to change in `process_poll_events`. We first append the result from `read_nonblock` to `client.buffer`, which will allow us to continue appending until we accumulate enough to real a whole command. We then delegate the processing of `client.buffer` to a different method, `split_commands`:
+More things need to change in `process_poll_events`. We first append the result from `read_nonblock` to `client.buffer`, which will allow us to continue appending until we accumulate enough to read a whole command. We then delegate the processing of `client.buffer` to a different method, `split_commands`:
 
 ``` ruby
 # server.rb
@@ -532,7 +537,7 @@ _listing 5.4 Updated handling of client input in server.rb_
 
 `split_commands` is in charge of splitting the client input into multiple commands, which is necessary to support pipelining. As a reminder, since we're adding support pipelining, we have to assume that the content of `client.buffer` might contain more than one command, and if so, we want to process them all in the order we received them, and write the responses back, in the same order.
 
-It also handles the two different versions of commands, inline, or "regular", as RESP Arrays. We use the `StringScanner` class, which is really convenient to process data from a string, from left to right. We call `String#dup` on the argument to `StringScanner` to make sure that the `StringScanner` gets its own instance. As we iterate through `client.buffer`, every time we find a whole command, we want to remove it from the client input. We do this with `client_buffer.slice!(0, scanner.charpos)`. If client_buffer contains two commands, i.e. `GET a\r\nGET b\r\n`, once we processed `GET a`, we want to remove the first 7 characters from the string: `GET a\r\n`, so that we never attempt to process them again. Note that we only do this after yielding, meaning that we only ever treat a command as done after we successfully wrote to the socket.
+It also handles the two different versions of commands, inline, or "regular", as RESP Arrays. We use the `StringScanner` class, which is really convenient to process data from a string, from left to right. We call `String#dup` on the argument to `StringScanner` to make sure that the `StringScanner` gets its own instance. As we iterate through `client.buffer`, every time we find a whole command, we want to remove it from the client input. We do this with `client_buffer.slice!(0, scanner.charpos)`. If `client_buffer` contains two commands, i.e. `GET a\r\nGET b\r\n`, once we processed `GET a`, we want to remove the first 7 characters from the string: `GET a\r\n`, so that we never attempt to process them again. Note that we only do this after yielding, meaning that we only ever treat a command as done after we successfully wrote to the socket.
 
 We first peek at the first character, if it is `*`, the following should be a RESP array, and we process it as such. Otherwise, we assume that we're dealing with an inline command. Each branch delegates to a method handling the parsing of the string.
 
@@ -594,11 +599,11 @@ If the string returned is not `nil`, it contains the string, and in this case, w
 
 If `nil` is returned, this means that we reached the end of the string without encountering `CR` & `LF`, and instead of treating this as a client error, we raise an `IncompleteCommand` error, to give the client a change to write the missing parts of the command later on.
 
-`expected_length` will contain a string composed of the characters before `CRLF` & the `CRLF` characters. For instance, if the scanner was created with the string `$3\r\nabc\r\n` — The Bulk String representation of the string `"3"` — `expected_length` would be equal to `"3\r\n"`. The Ruby `String#to_i` is flexible enough that we don't need to explicitly remove the `CR` & `LF` characters from the String, `"3\r\n".to_i` returns `3`.
+`expected_length` will contain a string composed of the characters before `CRLF` & the `CRLF` characters. For instance, if the scanner was created with the string `$3\r\nabc\r\n` — The Bulk String representation of the string `"3"` — `expected_length` would be equal to `"3\r\n"`. The Ruby `String#to_i` is not strict enough here. It returns `0` in a lot of cases where we'd want an error instead, such as `"abc".to_i == 0`. We instead use the `Kernel.Integer` method, which raises an `ArgumentError` exception with invalid strings. We catch `ArgumentError` and raise a `ProtocolError` instead.
 
 In the next step we iterate as many times as the value of `expected_length` with `expected_length.times`. We start each iteration by checking if we reached the end of the string with `eos?`. If we did, then instead of returning a protocol error, we raise an `IncompleteCommand` exception. This gives a chance to the client to send the remaining elements of the array later on.
 
-As mentioned above, a request to Redis is always an array of Bulk Strings, so we attempt to parse all the elements as strings, by calling `parse_as_bulk_string` with the same `scanner` instance. Before looking at the method, let's see how the two new exceptions `IncompleteCommand` & `ProtocolError` are defined and handlded:
+As mentioned above, a request to Redis is always an array of Bulk Strings, so we attempt to parse all the elements as strings, by calling `parse_as_bulk_string` with the same `scanner` instance. Before looking at the method, let's see how the two new exceptions `IncompleteCommand` & `ProtocolError` are defined and handled:
 
 
 `IncompleteCommand` & `ProtocolError` are custom exceptions defined at the top of the file:
@@ -615,11 +620,11 @@ end
 _listing 5.6 The new exceptions in server.rb_
 
 
-`RESPError` is defined in `types.rb`:
+`RESPError` is defined in `resp_types.rb`:
 
 ``` ruby
 # resp_types.rb
-module Redis
+module BYORedis
   RESPError = Struct.new(:message) do
     def serialize
       "-#{ message }\r\n"
@@ -649,7 +654,7 @@ end
 ```
 _listing 5.8 Handling the new exceptions in server.rb_
 
-We don't write anything back `IncompleteCommand`, we assume that the client has not finished sending the command. On the other hand, for `ProtocolError`, we write an error back to the client, following the format of a RESP error and we disconnect the client. This is what Redis does too.
+We don't write anything back when encountering an `IncompleteCommand` exception, we assume that the client has not finished sending the command. On the other hand, for `ProtocolError`, we write an error back to the client, following the format of a RESP error and we disconnect the client. This is what Redis does too.
 
 Back to `parse_as_resp_bulk_string`:
 
@@ -657,9 +662,10 @@ Back to `parse_as_resp_bulk_string`:
 # server.rb
 def parse_as_resp_bulk_string(scanner)
   type_char = scanner.getch
-  unless type_char== '$'
+  unless type_char == '$'
     raise ProtocolError, "ERR Protocol error: expected '$', got '#{ type_char }'"
   end
+
   expected_length = scanner.scan_until(/\r\n/)
   raise IncompleteCommand if expected_length.nil?
 
@@ -675,7 +681,7 @@ end
 _listing 5.9 Parsing Bulk Strings_
 
 
-The first step is calling `StringScanner#getch`, it moves the internal cursor of the scanner by one character and returns it. If the first character is `$`, we expect a Bulk String, if it is `*`, we expect a bulk array and any other character is a protocol error.
+The first step is calling `StringScanner#getch`, it moves the internal cursor of the scanner by one character and returns it. If the first character is `$`, we received a Bulk String as expected. Anything else is an error.
 
 Redis accepts empty strings, and while it may be unusual, it is possible for a Redis key to be an empty string, and a value can also be an empty string. If the expected length is negative, then we stop and return a `ProtocolError`
 
@@ -683,7 +689,7 @@ The next step is extracting the actual string. `StringScanner` maintains an inte
 
 If the result of this operation is `nil` or shorter than the expected length, we don't want to treat it as an error yet, since it is possible for the clients to write the missing elements of the command, so we raise an `IncompleteCommand`, in the hope that the client will send the missing parts later on.
 
-The final step is to advance the cursor position in the `StringScanner` instance. We do this with the `StringScanner#pos=` method. Notice how we use the `bytesize` methods and two to it. We use `bytesize` instead of length to handle characters that span over multiple bytes, such as [CJK characters][wikipedia-cjk], accentuated characters, emojis and many others. Let's look at the difference in `irb`:
+The final step is to advance the cursor position in the `StringScanner` instance. We do this with the `StringScanner#pos=` method. Notice how we use the `bytesize` methods and two to it. We use `bytesize` instead of `length` to handle characters that span over multiple bytes, such as [CJK characters][wikipedia-cjk], accentuated characters, emojis and many others. Let's look at the difference in `irb`:
 
 ``` ruby
 irb(main):045:1* def print_length_and_bytesize(str)
@@ -716,11 +722,11 @@ If a client had sent `你` has a Bulk String, we'd expect it to pass the length 
 
 ### Updating the command responses
 
-The commands we've implemented so far, `GET`, `SET`, `TTL` & `PTTL` do not return data that follows the format defined in RESP. `GET` needs to return Bulk Strings, `SET` always returns the Simple String `OK` and the last two `TTL` & `PTTL` return integers. We will first create new classes to wrap the process of serializing strings and integers to their matching resp format:
+The commands we've implemented so far, `GET`, `SET`, `TTL` & `PTTL` do not return data that follows the format defined in RESP. `GET` needs to return Bulk Strings, `SET` returns the Simple String `OK` or the null Bulk String if it didn't set the value and the last two, `TTL` & `PTTL`, return integers. We will first create new classes to wrap the process of serializing strings and integers to their matching RESP format:
 
 ``` ruby
 # resp_types.rb
-module Redis
+module BYORedis
   # ...
   RESPInteger = Struct.new(:underlying_integer) do
     def serialize
@@ -728,7 +734,7 @@ module Redis
     end
 
     def to_i
-      underlying_integer
+      underlying_integer.to_i
     end
   end
 
@@ -794,9 +800,9 @@ We use the `String#freeze` method to prevent accidental modifications of the val
 ``` ruby
 irb(main):001:0> require_relative './server'
 => true
-irb(main):002:0> Redis::NULL_BULK_STRING
+irb(main):002:0> BYORedis::NULL_BULK_STRING
 => "$-1\r\n"
-irb(main):003:0> Redis::NULL_BULK_STRING << "a"
+irb(main):003:0> BYORedis::NULL_BULK_STRING << "a"
 Traceback (most recent call last):
         4: from /Users/pierre/.rbenv/versions/2.7.1/bin/irb:23:in `<main>'
         3: from /Users/pierre/.rbenv/versions/2.7.1/bin/irb:23:in `load'
@@ -808,23 +814,23 @@ FrozenError (can't modify frozen String: "$-1\r\n")
 That said, do note that "constants" in Ruby aren't really "constants", it is possible to reassign the value at runtime:
 
 ``` ruby
-irb(main):004:0> Redis::NULL_BULK_STRING = "something else"
-(irb):4: warning: already initialized constant Redis::NULL_BULK_STRING
+irb(main):004:0> BYORedis::NULL_BULK_STRING = "something else"
+(irb):4: warning: already initialized constant BYORedis::NULL_BULK_STRING
 /Users/pierre/dev/redis-in-ruby/code/chapter-5/resp_types.rb:32: warning: previous definition of NULL_BULK_STRING was here
-irb(main):005:0> Redis::NULL_BULK_STRING
+irb(main):005:0> BYORedis::NULL_BULK_STRING
 => "something else"
 ```
 
 While it doesn't prevent all kinds of weird runtime issues, I do like the use of `String#freeze` to at least be explicit about the nature of the value, signifying that it is not supposed to be modified.
 
 
-The `OK` Simple String is so common that I created a constant for it, `OKSimpleString`, so that it can be reused instead of having to allocate a new instance every time we need it. Only the `SetCommand` class uses it for now, but more commands use it, such as `LSET`, `MSET` and many others.
+The `OK` Simple String is so common that I created a constant for it, `OKSimpleStringInstance`, so that it can be reused instead of having to allocate a new instance every time we need it. Only the `SetCommand` class uses it for now, but more commands use it, such as `LSET`, `MSET` and many others.
 
 Let's start with `GET`:
 
 ``` ruby
 # get_command.rb
-module Redis
+module BYORedis
   class GetCommand
 
     # ...
@@ -848,7 +854,7 @@ end
 ```
 _listing 5.11 Updated response in GetCommand_
 
-Now that `Redis::GetCommand` has been updated, let's tackle `SetCommand`:
+Now that `BYORedis::GetCommand` has been updated, let's tackle `SetCommand`:
 
 ``` ruby
 # set_command.rb
@@ -882,7 +888,7 @@ end
 ```
 _listing 5.12 Updated response in SetCommand_
 
-The `SET` command has two possible outputs, either the nil string if the outcome was that nothing was set, as a result of the `NX` or `XX` options, or the Simple String `OK` if the outcome was a successful set. This is where the special case instances `NullBulkStringInstance` & `OKSimpleStringInstance` come in handy. By returning them here, the code in `server.rb` can leverage duck typing and call the `serialize` method, but under the hood, the same strings will be used, `Redis::OK_SIMPLE_STRING` & `Redis::NULL_BULK_STRING`. This is a very small optimization, given how common it is to call the `SET` command, it is interesting to think about things like that to prevent unnecessary work on the server.
+The `SET` command has two possible outputs, either the nil string if the outcome was that nothing was set, as a result of the `NX` or `XX` options, or the Simple String `OK` if the outcome was a successful set. This is where the special case instances `NullBulkStringInstance` & `OKSimpleStringInstance` come in handy. By returning them here, the code in `server.rb` can leverage duck typing and call the `serialize` method, but under the hood, the same strings will be used, `BYORedis::OK_SIMPLE_STRING` & `BYORedis::NULL_BULK_STRING`. This is a very small optimization, but given how common it is to call the `SET` command, it is interesting to think about things like that to prevent unnecessary work on the server.
 
 And finally we need to update `TtlCommand` and `PttlCommand`
 
@@ -929,7 +935,7 @@ _listing 5.13 Updated response in PttlCommand & TtlCommand_
 
 ### Case insensitivity
 
-It is not explicitly mentioned in the RESP v2 documentation, but Redis treats commands and options as case insensitive. The following are valid: `get 1`, `GeT 1`, `set key value EX 1 nx`.
+It is not explicitly mentioned in the RESP v2 documentation, but Redis treats commands and options as case insensitive. The following examples are all valid: `get 1`, `GeT 1`, `set key value EX 1 nx`.
 
 In order to apply the same handling logic, we changed the keys in the `COMMANDS` constant to be lower case, and we always lower case the client input when attempting to find a handler for the command:
 
@@ -954,9 +960,9 @@ def handle_client_command(command_parts)
   # ...
 end
 ```
-_listing 5.14 Updates for case insensitivity in Redis::Server_
+_listing 5.14 Updates for case insensitivity in BYORedis::Server_
 
-We also need to update the `Redis::SetCommand` class to handle options regardless of the case chosen by clients:
+We also need to update the `BYORedis::SetCommand` class to handle options regardless of the case chosen by clients:
 
 ``` ruby
 # set_command.rb
@@ -992,7 +998,7 @@ In order to implement `COMMAND`, we added a describe method to each of the `*Com
 
 ``` ruby
 # command_command.rb
-module Redis
+module BYORedis
   class CommandCommand
 
     def initialize(_data_store, _expires, _args)
@@ -1090,11 +1096,21 @@ _listing 5.17 Updates for the COMMAND command in SetCommand, GetCommand, TtlComm
 
 ### test.rb & test_helper.rb
 
-Testing the `Redis::Server` class is becoming more and more complicated, in order to keep things clean, I moved a lot of the helper method to the `test_helper.rb` file, so that `test.rb` only contains the actual tests.
+Testing the `BYORedis::Server` class is becoming more and more complicated, in order to keep things clean, I moved a lot of the helper method to the `test_helper.rb` file, so that `test.rb` only contains the actual tests.
 
-The `assert_command_results` helper has been updated to handle the RESP format. For the sake of simplicity, it assumes that the data is not serialized and does that for you. This allows us to write simpler assertions such as ...
+The `assert_command_results` helper has been updated to handle the RESP format. For the sake of simplicity, it assumes that the data is not serialized and does that for you. This allows us to write simpler assertions such as:
 
-I also added a new assertion helper, `assert_multipart_command_results`. It allows a little bit more flexibility around expectations for commands sent through multiple `write` calls. Instead of being a single command like in `assert_command_results`, first element of the pair is itself an array of strings, each of them representing a sequence of characters that will be sent to the server. This is handy to test pipelining as well as edge cases with regard to RESP.
+``` ruby
+assert_command_results [
+  [ 'SET 1 3 NX EX 1', '+OK' ],
+  [ 'GET 1', '3' ],
+  [ 'SET 1 3 XX keepttl', '+OK' ],
+]
+```
+
+and the `assert_command_results` will serialize the commands as RESP Arrays for us.
+
+I also added a new assertion helper, `assert_multipart_command_results`. It allows a little bit more flexibility around expectations for commands sent through multiple `write` calls. Instead of being a single command like in `assert_command_results`, the first element of the pair is itself an array of strings, each of them representing a sequence of characters that will be sent to the server. This is handy to test pipelining as well as edge cases with regard to RESP.
 
 ``` ruby
 # test_helper.rb
@@ -1137,7 +1153,7 @@ def assert_command_results(command_result_pairs)
       command_string = if command.start_with?('*')
                          command
                        else
-                         Redis::RESPArray.new(command.split).serialize
+                         BYORedis::RESPArray.new(command.split).serialize
                        end
       server_socket.write command_string
 
@@ -1158,7 +1174,7 @@ def assert_response(expected_result, response)
     if expected_result && !%w(+ - : $ *).include?(expected_result[0])
       # Convert to a Bulk String unless it is a Simple String (starts with a +)
       # or an error (starts with -)
-      expected_result = Redis::RESPBulkString.new(expected_result).serialize
+      expected_result = BYORedis::RESPBulkString.new(expected_result).serialize
     end
 
     if expected_result && !expected_result.end_with?("\r\n")
@@ -1192,7 +1208,7 @@ rescue Errno::ECONNRESET
 end
 
 def to_query(*command_parts)
-  [ Redis::RESPArray.new(command_parts).serialize ]
+  [ BYORedis::RESPArray.new(command_parts).serialize ]
 end
 ```
 _listing 5.18 The new test helpers in test_helper.rb_
@@ -1302,3 +1318,4 @@ As usual, the code [is available on GitHub](https://github.com/pjambet/redis-in-
 [redis-doc-lrange]:https://redis.io/commands/lrange
 [chapter-7]:/post/chapter-7
 [redis-doc-cluster]:https://redis.io/topics/cluster-tutorial
+[redis-gem]:https://github.com/redis/redis-rb

@@ -34,7 +34,7 @@ def with_server
     end
 
     begin
-      Redis::Server.new
+      BYORedis::Server.new
     rescue Interrupt => e
       # Expected code path given we call kill with 'INT' below
     end
@@ -97,7 +97,7 @@ def assert_command_results(command_result_pairs)
       command_string = if command.start_with?('*')
                          command
                        else
-                         Redis::RESPArray.new(command.split).serialize
+                         BYORedis::RESPArray.new(command.split).serialize
                        end
       server_socket.write command_string
 
@@ -118,7 +118,7 @@ def assert_response(expected_result, response)
     if expected_result && !%w(+ - : $ *).include?(expected_result[0])
       # Convert to a Bulk String unless it is a simple string (starts with a +)
       # or an error (starts with -)
-      expected_result = Redis::RESPBulkString.new(expected_result).serialize
+      expected_result = BYORedis::RESPBulkString.new(expected_result).serialize
     end
 
     if expected_result && !expected_result.end_with?("\r\n")
@@ -152,5 +152,5 @@ rescue Errno::ECONNRESET
 end
 
 def to_query(*command_parts)
-  [ Redis::RESPArray.new(command_parts).serialize ]
+  [ BYORedis::RESPArray.new(command_parts).serialize ]
 end

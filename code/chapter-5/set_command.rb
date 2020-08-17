@@ -1,4 +1,4 @@
-module Redis
+module BYORedis
   class SetCommand
 
     ValidationError = Class.new(StandardError)

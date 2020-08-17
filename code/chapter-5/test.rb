@@ -2,7 +2,7 @@
 
 require_relative './test_helper'
 
-describe 'Redis::Server' do
+describe 'BYORedis::Server' do
   describe 'when initialized' do
     it 'listens on port 2000' do
       with_server do
@@ -27,7 +27,7 @@ describe 'Redis::Server' do
   describe 'case sensitivity' do
     it 'ignores it' do
       assert_command_results [
-        [ 'gEt 1', Redis::NULL_BULK_STRING ],
+        [ 'gEt 1', BYORedis::NULL_BULK_STRING ],
         [ 'set 1 2', '+OK' ],
         [ 'get 1', '2' ],
       ]
@@ -43,7 +43,7 @@ describe 'Redis::Server' do
 
     it 'returns (nil) for unknown keys' do
       assert_command_results [
-        [ 'GET 1', Redis::NULL_BULK_STRING ],
+        [ 'GET 1', BYORedis::NULL_BULK_STRING ],
       ]
     end
 
@@ -142,7 +142,7 @@ describe 'Redis::Server' do
         [ 'SET 1 3 EX 1', '+OK' ],
         [ 'GET 1', '3' ],
         [ 'sleep 1' ],
-        [ 'GET 1', Redis::NULL_BULK_STRING ],
+        [ 'GET 1', BYORedis::NULL_BULK_STRING ],
       ]
     end
 
@@ -157,7 +157,7 @@ describe 'Redis::Server' do
         [ 'SET 1 3 PX 100', '+OK' ],
         [ 'GET 1', '3' ],
         [ 'sleep 0.1' ],
-        [ 'GET 1', Redis::NULL_BULK_STRING ],
+        [ 'GET 1', BYORedis::NULL_BULK_STRING ],
       ]
     end
 
@@ -170,15 +170,15 @@ describe 'Redis::Server' do
     it 'handles the NX option' do
       assert_command_results [
         [ 'SET 1 2 nX', '+OK' ],
-        [ 'SET 1 2 nx', Redis::NULL_BULK_STRING ],
-        [ 'SET 1 2 NX', Redis::NULL_BULK_STRING ],
-        [ 'SET 1 2 Nx', Redis::NULL_BULK_STRING ],
+        [ 'SET 1 2 nx', BYORedis::NULL_BULK_STRING ],
+        [ 'SET 1 2 NX', BYORedis::NULL_BULK_STRING ],
+        [ 'SET 1 2 Nx', BYORedis::NULL_BULK_STRING ],
       ]
     end
 
     it 'handles the XX option' do
       assert_command_results [
-        [ 'SET 1 2 XX', Redis::NULL_BULK_STRING ],
+        [ 'SET 1 2 XX', BYORedis::NULL_BULK_STRING ],
         [ 'SET 1 2', '+OK' ],
         [ 'SET 1 2 XX', '+OK' ],
         [ 'SET 1 2 xx', '+OK' ],
@@ -200,7 +200,7 @@ describe 'Redis::Server' do
         [ 'SET 1 3 PX 100', '+OK' ],
         [ 'SET 1 2 KEEPTTL', '+OK' ],
         [ 'sleep 0.1' ],
-        [ 'GET 1', Redis::NULL_BULK_STRING ],
+        [ 'GET 1', BYORedis::NULL_BULK_STRING ],
       ]
     end
 

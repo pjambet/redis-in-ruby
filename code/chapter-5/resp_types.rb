@@ -1,4 +1,4 @@
-module Redis
+module BYORedis
   RESPError = Struct.new(:message) do
     def serialize
       "-#{ message }\r\n"
@@ -11,7 +11,7 @@ module Redis
     end
 
     def to_i
-      underlying_integer
+      underlying_integer.to_i
     end
   end
 

@@ -1,4 +1,4 @@
-module Redis
+module BYORedis
   class PttlCommand
 
     def initialize(data_store, expires, args)

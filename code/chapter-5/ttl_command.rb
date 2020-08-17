@@ -1,4 +1,4 @@
-module Redis
+module BYORedis
   class TtlCommand
 
     def initialize(data_store, expires, args)

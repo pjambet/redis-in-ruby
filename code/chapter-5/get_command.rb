@@ -1,4 +1,4 @@
-module Redis
+module BYORedis
   class GetCommand
 
     def initialize(data_store, expires, args)
