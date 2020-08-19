@@ -14,10 +14,10 @@ description: "List of all chapters"
 - [Chapter 3 - Multiple clients](/post/chapter-3-multiple-clients/)
 - [Chapter 4 - Adding the missing options to SET](/post/chapter-4-adding-missing-options-to-set/)
 - [Chapter 5 - Deeper dive in the Redis Protocol](/post/chapter-5-redis-protocol-compatibility/)
+- [Chapter 6 - Building a Hash Table](/post/chapter-6-building-a-hash-table/)
 
 Coming Soon
 
-- [Chapter 6 - Rewriting the hashing algorithm](/)
 - [Chapter 7 - Lists](/)
 - [Chapter 8 - Hashes](/)
 - [Chapter 9 - Sets & Sorted Sets](/)
