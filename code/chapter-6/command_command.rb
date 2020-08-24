@@ -4,8 +4,16 @@ module Redis
     def initialize(_data_store, _expires, _args)
     end
 
+    SORTED_COMMANDS = [
+      CommandCommand,
+      GetCommand,
+      SetCommand,
+      TtlCommand,
+      PttlCommand,
+    ]
+
     def call
-      RESPArray.new(Server::COMMANDS.map { |_, command_class| command_class.describe } )
+      RESPArray.new(SORTED_COMMANDS.map { |command_class| command_class.describe })
     end
 
     def self.describe

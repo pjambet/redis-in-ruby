@@ -119,7 +119,8 @@ class Dict
       p 'HERE'
       p table
       while entry
-        return entry if entry.key == key
+        return entry.value if entry.key == key
+
         entry = entry.next
       end
 
@@ -266,13 +267,10 @@ class Dict
 
   class HashTable
 
-    PTR_SIZE = ::Fiddle::SIZEOF_LONG
-
     attr_reader :table, :size, :sizemask
     attr_accessor :used
 
     def initialize(size)
-      # @table = Fiddle::Pointer.malloc(size * PTR_SIZE)
       @table = size == 0 ? nil : Array.new(size)
       @size = size
       @sizemask = size == 0 ? 0 : size - 1

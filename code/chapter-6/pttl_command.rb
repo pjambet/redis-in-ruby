@@ -19,7 +19,7 @@ module Redis
         value = if key_exists
                   entry = @expires[key]
                   if entry
-                    ttl = entry.value
+                    ttl = entry
                     (ttl - (Time.now.to_f * 1000)).round
                   else
                     -1

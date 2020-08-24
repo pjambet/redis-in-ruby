@@ -4,27 +4,29 @@ require 'logger'
 require 'strscan'
 
 LOG_LEVEL = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
+$random_bytes = Random.bytes(16)
 
 require_relative './dict'
 require_relative './types'
 require_relative './expire_helper'
-require_relative './command_command'
 require_relative './get_command'
 require_relative './set_command'
 require_relative './ttl_command'
 require_relative './pttl_command'
+require_relative './command_command'
+
 
 module Redis
 
   class Server
 
-    COMMANDS = {
-      'command' => CommandCommand,
-      'get' => GetCommand,
-      'set' => SetCommand,
-      'ttl' => TtlCommand,
-      'pttl' => PttlCommand,
-    }
+    COMMANDS = Dict.new($random_bytes)
+    COMMANDS.add('command', CommandCommand)
+    COMMANDS.add('get', GetCommand)
+    COMMANDS.add('set', SetCommand)
+    COMMANDS.add('ttl', TtlCommand)
+    COMMANDS.add('pttl', PttlCommand)
+
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
 
@@ -48,9 +50,8 @@ module Redis
       @logger.level = LOG_LEVEL
 
       @clients = []
-      @random_bytes = Random.bytes(16)
-      @data_store = Dict.new(@random_bytes)
-      @expires = Dict.new(@random_bytes)
+      @data_store = Dict.new($random_bytes)
+      @expires = Dict.new($random_bytes)
 
       @server = TCPServer.new 2000
       @time_events = []

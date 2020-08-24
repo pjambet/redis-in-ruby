@@ -7,19 +7,32 @@ module Redis
     CommandOption = Struct.new(:kind)
     CommandOptionWithValue = Struct.new(:kind, :validator)
 
-    OPTIONS = {
-      'ex' => CommandOptionWithValue.new(
+    OPTIONS = Dict.new($random_bytes)
+    OPTIONS.add(
+      'ex',
+      CommandOptionWithValue.new(
         'expire',
         ->(value) { validate_integer(value) * 1000 },
-      ),
-      'px' => CommandOptionWithValue.new(
+      )
+    )
+    OPTIONS.add(
+      'px',
+      CommandOptionWithValue.new(
         'expire',
         ->(value) { validate_integer(value) },
-      ),
-      'keepttl' => CommandOption.new('expire'),
-      'nx' => CommandOption.new('presence'),
-      'xx' => CommandOption.new('presence'),
-    }
+      )
+    )
+    OPTIONS.add(
+      'xx', CommandOption.new('presence')
+    )
+    OPTIONS.add(
+      'nx', CommandOption.new('presence')
+    )
+    OPTIONS.add(
+      'keepttl', CommandOption.new('expire')
+    )
+
+
 
     def self.validate_integer(str)
       Integer(str)
@@ -34,7 +47,7 @@ module Redis
       @expires = expires
       @args = args
 
-      @options = {}
+      @options = Dict.new($random_bytes)
     end
 
     def call

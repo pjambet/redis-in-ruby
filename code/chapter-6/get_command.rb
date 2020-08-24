@@ -19,7 +19,7 @@ module Redis
         if entry.nil?
           NullBulkStringInstance
         else
-          RESPBulkString.new(entry.value)
+          RESPBulkString.new(entry)
         end
       end
     end
