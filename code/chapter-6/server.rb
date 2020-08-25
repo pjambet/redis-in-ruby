@@ -31,6 +31,7 @@ module Redis
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
+    HASHTABLE_MIN_FILL = 10
 
     IncompleteCommand = Class.new(StandardError)
     ProtocolError = Class.new(StandardError) do
@@ -300,11 +301,9 @@ module Redis
     end
 
     def databases_cron
-      # try_resize
       @data_store.resize if ht_needs_resize(@data_store)
       @expires.resize if ht_needs_resize(@expires)
 
-      # incrementally_rehash
       @data_store.rehash_milliseconds(1)
       @expires.rehash_milliseconds(1)
     end
@@ -318,12 +317,10 @@ module Redis
     end
 
     def ht_needs_resize(dict)
-      # See https://github.com/antirez/redis/blob/6.0/src/server.c#L1422
       size = slots(dict)
       used = size(dict)
 
-      # TODO: Move to a constant
-      size > Dict::INITIAL_SIZE && ((used * 100) / size < 10)
+      size > Dict::INITIAL_SIZE && ((used * 100) / size < HASHTABLE_MIN_FILL)
     end
   end
 end

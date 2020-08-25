@@ -234,7 +234,7 @@ describe 'Redis::Server' do
         [ 'GET key', NULL_BULK_STRING ],
         [ 'SET key-1 value', '+OK' ],
         [ 'SET key-2 value', '+OK' ],
-        [ 'DEL key-1 key-2 not-a-key', ':2' ]
+        [ 'DEL key-1 key-2 not-a-key', ':2' ],
       ]
     end
 
