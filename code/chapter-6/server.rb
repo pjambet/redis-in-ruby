@@ -9,6 +9,7 @@ $random_bytes = Random.bytes(16)
 require_relative './dict'
 require_relative './types'
 require_relative './expire_helper'
+require_relative './del_command'
 require_relative './get_command'
 require_relative './set_command'
 require_relative './ttl_command'
@@ -22,6 +23,7 @@ module Redis
 
     COMMANDS = Dict.new($random_bytes)
     COMMANDS.add('command', CommandCommand)
+    COMMANDS.add('del', DelCommand)
     COMMANDS.add('get', GetCommand)
     COMMANDS.add('set', SetCommand)
     COMMANDS.add('ttl', TtlCommand)

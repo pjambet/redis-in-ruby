@@ -32,8 +32,12 @@ class Dict
     rehashes = 0
     while rehash(100) == 1
       rehashes += 100
-      break if Time.now.to_f - start > millis
+      delta = Time.now.to_f * 1000 - start
+
+      break if delta > millis
     end
+    delta = Time.now.to_f * 1000 - start
+
     rehashes
   end
 
@@ -48,8 +52,6 @@ class Dict
   end
 
   def expand(size)
-    p 'EXPANDING! to '
-    p size
     return if is_rehashing? || main_table.used > size
 
     real_size = next_power(size)
@@ -74,18 +76,12 @@ class Dict
     # resize if need_resize
 
     index = key_index(key)
-    p "index: #{ index }"
 
     table = is_rehashing? ? @hash_tables[1] : @hash_tables[0]
-
-    p self
-    p is_rehashing?
-    p table
 
     entry = table.table[index]
     while entry
       if entry.key == key
-        p 'already exists'
         break
       end
       entry = entry.next
@@ -100,7 +96,6 @@ class Dict
       entry.value = value
     end
 
-    p table
   end
   alias_method :[]=, :add
 
@@ -113,11 +108,9 @@ class Dict
     (0..1).each do |i|
       table = @hash_tables[i]
       index = hash & table.sizemask
-      p "THERE"
-      p self
+
       entry = table.table[index]
-      p 'HERE'
-      p table
+
       while entry
         return entry.value if entry.key == key
 
@@ -141,8 +134,7 @@ class Dict
       index = hash_key & table.sizemask
       entry = table.table[index]
       previous_entry = nil
-      p "DELETING"
-      p table
+
       while entry
         if entry.key == key
           if previous_entry
@@ -150,11 +142,11 @@ class Dict
           else
             table.table[index] = entry.next
           end
+          table.used -= 1
+          return entry
         end
         previous_entry = entry
         entry = entry.next
-        table.used -= 1
-        return entry
       end
       break unless is_rehashing?
     end
@@ -181,7 +173,6 @@ class Dict
   end
 
   def rehash(n)
-    p "REHASHING!"
     empty_visits = n * 10
     return 0 unless is_rehashing?
 
@@ -199,7 +190,7 @@ class Dict
       while entry
         next_entry = entry.next
         idx = SipHash.digest(@random_bytes, entry.key) & @hash_tables[1].sizemask
-        p self
+
         entry.next = @hash_tables[1].table[idx]
         @hash_tables[1].table[idx] = entry
         @hash_tables[0].used -= 1
@@ -216,10 +207,6 @@ class Dict
       @rehashidx = -1
       return 0
     end
-
-    p "REHASH SUMMARY"
-    p @hash_tables[0]
-    p @hash_tables[1]
 
     return 1
   end

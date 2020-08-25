@@ -225,6 +225,26 @@ describe 'Redis::Server' do
     end
   end
 
+  describe 'DEL' do
+    it 'deletes existing keys' do
+      assert_command_results [
+        [ 'SET key value', '+OK' ],
+        [ 'GET key', 'value' ],
+        [ 'DEL key', ':1' ],
+        [ 'GET key', NULL_BULK_STRING ],
+        [ 'SET key-1 value', '+OK' ],
+        [ 'SET key-2 value', '+OK' ],
+        [ 'DEL key-1 key-2 not-a-key', ':2' ]
+      ]
+    end
+
+    it 'returns 0 for a non existing key' do
+      assert_command_results [
+        [ 'DEL not-a-key', ':0' ],
+      ]
+    end
+  end
+
   describe 'Unknown commands' do
     it 'returns an error message' do
       assert_command_results [
@@ -318,6 +338,12 @@ p    end
         [ 'GET 5', '6' ],
         [ 'GET 7', '8' ],
         [ 'GET 9', '10' ],
+
+        [ 'SET 11 12', '+OK' ],
+        [ 'SET 13 14', '+OK' ],
+        [ 'SET 14 16', '+OK' ],
+        [ 'SET 17 18', '+OK' ],
+        [ 'SET 19 20', '+OK' ],
       ]
     end
   end
