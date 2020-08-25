@@ -69,8 +69,8 @@ module Redis
 
       rehash_step if rehashing?
 
-      table = rehashing? ? @hash_tables[1] : @hash_tables[0]
-      entry = table.table[index]
+      hash_table = rehashing? ? @hash_tables[1] : main_table
+      entry = hash_table.table[index]
 
       while entry
         break if entry.key == key
@@ -80,9 +80,9 @@ module Redis
 
       if entry.nil?
         entry = DictEntry.new(key, value)
-        entry.next = table.table[index]
-        table.table[index] = entry
-        table.used += 1
+        entry.next = hash_table.table[index]
+        hash_table.table[index] = entry
+        hash_table.used += 1
       else
         entry.value = value
       end
@@ -90,38 +90,35 @@ module Redis
     alias []= add
 
     def get(key)
-      return if @hash_tables[0].used == 0 && @hash_tables[1].used == 0
+      return if main_table.used == 0 && @hash_tables[1].used == 0
 
       rehash_step if rehashing?
 
       hash = SipHash.digest(@random_bytes, key)
-      (0..1).each do |i|
-        table = @hash_tables[i]
-        index = hash & table.sizemask
 
-        entry = table.table[index]
+      iterate_through_hash_tables_unless_rehashing do |hash_table|
+        index = hash & hash_table.sizemask
+
+        entry = hash_table.table[index]
 
         while entry
           return entry.value if entry.key == key
 
           entry = entry.next
         end
-
-        break unless rehashing?
       end
     end
     alias [] get
 
     def delete(key)
-      return if @hash_tables[0].used == 0 && @hash_tables[1].used == 0
+      return if main_table.used == 0 && @hash_tables[1].used == 0
 
       rehash_step if rehashing?
 
       hash_key = SipHash.digest(@random_bytes, key)
-      (0..1).each do |i|
-        table = @hash_tables[i]
-        index = hash_key & table.sizemask
-        entry = table.table[index]
+      iterate_through_hash_tables_unless_rehashing do |hash_table|
+        index = hash_key & hash_table.sizemask
+        entry = hash_table.table[index]
         previous_entry = nil
 
         while entry
@@ -129,21 +126,20 @@ module Redis
             if previous_entry
               previous_entry.next = entry.next
             else
-              table.table[index] = entry.next
+              hash_table.table[index] = entry.next
             end
-            table.used -= 1
+            hash_table.used -= 1
             return entry
           end
           previous_entry = entry
           entry = entry.next
         end
-        break unless rehashing?
       end
     end
 
     def each
-      @hash_tables.each do |table|
-        table.each do |bucket|
+      @hash_tables.each do |hash_table|
+        hash_table.each do |bucket|
           next if bucket.nil?
 
           yield bucket.key, bucket.value until bucket.next.nil?
@@ -153,16 +149,30 @@ module Redis
 
     private
 
+    # In the Redis codebase, they extensively use the following pattern:
+    # for (table = 0; table <= 1; table++) {
+    #   ...
+    #   if (!dictIsRehashing(d)) break;
+    # }
+    # This is common for many operations, such as finding or deleting an item in the dict,
+    # we first need to look at the main table, the first table, but we haven't found in the
+    # first one, we should look in the rehashing table, the second one, but only if we're in
+    # the process of rehashing.
+    # Taking advantage of Ruby blocks, we can write this helper method instead
+    def iterate_through_hash_tables_unless_rehashing
+      @hash_tables.each do |hash_table|
+        yield hash_table
+        break unless rehashing?
+      end
+    end
+
     def key_index(key)
       expand_if_needed
       hash = SipHash.digest(@random_bytes, key)
       index = nil
 
-      (0..1).each do |i|
-        table = @hash_tables[i]
-        index = hash & table.sizemask
-
-        break unless rehashing?
+      iterate_through_hash_tables_unless_rehashing do |hash_table|
+        index = hash & hash_table.sizemask
       end
 
       index
@@ -192,7 +202,7 @@ module Redis
 
           entry.next = @hash_tables[1].table[idx]
           @hash_tables[1].table[idx] = entry
-          @hash_tables[0].used -= 1
+          main_table.used -= 1
           @hash_tables[1].used += 1
           entry = next_entry
         end
