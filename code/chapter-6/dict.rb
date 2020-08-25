@@ -1,4 +1,3 @@
-require 'fiddle'
 require_relative './siphash'
 require_relative './dict_entry'
 require_relative './hash_table'
@@ -7,6 +6,7 @@ module Redis
   class Dict
 
     INITIAL_SIZE = 4
+    MAX_SIZE = 2**63
 
     attr_reader :hash_tables
 
@@ -52,29 +52,29 @@ module Redis
       return if real_size == main_table.size
 
       new_hash_table = HashTable.new(real_size)
+
+      # Is this the first initialization? If so it's not really a rehashing
+      # we just set the first hash table so that it can accept keys.
       if main_table.table.nil?
         @hash_tables[0] = new_hash_table
-        return
+      else
+        @hash_tables[1] = new_hash_table
+        @rehashidx = 0
       end
-
-      @hash_tables[1] = new_hash_table
-      @rehashidx = 0
     end
 
     def include?(key)
-      get(key) != nil
+      !get(key).nil?
     end
 
     def add(key, value)
-      # resize if need_resize
-
       index = key_index(key)
 
       rehash_step if rehashing?
 
       table = rehashing? ? @hash_tables[1] : @hash_tables[0]
-
       entry = table.table[index]
+
       while entry
         break if entry.key == key
 
@@ -112,7 +112,6 @@ module Redis
 
         break unless rehashing?
       end
-      return
     end
     alias [] get
 
@@ -143,16 +142,14 @@ module Redis
         end
         break unless rehashing?
       end
-
-      return
     end
 
     def each
-      main_table.each do |bucket|
-        next if bucket.nil?
+      @hash_tables.each do |table|
+        table.each do |bucket|
+          next if bucket.nil?
 
-        until bucket.next.nil?
-          yield bucket.key, bucket.value
+          yield bucket.key, bucket.value until bucket.next.nil?
         end
       end
     end
@@ -210,7 +207,7 @@ module Redis
         return 0
       end
 
-      return 1
+      1
     end
 
     def rehashing?
@@ -228,8 +225,14 @@ module Redis
     end
 
     def next_power(size)
-      # TODO: Handle wrapping integer
+      # Ruby has practically no limit to how big an integer can be, because under the hood the
+      # Integer class allocates the necessary resources to go beyond what could fit in a 64 bit
+      # integer.
+      # That being said, let's still copy what Redis does, since it makes sense to have an
+      # explicit limit about how big our Dicts can get
       i = INITIAL_SIZE
+      return MAX_SIZE if i > MAX_SIZE
+
       loop do
         return i if i >= size
 
@@ -238,7 +241,6 @@ module Redis
     end
 
     def rehash_step
-      # Missing iterators check
       rehash(1)
     end
   end
