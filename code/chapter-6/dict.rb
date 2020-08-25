@@ -25,12 +25,10 @@ module Redis
       rehashes = 0
       while rehash(100) == 1
         rehashes += 100
-        delta = Time.now.to_f * 1000 - start
+        time_ellapsed = Time.now.to_f * 1000 - start
 
-        break if delta > millis
+        break if time_ellapsed > millis
       end
-      delta = Time.now.to_f * 1000 - start
-
       rehashes
     end
 
@@ -38,9 +36,8 @@ module Redis
       return if rehashing?
 
       minimal = main_table.used
-      if minimal < INITIAL_SIZE
-        minimal = INITIAL_SIZE
-      end
+      minimal = INITIAL_SIZE if minimal < INITIAL_SIZE
+
       expand(minimal)
     end
 
@@ -178,6 +175,7 @@ module Redis
       while n > 0 && main_table.used != 0
         n -= 1
         entry = nil
+
         while main_table.table[@rehashidx].nil?
           @rehashidx += 1
           empty_visits -= 1
@@ -185,7 +183,9 @@ module Redis
             return 1
           end
         end
+
         entry = main_table.table[@rehashidx]
+
         while entry
           next_entry = entry.next
           idx = SipHash.digest(@random_bytes, entry.key) & @hash_tables[1].sizemask
@@ -200,14 +200,16 @@ module Redis
         @rehashidx += 1
       end
 
+      # Check if we already rehashed the whole table
       if main_table.used == 0
         @hash_tables[0] = @hash_tables[1]
         @hash_tables[1] = HashTable.new(0)
         @rehashidx = -1
-        return 0
+        0
+      else
+        # There's more to rehash
+        1
       end
-
-      1
     end
 
     def rehashing?
