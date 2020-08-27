@@ -16,10 +16,6 @@ module Redis
       @rehashidx = -1
     end
 
-    def main_table
-      @hash_tables[0]
-    end
-
     def rehash_milliseconds(millis)
       start = Time.now.to_f * 1000
       rehashes = 0
@@ -69,14 +65,10 @@ module Redis
 
       rehash_step if rehashing?
 
-      hash_table = rehashing? ? @hash_tables[1] : main_table
+      hash_table = rehashing? ? rehashing_table : main_table
       entry = hash_table.table[index]
 
-      while entry
-        break if entry.key == key
-
-        entry = entry.next
-      end
+      entry = entry.next while entry && entry.key != key
 
       if entry.nil?
         entry = DictEntry.new(key, value)
@@ -90,7 +82,7 @@ module Redis
     alias []= add
 
     def get(key)
-      return if main_table.used == 0 && @hash_tables[1].used == 0
+      return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
 
@@ -111,7 +103,7 @@ module Redis
     alias [] get
 
     def delete(key)
-      return if main_table.used == 0 && @hash_tables[1].used == 0
+      return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
 
@@ -148,6 +140,14 @@ module Redis
     end
 
     private
+
+    def main_table
+      @hash_tables[0]
+    end
+
+    def rehashing_table
+      @hash_tables[1]
+    end
 
     # In the Redis codebase, they extensively use the following pattern:
     # for (table = 0; table <= 1; table++) {
@@ -198,12 +198,12 @@ module Redis
 
         while entry
           next_entry = entry.next
-          idx = SipHash.digest(@random_bytes, entry.key) & @hash_tables[1].sizemask
+          idx = SipHash.digest(@random_bytes, entry.key) & rehashing_table.sizemask
 
-          entry.next = @hash_tables[1].table[idx]
-          @hash_tables[1].table[idx] = entry
+          entry.next = rehashing_table.table[idx]
+          rehashing_table.table[idx] = entry
           main_table.used -= 1
-          @hash_tables[1].used += 1
+          rehashing_table.used += 1
           entry = next_entry
         end
         main_table.table[@rehashidx] = nil
@@ -212,7 +212,7 @@ module Redis
 
       # Check if we already rehashed the whole table
       if main_table.used == 0
-        @hash_tables[0] = @hash_tables[1]
+        @hash_tables[0] = rehashing_table
         @hash_tables[1] = HashTable.new(0)
         @rehashidx = -1
         0

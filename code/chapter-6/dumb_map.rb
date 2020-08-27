@@ -1,6 +1,11 @@
 def add(map, key, value)
-  map.each do |pair_key, pair_value|
-    return nil if key == pair_key
+  map.each do |pair|
+    pair_key = pair[0]
+    # Override the value if the key is already present
+    if key == pair_key
+      pair[1] = value
+      return pair
+    end
   end
   pair = [key, value]
   map << pair
@@ -17,7 +22,8 @@ end
 map = []
 add(map, "key-1", "value-1") # => ["key-1", "value-1"]
 add(map, "key-2", "value-2") # => ["key-2", "value-2"]
-add(map, "key-2", "value-2") # => nil
+p add(map, "key-2", "value-3") # => ["key-2", "value-3"]
+p map
 
 lookup(map, "key-1") # => "value-1"
 lookup(map, "key-2") # => "value-2"
