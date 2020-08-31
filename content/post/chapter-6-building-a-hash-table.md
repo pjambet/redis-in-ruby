@@ -5,7 +5,7 @@ lastmod: 2020-08-18T09:26:53-04:00
 draft: false
 comment: false
 keywords: []
-summary: "In this chapter we will write our own hash table. This will allow to remove uses of the Ruby Hash class and use our, built from scratch, Dict class."
+summary: "In this chapter we will write our own hash table. This will allow to remove uses of the Ruby Hash class and use our Dict class, built from scratch."
 ---
 
 ## What we'll cover
