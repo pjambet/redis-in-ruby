@@ -41,7 +41,10 @@ module BYORedis
 
     TimeEvent = Struct.new(:process_at, :block)
     Client = Struct.new(:socket, :buffer) do
+      attr_reader :id
+
       def initialize(socket)
+        @id = socket.fileno.to_s
         self.socket = socket
         self.buffer = ''
       end
@@ -51,7 +54,7 @@ module BYORedis
       @logger = Logger.new(STDOUT)
       @logger.level = LOG_LEVEL
 
-      @clients = []
+      @clients = Dict.new
       @data_store = Dict.new
       @expires = Dict.new
 
@@ -102,14 +105,16 @@ module BYORedis
     end
 
     def client_sockets
-      @clients.map(&:socket)
+      sockets = []
+      @clients.each { |_, client| sockets << client.socket }
+      sockets
     end
 
     def start_event_loop
       loop do
         timeout = select_timeout
         @logger.debug "select with a timeout of #{ timeout }"
-        result = IO.select(client_sockets + [@server], [], [], timeout)
+        result = IO.select(client_sockets + [ @server ], [], [], timeout)
         sockets = result ? result[0] : []
         process_poll_events(sockets)
         process_time_events
@@ -120,12 +125,14 @@ module BYORedis
       sockets.each do |socket|
         begin
           if socket.is_a?(TCPServer)
-            @clients << Client.new(@server.accept)
+            socket = @server.accept
+
+            @clients[socket.fileno.to_s] = Client.new(socket)
           elsif socket.is_a?(TCPSocket)
-            client = @clients.find { |client| client.socket == socket }
+            client = @clients[socket.fileno.to_s]
             client_command_with_args = socket.read_nonblock(1024, exception: false)
             if client_command_with_args.nil?
-              @clients.delete(client)
+              @clients.delete(socket.fileno.to_s)
               socket.close
             elsif client_command_with_args == :wait_readable
               # There's nothing to read from the client, we don't have to do anything
@@ -145,14 +152,14 @@ module BYORedis
             raise "Unknown socket type: #{ socket }"
           end
         rescue Errno::ECONNRESET
-          @clients.delete_if { |client| client.socket == socket }
+          @clients.delete(socket.fileno.to_s)
         rescue IncompleteCommand
           # Not clearing the buffer or anything
           next
         rescue ProtocolError => e
           socket.write e.serialize
           socket.close
-          @clients.delete(client)
+          @clients.delete(socket.fileno.to_s)
         end
       end
     end

@@ -927,14 +927,20 @@ module BYORedis
       main_table.table[start_index..-1].each do |bucket|
         next if bucket.nil?
 
-        yield bucket.key, bucket.value until bucket.next.nil?
+        until bucket.nil?
+          yield bucket.key, bucket.value
+          bucket = bucket.next
+        end
       end
       return unless rehashing?
 
       rehashing_table.each do |bucket|
         next if bucket.nil?
 
-        yield bucket.key, bucket.value until bucket.next.nil?
+        until bucket.nil?
+          yield bucket.key, bucket.value
+          bucket = bucket.next
+        end
       end
     end
   end
@@ -1305,6 +1311,81 @@ module BYORedis
 end
 ```
 _listing 6.23: Replacing usages of Hash with Dict in the SetCommand class_
+
+**Changing `@clients` to a Dict**
+
+Up until now the `@clients` in the `Server` class was an Array, which worked fine for small list of clients but would be problematic for largest lists of clients. When we process the results of `IO.select`, we use the returned sockets to find the matching clients within the connected clients. This is an O(n) operation with an array. We can use our new `Dict` class to turn it into an O(1) operation. It's worth nothing that the performance will be worse for a small number of clients given the overhead of the `Dict` class, but the performance won't change regardless of the number of connected clients.
+
+Each socket has a `fileno` which returns the numeric file descriptor of the socket. This number will be different for each socket and we can therefore use it as a key to identify sockets in the `Dict`.
+
+``` ruby
+module BYORedis
+  class Server
+    # ...
+    Client = Struct.new(:socket, :buffer, :blocked_state) do
+      attr_reader :id
+
+      def initialize(socket)
+        @id = socket.fileno.to_s
+        self.socket = socket
+        self.buffer = ''
+      end
+    end
+    # ...
+    def initialize
+      @logger = Logger.new(STDOUT)
+      @logger.level = LOG_LEVEL
+
+      @clients = Dict.new
+      # ...
+    end
+    # ...
+    def client_sockets
+      sockets = []
+      @clients.each { |_, client| sockets << client.socket }
+      sockets
+    end
+    # ...
+    def process_poll_events(sockets)
+      sockets.each do |socket|
+        begin
+          if socket.is_a?(TCPServer)
+            socket = @server.accept
+
+            @clients[socket.fileno.to_s] = Client.new(socket)
+          elsif socket.is_a?(TCPSocket)
+            client = @clients[socket.fileno.to_s]
+            client_command_with_args = socket.read_nonblock(1024, exception: false)
+            if client_command_with_args.nil?
+              @clients.delete(socket.fileno.to_s)
+              socket.close
+            elsif client_command_with_args == :wait_readable
+              # There's nothing to read from the client, we don't have to do anything
+              next
+            elsif client_command_with_args.empty?
+              @logger.debug "Empty request received from #{ socket }"
+            else
+              # ...
+            end
+          else
+            raise "Unknown socket type: #{ socket }"
+          end
+        rescue Errno::ECONNRESET
+          @clients.delete(socket.fileno.to_s)
+        rescue IncompleteCommand
+          # Not clearing the buffer or anything
+          next
+        rescue ProtocolError => e
+          socket.write e.serialize
+          socket.close
+          @clients.delete(socket.fileno.to_s)
+        end
+      end
+    end
+    # ...
+  end
+end
+```
 
 ### Adding the `DEL` command
 
