@@ -1,5 +1,5 @@
 ---
-title: "Redis in Ruby"
+title: "Rebuilding Redis in Ruby"
 date: 2020-05-23T10:27:27-04:00
 lastmod: 2020-05-23T10:27:27-04:00
 draft: false

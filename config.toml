@@ -1,7 +1,7 @@
 baseURL = "https://redis.pjam.me"
 languageCode = "en"
 defaultContentLanguage = "en"
-title = "Redis in Ruby"
+title = "Rebuilding Redis in Ruby"
 preserveTaxonomyNames = true
 enableRobotsTXT = true
 enableEmoji = true
@@ -75,7 +75,7 @@ copyright = ""            # default: author.name ↓
 
   # site info (optional)
   keywords = ["Redis", "Ruby", "Programming"]
-  description = "Rewriting Redis in Ruby, just 'cause"
+  description = "Rebuilding Redis in Ruby, for fun and profit"
 
   # paginate of archives, tags and categories
   archivePaginate = 20

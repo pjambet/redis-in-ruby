@@ -1,3 +1,3 @@
-# Redis in Ruby
+# Rebuilding Redis in Ruby
 
-The hugo code for [Redis in Ruby](https://redis.pjam.me)
+The hugo code for [Rebuilding Redis in Ruby](https://redis.pjam.me)
