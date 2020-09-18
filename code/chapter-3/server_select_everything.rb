@@ -31,7 +31,7 @@ class BasicServer
               # There's nothing to read from the client, we don't have to do anything
               next
             elsif client_command_with_args.strip.empty?
-              puts "Empty request received from #{ client }"
+              puts "Empty request received from #{ socket }"
             else
               response = handle_client_command(client_command_with_args.strip)
               socket.puts response
