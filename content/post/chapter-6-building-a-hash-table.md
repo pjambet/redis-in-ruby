@@ -911,6 +911,8 @@ module BYORedis
           entry = entry.next
         end
       end
+
+      nil
     end
     alias [] get
 
@@ -945,6 +947,8 @@ The `get` method starts with an early `return` statement if both tables are empt
 The next step is similar to `add`, we perform a single rehash step if we're in a rehashing state. The approach allows Redis to incrementally work its way through the rehashing process, without affecting too much the performance of other operations. A single rehashing step does not require a lot of work, and will have a negligible impact on the performance of get, but it has the important benefits of advancing the rehashing process.
 
 Once again, we follow a pattern similar to the pseudo code `lookup_key` from earlier in the chapter, we start by computing the hash value of the key. Once we have the hash value, we first need to look at the main table, and if we're in a rehashing state, at the second table as well. We do this with the same helper method as previously, `iterate_through_hash_tables_unless_rehashing`. `hash & hash_table.sizemask` returns the location of the bucket for the key. There might be more than one item in the bucket, because of potential collisions, so we need to iterate through all of them and compare their key with the `key` argument. We do this with the `while` loop. If we do find a matching key, we abort early and return the value associated with that key.
+
+If we inspected all the element in the main table bucket, and potentially in the rehashing table bucket, and did not find any matches, we return nil. The key is not in the hash table.
 
 Similarly to what we did with `set` and `[]=`, we alias `get` to `[]`, which allows us to use the same syntax we use for `Hash` instances:
 

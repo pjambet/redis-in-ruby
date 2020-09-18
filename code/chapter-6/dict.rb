@@ -97,6 +97,8 @@ module BYORedis
           entry = entry.next
         end
       end
+
+      nil
     end
     alias [] get
 
