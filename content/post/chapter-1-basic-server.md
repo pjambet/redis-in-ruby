@@ -19,7 +19,7 @@ impact the behavior of our server.
 ## Introduction
 
 The goal of this book is to implement a Redis-like server, "from scratch". At the time of this writing Redis
-supports 9 different [data types][redis-data-types], dozens of commands related to those data types as well as many
+supports 8 different [data types][redis-data-types], dozens of commands related to those data types as well as many
 features in the [Administration][redis-administration] category, such as Redis Sentinel for High Availability.
 
 I will start with a heavily simplified version of Redis, and slowly add more features, trying to get as close as
@@ -470,7 +470,7 @@ Doing a step by step walk through of the client and server code is both a little
 
 The code from this chapter is [available on GitHub](https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-1)
 
-[redis-data-types]:https://TODO
+[redis-data-types]:https://redis.io/topics/data-types-intro
 [redis-administration]:https://redis.io/documentation#administration
 [ruby-tcp-server]:http://ruby-doc.org/stdlib-2.7.1/libdoc/socket/rdoc/TCPServer.html
 [ruby-source-socket]:https://github.com/ruby/ruby/tree/v2_7_1/ext/socket
