@@ -2,7 +2,7 @@
 title: "Chapter 7 Adding List Commands"
 date: 2020-10-02T17:25:58-04:00
 lastmod: 2020-10-02T17:26:03-04:00
-draft: true
+draft: false
 comment: false
 keywords: []
 summary: "In this chapter we add support for a new data type, Lists. We implement all the commands related to lists, such as LPUSH, LRANGE & LLEN."
