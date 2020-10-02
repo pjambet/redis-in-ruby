@@ -83,8 +83,6 @@ module BYORedis
     end
 
     def trim(start, stop)
-      current_head = @head
-
       # Convert negative values
       stop = @size + stop if stop < 0
       stop = @size - 1 if stop >= @size
