@@ -14,6 +14,10 @@ module BYORedis
       @rehashidx = -1
     end
 
+    def used
+      main_table.used + rehashing_table.used
+    end
+
     def rehash_milliseconds(millis)
       start = Time.now.to_f * 1000
       rehashes = 0
@@ -33,25 +37,6 @@ module BYORedis
       minimal = INITIAL_SIZE if minimal < INITIAL_SIZE
 
       expand(minimal)
-    end
-
-    def expand(size)
-      return if rehashing? || main_table.used > size
-
-      real_size = next_power(size)
-
-      return if real_size == main_table.size
-
-      new_hash_table = HashTable.new(real_size)
-
-      # Is this the first initialization? If so it's not really a rehashing
-      # we just set the first hash table so that it can accept keys.
-      if main_table.table.nil?
-        @hash_tables[0] = new_hash_table
-      else
-        @hash_tables[1] = new_hash_table
-        @rehashidx = 0
-      end
     end
 
     def include?(key)
@@ -121,7 +106,7 @@ module BYORedis
               hash_table.table[index] = entry.next
             end
             hash_table.used -= 1
-            return entry
+            return entry.value
           end
           previous_entry = entry
           entry = entry.next
@@ -161,6 +146,25 @@ module BYORedis
 
     def rehashing_table
       @hash_tables[1]
+    end
+
+    def expand(size)
+      return if rehashing? || main_table.used > size
+
+      real_size = next_power(size)
+
+      return if real_size == main_table.size
+
+      new_hash_table = HashTable.new(real_size)
+
+      # Is this the first initialization? If so it's not really a rehashing
+      # we just set the first hash table so that it can accept keys.
+      if main_table.table.nil?
+        @hash_tables[0] = new_hash_table
+      else
+        @hash_tables[1] = new_hash_table
+        @rehashidx = 0
+      end
     end
 
     # In the Redis codebase, they extensively use the following pattern:
