@@ -22,10 +22,53 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
   top: -10px;
 }
 
+.post-content h3 {
+  font-size: 22px;
+}
+
 .post-content h4 {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .post-content h5 {
-  font-size: 16px;
+  font-size: 18px;
+}
+
+.post-content ul > li, .post-content ol > li {
+  margin-bottom: 1px;
+  line-height: 1.7em;
+}
+
+.post-content ol {
+  padding-left: 1.5em;
+}
+
+.post-content ol > li {
+  margin:0;
+  // padding:0 0 0 1em;
+  text-indent:-1em;
+  list-style-type:none;
+  counter-increment:item;
+}
+
+.post-content ol > li:before {
+  display:inline-block;
+  width:1.5em;
+  padding-right:0.5em;
+  font-weight:bold;
+  text-align:right;
+  content:counter(item) ".";
+}
+
+#content .post .post-content hr {
+  margin: 2.5rem 0;
+}
+
+#content .post .post-content a:hover {
+  text-decoration: underline;
+  border: none;
+}
+
+.post-toc-content a:hover {
+  text-decoration: underline;
 }
