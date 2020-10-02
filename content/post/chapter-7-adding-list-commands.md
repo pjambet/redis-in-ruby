@@ -17,8 +17,6 @@ We are going to add full support for List related commands in this chapter.
 
 ## Redis Data Types
 
-
-
 When it comes to key/value pairs stored in the main keyspace, that is, the `@data_store` `Dict` instance, Redis supports [other data types][redis-data-types-doc] beside Strings:
 
 - Lists: An ordered collection of one or more Strings, sorted by order of insertion.
@@ -2733,7 +2731,7 @@ end
 _listing 7.63 Updates to the Server class to handle clients disconnection_
 
 
-**Handle blocked clients before timeout**
+**Handling blocked clients before timeout**
 
 We need another handler, for when a list that is being blocked on, for instance either `a` or `b` after receiving `BLPOP a b 1`, receives a push and is created. New lists are always created from `DB#lookup_list_for_write`, so let's add a condition there, that will notify that one key that is being blocked on can now be used to unblock one or more clients:
 
