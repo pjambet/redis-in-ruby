@@ -39,7 +39,7 @@ It is also common to use the term "tail" to describe all the elements after the 
 
 An empty list has no _head_ and no _tail_, or it could be said that they're both nil. For a one-element list, the _head_ and the _tail_ are equal.
 
-Elements can be added or removed from either side, left or right, as well as from within the list. Adding elements is commonly referred to as a _push_ and removing elements as a _pop_. The terms _shift_ and _unshift_ are also used, where _shift_ commonly means popping an element to the right of the list and _unshift_ pushing an element to the left.
+Elements can be added or removed from either side, left or right, as well as from within the list. Adding elements is commonly referred to as a _push_ and removing elements as a _pop_. The terms _shift_ and _unshift_ are also used, where _shift_ commonly means popping an element to the left of the list and _unshift_ pushing an element to the left.
 
 Finally, the terms _append_ & _prepend_ can also be used. In this context _append_ is similar to a right _push_, and _prepend_ is similar to a left _push_, or _unshift_.
 
