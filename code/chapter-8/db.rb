@@ -61,6 +61,16 @@ module BYORedis
       @data_store.delete(key) if list.empty?
     end
 
+    def delete_from_hash(key, hash, fields)
+      delete_count = 0
+      fields.each do |field|
+        delete_count += (hash.delete(field) == true ? 1 : 0)
+      end
+      @data_store.delete(key) if hash.empty?
+
+      delete_count
+    end
+
     private
 
     def generic_pop_wrapper(key, list)

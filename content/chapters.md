@@ -16,6 +16,7 @@ description: "List of all chapters"
 - [Chapter 5 - Deeper dive in the Redis Protocol](/post/chapter-5-redis-protocol-compatibility/)
 - [Chapter 6 - Building a Hash Table](/post/chapter-6-building-a-hash-table/)
 - [Chapter 7 - Adding List Commands](/post/chapter-7-adding-list-commands/)
+- [Chapter 8 - Hashes](/post/chapter-8-adding-hash-commands/)
 
 Coming Soon
 

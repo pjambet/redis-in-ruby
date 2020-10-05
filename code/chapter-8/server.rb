@@ -28,6 +28,7 @@ require_relative './set_command'
 require_relative './ttl_command'
 require_relative './pttl_command'
 require_relative './list_commands'
+require_relative './hash_commands'
 require_relative './type_command'
 require_relative './command_command'
 
@@ -61,6 +62,9 @@ module BYORedis
     COMMANDS.set('linsert', LInsertCommand)
     COMMANDS.set('lindex', LIndexCommand)
     COMMANDS.set('type', TypeCommand)
+    COMMANDS.set('hset', HSetCommand)
+    COMMANDS.set('hgetall', HGetAllCommand)
+    COMMANDS.set('hdel', HDelCommand)
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second

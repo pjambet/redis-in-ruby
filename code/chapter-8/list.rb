@@ -2,7 +2,22 @@ module BYORedis
 
   class List
 
-    ListNode = Struct.new(:value, :prev_node, :next_node)
+    ListNode = Struct.new(:value, :prev_node, :next_node) do
+      def remove
+        p "SELF REMOVING myself: #{ self }"
+        if prev_node
+          prev_node.next_node = next_node
+        end
+
+        if next_node
+          next_node.prev_node = prev_node
+        end
+
+        self.next_node = nil
+        self.prev_node = nil
+      end
+    end
+
     Iterator = Struct.new(:cursor, :index, :cursor_iterator, :index_iterator) do
       def next
         self.cursor = cursor_iterator.call(cursor)
@@ -187,6 +202,19 @@ module BYORedis
       end
 
       iterator.cursor.value = new_value
+    end
+
+    def remove_node(node)
+
+      if @head == node
+        @head = node.next_node
+      end
+
+      if @tail == node
+        @tail = node.prev_node
+      end
+
+      node.remove
     end
 
     def remove(count, element)

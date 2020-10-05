@@ -30,6 +30,18 @@ module BYORedis
       end
     end
 
+    def self.assert_args_length_greater_than_in_steps(args_length, step, args)
+      if args.length <= args_length
+        raise InvalidArgsLength,
+              "Expected more than #{ args_length } args, got #{ args.length }: #{ args }"
+      end
+
+      if (args_length - step) % step != 0
+        raise InvalidArgsLength,
+              "Expected args count (#{ args_length }) past minimum to be a multiple of #{ step }, got #{ args }"
+      end
+    end
+
     def self.safe_write(socket, message)
       socket.write(message)
     rescue Errno::ECONNRESET, Errno::EPIPE, IOError
