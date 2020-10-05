@@ -20,10 +20,11 @@ description: "List of all chapters"
 Coming Soon
 
 - [Chapter 8 - Hashes](/)
-- [Chapter 9 - Sets & Sorted Sets](/)
-- [Chapter 10 - Bitmaps](/)
-- [Chapter 11 - HyperLogLogs](/)
-- [Chapter 12 - GEO* commands](/)
-- [Chapter 13 - Pub/Sub](/)
-- [Chapter 14 - Redis as an LRU cache](/)
-- [Chapter 15 - Transactions](/)
+- [Chapter 9 - Sets](/)
+- [Chapter 10 - Sorted Sets](/)
+- [Chapter 11 - Bitmaps](/)
+- [Chapter 12 - HyperLogLogs](/)
+- [Chapter 13 - GEO* commands](/)
+- [Chapter 14 - Pub/Sub](/)
+- [Chapter 15 - Redis as an LRU cache](/)
+- [Chapter 16 - Transactions](/)
