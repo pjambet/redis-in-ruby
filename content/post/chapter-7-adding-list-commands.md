@@ -10,7 +10,7 @@ summary: "In this chapter we add support for a new data type, Lists. We implemen
 
 ## What we'll cover
 
-So far we've mainly worked with Strings, and array of Strings. A command is received as an array of Strings. `GET` accepts a String and return a String, or a nil String. `SET` works with two Strings, a key and a value. We've also handled a few integers here and there, like for the result value of the `TTL` & `PTTL` commands.
+So far we've mainly worked with Strings, and arrays of Strings. A command is received as an array of Strings. `GET` accepts a String and return a String, or a nil String. `SET` works with two Strings, a key and a value. We've also handled a few integers here and there, like for the result value of the `TTL` & `PTTL` commands.
 
 We are going to add full support for List related commands in this chapter.
 
