@@ -2508,7 +2508,7 @@ module BYORedis
   end
 end
 ```
-_listing 7.59 Updates to the Client Struct to support _
+_listing 7.59 Updates to the Client Struct to support_
 
 We also need to add a few more data structures to the `DB` class, namely: `ready_keys`, `:blocking_keys`, `client_timeouts` & `unblocked_clients`.
 
