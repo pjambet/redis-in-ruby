@@ -2197,6 +2197,8 @@ The last three commands we need to implement are almost identical to `LPOP`, `RP
 
 Let's start with the `BLPOP` command. It accepts two arguments or more. The first one is the key for a list, and the last one must be a number, integer or float, which is the timeout the command can block for. It accepts more than one list keys. The following are valid `BLPOP` commands: `BLPOP a 1`, `BLPOP a b c 1.2`. But the following is invalid `BLPOP a b`, `b` is not a valid number and cannot be used to describe a timeout. It's worth noting that since keys can be numbers, which Redis represents at Strings internally, the following is valid `BLPOP 1 1`. It means: "Block for up to 1s for the key '1'".
 
+A timeout value of `0` means an infinite timeout. The server will only unblock the client if a new element is added to one of the lists it is blocked on.
+
 Redis looks at all the keys from left to right, and as soon as it finds a list, it will pop an element from the left and return it, alongside the key, so that the client knows which list the element was popped from:
 
 ```
@@ -2338,6 +2340,14 @@ Implementing the blocking behavior will require some changes to the `Server` cla
 module BYORedis
   module ListUtils
     # ...
+    def self.timeout_timestamp_or_nil(timeout)
+      if timeout == 0
+        nil
+      else
+        Time.now + timeout
+      end
+    end
+
     def self.common_bpop(db, args, operation)
       Utils.assert_args_length_greater_than(1, args)
 
@@ -2353,7 +2363,8 @@ module BYORedis
         return RESPArray.new([ list_name, popped ])
       end
 
-      BYORedis::Server::BlockedState.new(Time.now + timeout, list_names, operation)
+      BYORedis::Server::BlockedState.new(ListUtils.timeout_timestamp_or_nil(timeout),
+                                         list_names, operation)
     end
   end
   # ...
@@ -2454,7 +2465,9 @@ module BYORedis
 
       # Add the state to the client
       client.blocked_state = blocked_state
-      @db.client_timeouts << blocked_state
+      if blocked_state.timeout
+        @db.client_timeouts << blocked_state
+      end
 
       # Add this client to the list of clients waiting on this key
       blocked_state.keys.each do |key|
@@ -2471,6 +2484,8 @@ module BYORedis
 end
 ```
 _listing 7.57 The blocking related method in the Server class_
+
+The `blocked_state` instance is only added to `client_timeouts` if there is a timeout. If the client specified a value of `0`, then the server will never unblock the client after a timeout and there is therefore no need to keep track of it here.
 
 We added a new method to the `Utils` module, to wrap the logic around writing to a socket, while handling potential exceptions if the socket was closed and the write operation fails:
 
@@ -2518,8 +2533,7 @@ The first two, `ready_keys` and `blocking_keys`, are `Dict` instances. With `rea
 
 This is the problem that the `client_timeouts` attribute on `DB` solves. It is a sorted array, which we provide an implementation for in [Appendix B][appendix-b]
 
-
-Whenever a blocked command is received and there is no element to return right away, a `BlockedState` instance will be pushed to `client_timeouts`. Using a regular array to store these `BlockedState` instances would already be an improvement compared to the scenario described above. We would only check if clients are expired within the set of blocked clients, but we would still have to check all the clients, one by one, to see if they are expired or not. This is also a O(n) operation, where n is the number of blocked clients.
+Whenever a blocked command is received and there is no element to return right away, a `BlockedState` instance will be pushed to `client_timeouts` unless the timeout was `0`. Using a regular array to store these `BlockedState` instances would already be an improvement compared to the scenario described above. We would only check if clients are expired within the set of blocked clients, but we would still have to check all the clients, one by one, to see if they are expired or not. This is also a O(n) operation, where n is the number of blocked clients.
 
 Using a sorted array turns the operation into an O(1) operation, we can inspect the first element in the sorted array, if it is not expired, there's no need to inspect any other clients, we know their expiration is later than the first one. If the first client in the sorted array is expired, we need to handle it as such and look at the next element, and stop as soon as we find a non expired client.
 
@@ -2989,8 +3003,8 @@ module BYORedis
       destination_key = @args[1]
 
       if source.nil?
-        BYORedis::Server::BlockedState.new(Time.now + timeout, [ source_key ], :rpoplpush,
-                                           destination_key)
+        BYORedis::Server::BlockedState.new(ListUtils.timeout_timestamp_or_nil(timeout),
+                                           [ source_key ], :rpoplpush, destination_key)
       else
         ListUtils.common_rpoplpush(@db, source_key, destination_key, source)
       end

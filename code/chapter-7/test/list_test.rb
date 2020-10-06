@@ -1025,6 +1025,10 @@ describe 'BYORedis - List commands' do
       end
     end
 
+    it 'blocks indefinitely with a timeout of 0' do
+      assert_infinite_timeout(blocking_command: 'BLPOP', list_names: [ 'a', 'b' ])
+    end
+
     it 'blocks and returns if the first list receives elements during the timeout' do
       assert_blocking_behavior(blocking_command: 'BLPOP',
                                list_names: [ 'a', 'b' ],
@@ -1143,6 +1147,10 @@ describe 'BYORedis - List commands' do
         assert_equal("*-1\r\n", response)
         assert_operator(duration, :>=, 0.1)
       end
+    end
+
+    it 'blocks indefinitely with a timeout of 0' do
+      assert_infinite_timeout(blocking_command: 'BRPOP', list_names: [ 'a', 'b' ])
     end
 
     it 'blocks and returns if the first list receives elements during the timeout' do
@@ -1293,6 +1301,10 @@ describe 'BYORedis - List commands' do
                                push_commands: [ 'LPUSH another-list a1', 'BRPOPLPUSH another-list source 1' ],
                                expected_response: "$2\r\na1\r\n",
                                pushed_to_list_name: 'source')
+    end
+
+    it 'blocks indefinitely with a timeout of 0' do
+      assert_infinite_timeout(blocking_command: 'BRPOPLPUSH', list_names: [ 'a', 'b' ])
     end
 
     it 'handles back to back blocking commands with buffering' do
@@ -1542,6 +1554,16 @@ describe 'BYORedis - List commands' do
       sleep 0.1
       response1 = socket1.read_nonblock(1024, exception: false)
       assert_equal(expected_response, response1)
+    end
+  end
+
+  def assert_infinite_timeout(blocking_command:, list_names:)
+    with_server do |socket|
+      parts = [ blocking_command ] + list_names + [ '0' ]
+      socket.write to_query(*parts)
+      sleep 0.25 # 250 ms is long enough, no need to wait for ... you know, infinity
+      response = read_response(socket)
+      assert_nil(response)
     end
   end
 end

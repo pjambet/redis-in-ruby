@@ -475,7 +475,9 @@ module BYORedis
 
       # Add the state to the client
       client.blocked_state = blocked_state
-      @db.client_timeouts << blocked_state
+      if blocked_state.timeout
+        @db.client_timeouts << blocked_state
+      end
 
       # Add this client to the list of clients waiting on this key
       blocked_state.keys.each do |key|

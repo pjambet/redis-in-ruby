@@ -19,6 +19,14 @@ module BYORedis
 
   module ListUtils
 
+    def self.timeout_timestamp_or_nil(timeout)
+      if timeout == 0
+        nil
+      else
+        Time.now + timeout
+      end
+    end
+
     def self.common_lpush(list, elements)
       elements.each { |element| list.left_push(element) }
       RESPInteger.new(list.size)
@@ -83,7 +91,8 @@ module BYORedis
         return RESPArray.new([ list_name, popped ])
       end
 
-      BYORedis::Server::BlockedState.new(Time.now + timeout, list_names, operation)
+      BYORedis::Server::BlockedState.new(ListUtils.timeout_timestamp_or_nil(timeout),
+                                         list_names, operation)
     end
 
     def self.common_rpoplpush(db, source_key, destination_key, source)
@@ -468,8 +477,8 @@ module BYORedis
       destination_key = @args[1]
 
       if source.nil?
-        BYORedis::Server::BlockedState.new(Time.now + timeout, [ source_key ], :rpoplpush,
-                                           destination_key)
+        BYORedis::Server::BlockedState.new(ListUtils.timeout_timestamp_or_nil(timeout),
+                                           [ source_key ], :rpoplpush, destination_key)
       else
         ListUtils.common_rpoplpush(@db, source_key, destination_key, source)
       end
