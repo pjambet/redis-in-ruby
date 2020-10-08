@@ -30,15 +30,10 @@ module BYORedis
       end
     end
 
-    def self.assert_args_length_greater_than_in_steps(args_length, step, args)
-      if args.length <= args_length
+    def self.assert_args_length_multiple_of(multiple, args)
+      if args.length % multiple != 0
         raise InvalidArgsLength,
-              "Expected more than #{ args_length } args, got #{ args.length }: #{ args }"
-      end
-
-      if (args_length - step) % step != 0
-        raise InvalidArgsLength,
-              "Expected args count (#{ args_length }) past minimum to be a multiple of #{ step }, got #{ args }"
+              "Expected args count to be a multiple of #{ multiple }, got #{ args }"
       end
     end
 

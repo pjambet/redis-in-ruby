@@ -4,8 +4,9 @@ module BYORedis
 
   class HSetCommand < BaseCommand
     def call
-      Utils.assert_args_length_greater_than_in_steps(2, 2, @args)
       key = @args.shift
+      Utils.assert_args_length(1, [ key ].compact)
+      Utils.assert_args_length_multiple_of(2, @args)
       pairs = @args.each_slice(2).to_a
 
       hash = @db.data_store[key]
@@ -20,7 +21,6 @@ module BYORedis
         value = pair[1]
 
         new_pair_count = hash.set(key, value)
-        p "NEW PAIR COUNT: #{ new_pair_count }"
         count += new_pair_count
       end
 
