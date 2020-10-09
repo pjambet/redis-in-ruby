@@ -64,6 +64,7 @@ module BYORedis
     COMMANDS.set('type', TypeCommand)
     COMMANDS.set('hset', HSetCommand)
     COMMANDS.set('hgetall', HGetAllCommand)
+    COMMANDS.set('hget', HGetCommand)
     COMMANDS.set('hdel', HDelCommand)
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20

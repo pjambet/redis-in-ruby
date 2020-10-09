@@ -1,11 +1,12 @@
 module BYORedis
   class THash
 
-    MAX_LIST_SIZE = 2 # 256 for real though
-
     ListEntry = Struct.new(:key, :value)
 
     def initialize
+      @max_list_size = ENV['HASH_MAX_ZIPLIST_ENTRIES'].to_i.then do |max|
+        max <= 0 ? 256 : max
+      end
       @underlying_structure = List.new
       @size = 0
     end
@@ -15,9 +16,9 @@ module BYORedis
     end
 
     def set(key, value)
-      if @size <= MAX_LIST_SIZE
+      if @size <= @max_list_size
         new_pair_count = set_list(key, value)
-        if new_pair_count + @size > MAX_LIST_SIZE
+        if new_pair_count + @size > @max_list_size
           convert_list_to_dict
         end
       else
@@ -28,15 +29,12 @@ module BYORedis
 
       @size += 1 if new_pair_count == 1
 
-      p @size
-      p new_pair_count
-
       new_pair_count
     end
     alias []= set
 
     def get_all
-      if @size <= MAX_LIST_SIZE
+      if @size <= @max_list_size
         get_all_list
       else
         get_all_dict
@@ -44,18 +42,21 @@ module BYORedis
     end
 
     def get(field)
-      if @size <= MAX_LIST_SIZE
+      if @size <= @max_list_size
+        get_list(field)
       else
+        get_dict(field)
       end
     end
+    alias [] get
 
     def delete(field)
       # Try to convert back to list
-      if @size <= MAX_LIST_SIZE
+      if @size <= @max_list_size
         was_deleted = delete_from_list(field)
       else
         was_deleted = !@underlying_structure.delete(field).nil?
-        if was_deleted && @size - 1 == MAX_LIST_SIZE
+        if was_deleted && @size - 1 == @max_list_size
           convert_dict_to_list
         end
       end
@@ -103,6 +104,20 @@ module BYORedis
       end
 
       pairs
+    end
+
+    def get_list(field)
+      iterator = List.left_to_right_iterator(@underlying_structure)
+
+      while iterator.cursor
+        return iterator.cursor.value.value if iterator.cursor.value.key == field
+
+        iterator.next
+      end
+    end
+
+    def get_dict(field)
+      @underlying_structure[field]
     end
 
     def convert_list_to_dict

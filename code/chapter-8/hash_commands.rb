@@ -78,6 +78,28 @@ module BYORedis
   end
 
   class HGetCommand < BaseCommand
+    def call
+      Utils.assert_args_length(2, @args)
+
+      hash = @db.data_store[@args[0]]
+
+      if hash.nil?
+        NullBulkStringInstance
+      else
+        key = @args[1]
+        value = hash[key]
+        if value.nil?
+          NullBulkStringInstance
+        else
+          RESPBulkString.new(value)
+        end
+      end
+    end
+
+    def self.describe
+      Describe.new('hget', 3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@hash', '@fast' ])
+    end
   end
 
   class HIncrByCommand < BaseCommand

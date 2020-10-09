@@ -12,9 +12,18 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
-    it 'returns the number of fields that were added'
+    it 'creates a hash if necessary' do
+      assert_command_results [
+        [ 'TYPE h', '+none' ],
+        [ 'HSET h f1 k1', ':1' ],
+        [ 'TYPE h', '+hash' ],
+      ]
+    end
 
-    # ...
+    it 'returns the number of fields that were added' do
+      hset_tests_as_list
+      hset_tests_as_dict
+    end
   end
 
   describe 'HGETALL' do
@@ -25,9 +34,16 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
-    it 'returns an empty array if the hash does not exist'
+    it 'returns an empty array if the hash does not exist' do
+      assert_command_results [
+        [ 'HGETALL h', '*0' ],
+      ]
+    end
 
-    it 'returns all the field/value pairs in a flat array'
+    it 'returns all the field/value pairs in a flat array' do
+      hgetall_tests_as_list
+      hgetall_tests_as_dict
+    end
   end
 
   describe 'HGET' do
@@ -38,11 +54,23 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
-    it 'returns a nil string if the hash does not exist'
+    it 'returns a nil string if the hash does not exist' do
+      assert_command_results [
+        [ 'HGET h f1', BYORedis::NULL_BULK_STRING ],
+      ]
+    end
 
-    it 'returns a nil string if the field does not exist in the hash'
+    it 'returns a nil string if the field does not exist in the hash' do
+      assert_command_results [
+        [ 'HSET h f1 k1', ':1' ],
+        [ 'HGET h f2', BYORedis::NULL_BULK_STRING ],
+      ]
+    end
 
-    it 'returns the value for the given hash/field'
+    it 'returns the value for the given hash/field' do
+      hget_tests_as_list
+      hget_tests_as_dict
+    end
   end
 
   describe 'HDEL' do
@@ -76,6 +104,8 @@ describe 'BYORedis - Hash commands' do
 
     it 'returns an error if the value for the field is not an integer' # ERR hash value is not an integer, test with a float too
 
+    it 'returns an error if the increment is not an integer'
+
     it 'creates a new field/value pair with a value of 0 if the field does not exist'
 
     it 'creates a new hash and a new field/value pair with a value of 0 if the hash does not exist'
@@ -87,6 +117,7 @@ describe 'BYORedis - Hash commands' do
     it 'returns the new value, as a RESP integer of the value for the field, after the incr'
 
     it 'returns an error if the value for the field is not a number' # ERR hash value is not a float
+    it 'returns an error if the increment is not a number (float or int)'
 
     it 'creates a new field/value pair with a value of 0 if the field does not exist'
 
@@ -143,5 +174,60 @@ describe 'BYORedis - Hash commands' do
     it 'rejects an invalid number of arguments'
     it 'returns an empty array if the hash does not exist'
     it 'returns an array of all the values in the hash'
+  end
+
+  def hset_tests_as_dict
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
+    hset_tests_as_list
+  end
+
+  def hset_tests_as_list
+    assert_command_results [
+      [ 'HSET h f1 k1 f2 k2', ':2' ],
+      [ 'HSET h f2 k2', ':0' ],
+      [ 'HSET h f2 k2-a', ':0' ],
+      [ 'HSET h f2 k2-b f3 k3', ':1' ],
+    ]
+  end
+
+  def hgetall_tests_as_dict
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
+    hgetall_tests_as_list
+  end
+
+  def hgetall_tests_as_list
+    with_server do |socket|
+      socket.write to_query('HSET', 'h', 'f1', 'k1', 'f2', 'k2')
+      IO.select([ socket ], [], [], 0.1)
+      assert_response(':2', read_response(socket))
+
+      socket.write to_query('HGETALL', 'h')
+      IO.select([ socket ], [], [], 0.1)
+      response = read_response(socket)
+
+      # The hash representation does not maintain ordering, so we need to sort the elements to
+      # perform a deterministic comparison
+      resp_array_elements = response.split.then do |r|
+        r.shift # Remove the number of element *4 in this example
+        r.each_slice(2).sort
+      end
+
+      assert_equal([ [ '$2', 'f1' ], [ '$2', 'f2' ], [ '$2', 'k1' ], [ '$2', 'k2' ] ],
+                   resp_array_elements)
+    end
+  end
+
+  def hget_tests_as_list
+    assert_command_results [
+      [ 'HSET h f1 k1 f2 k2', ':2' ],
+      [ 'HGET h f1', 'k1' ],
+      [ 'HGET h f2', 'k2' ],
+      [ 'HGET h f3', BYORedis::NULL_BULK_STRING ],
+    ]
+  end
+
+  def hget_tests_as_dict
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
+    hget_tests_as_list
   end
 end
