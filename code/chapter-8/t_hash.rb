@@ -51,7 +51,6 @@ module BYORedis
     alias [] get
 
     def delete(field)
-      # Try to convert back to list
       if @size <= @max_list_size
         was_deleted = delete_from_list(field)
       else

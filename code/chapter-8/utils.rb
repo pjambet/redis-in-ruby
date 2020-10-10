@@ -1,3 +1,5 @@
+require 'bigdecimal'
+
 module BYORedis
 
   ULLONG_MAX = 2**64 - 1 # 18,446,744,073,709,551,615
@@ -22,6 +24,7 @@ module BYORedis
   end
   IntegerOverflow = Class.new(StandardError)
   InvalidIntegerString = Class.new(StandardError)
+  InvalidFloatString = Class.new(StandardError)
 
   module Utils
     def self.assert_args_length(args_length, args)
@@ -73,7 +76,9 @@ module BYORedis
       num = bytes[0] - zero_ord
 
       1.upto(bytes.length - 1) do |i|
-        break unless bytes[0] >= '1'.ord && bytes[0] <= '9'.ord
+        unless bytes[i] >= '0'.ord && bytes[i] <= '9'.ord
+          raise InvalidIntegerString, "Not a number: '#{ bytes[i] }' / '#{ [ bytes[i] ].pack('C') }'"
+        end
 
         # Check for overflow: if (v > (ULLONG_MAX / 10)) /* Overflow. */
         raise IntegerOverflow, 'Overflow before *' if num > ULLONG_MAX / 10
@@ -109,6 +114,16 @@ module BYORedis
       else
         num
       end
+    end
+
+    def self.string_to_float(string)
+      BigDecimal(string)
+    rescue ArgumentError
+      raise InvalidFloatString
+    end
+
+    def self.float_to_string(float)
+      float.to_s('F')
     end
 
     def self.integer_to_string(integer)

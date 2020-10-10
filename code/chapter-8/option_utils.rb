@@ -19,5 +19,11 @@ module BYORedis
     rescue ArgumentError, TypeError
       raise ValidationError, "ERR #{ field_name } is not a float or out of range"
     end
+
+    def self.validate_float_with_message(str, error_message)
+      Float(str)
+    rescue ArgumentError, TypeError
+      raise ValidationError, error_message
+    end
   end
 end

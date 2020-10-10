@@ -14,6 +14,13 @@ describe BYORedis::Utils do
       end
     end
 
+    it 'returns an error with a float' do
+      error = assert_raises BYORedis::InvalidIntegerString do
+        BYORedis::Utils.string_to_integer('1.0')
+      end
+      assert_equal("Not a number: '46' / '.'", error.message)
+    end
+
     it 'returns an error with a leading zero' do
       assert_raises BYORedis::InvalidIntegerString do
         BYORedis::Utils.string_to_integer('01')

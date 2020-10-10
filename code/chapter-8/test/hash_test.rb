@@ -15,7 +15,7 @@ describe 'BYORedis - Hash commands' do
     it 'creates a hash if necessary' do
       assert_command_results [
         [ 'TYPE h', '+none' ],
-        [ 'HSET h f1 k1', ':1' ],
+        [ 'HSET h f1 v1', ':1' ],
         [ 'TYPE h', '+hash' ],
       ]
     end
@@ -62,7 +62,7 @@ describe 'BYORedis - Hash commands' do
 
     it 'returns a nil string if the field does not exist in the hash' do
       assert_command_results [
-        [ 'HSET h f1 k1', ':1' ],
+        [ 'HSET h f1 v1', ':1' ],
         [ 'HGET h f2', BYORedis::NULL_BULK_STRING ],
       ]
     end
@@ -80,48 +80,155 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
-    it 'returns the number of fields that were deleted from the hash'
+    it 'returns the number of fields that were deleted from the hash' do
+      hdel_tests_as_list
+      hdel_tests_as_dict
+    end
 
-    it 'removes the hash from the keyspace if it is empty'
+    it 'removes the hash from the keyspace if it is empty' do
+      hdel_tests_keyspace_clear_as_list
+      hdel_tests_keyspace_clear_as_dict
+    end
 
-    it 'returns 0 if the hash does not exist'
+    it 'returns 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HDEL h f1', ':0' ],
+      ]
+    end
   end
 
   describe 'HEXISTS' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HEXISTS h', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
+        [ 'HEXISTS h a b', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
+      ]
+    end
 
-    it 'returns 0 if the hash does not exist'
+    it 'returns 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HEXISTS h f1', ':0' ],
+      ]
+    end
 
-    it 'returns 0 if the field does not exist in the hash'
+    it 'returns 0 if the field does not exist in the hash' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2', ':2' ],
+        [ 'HEXISTS h not-a-field', ':0' ],
+      ]
+    end
 
-    it 'returns 1 if the field exists in the hash'
+    it 'returns 1 if the field exists in the hash' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2', ':2' ],
+        [ 'HEXISTS h f2', ':1' ],
+      ]
+    end
   end
 
   describe 'HINCRBY' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HINCRBY h', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
+        [ 'HINCRBY h a', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
+        [ 'HINCRBY h a b c', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
+      ]
+    end
 
-    it 'returns the new value, as a RESP integer of the value for the field, after the incr'
+    it 'returns the new value, as a RESP integer of the value for the field, after the incr' do
+      assert_command_results [
+        [ 'HSET h f1 1 f2 2', ':2' ],
+        [ 'HINCRBY h f1 99', ':100' ],
+        [ 'HINCRBY h f2 99', ':101' ],
+      ]
+    end
 
-    it 'returns an error if the value for the field is not an integer' # ERR hash value is not an integer, test with a float too
+    it 'returns an error if the value for the field is not an integer' do
+      assert_command_results [
+        [ 'HSET h f1 not-an-int a-float 1.0', ':2' ],
+        [ 'HINCRBY h f1 1', '-ERR hash value is not an integer' ],
+        [ 'HINCRBY h a-float 1', '-ERR hash value is not an integer' ],
+      ]
+    end
 
-    it 'returns an error if the increment is not an integer'
+    it 'returns an error if the increment is not an integer' do
+      assert_command_results [
+        [ 'HINCRBY h f2 not-an-int', '-ERR value is not an integer or out of range' ],
+        [ 'HINCRBY h f2 1.0', '-ERR value is not an integer or out of range' ],
+      ]
+    end
 
-    it 'creates a new field/value pair with a value of 0 if the field does not exist'
+    it 'creates a new field/value pair with a value of 0 if the field does not exist' do
+      assert_command_results [
+        [ 'HSET h f1 v1', ':1' ],
+        [ 'HINCRBY h f2 10', ':10' ],
+      ]
+    end
 
-    it 'creates a new hash and a new field/value pair with a value of 0 if the hash does not exist'
+    it 'creates a new hash and a new field/value pair with a value of 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HINCRBY h f1 1', ':1' ],
+        [ 'DEL h', ':1' ],
+        [ 'HINCRBY h f1 100', ':100' ],
+      ]
+    end
+
+    it 'handles a min overflow' do
+      assert_command_results [
+        [ 'HSET h close-to-min -9223372036854775807', ':1' ],
+        [ 'HINCRBY h close-to-min -2', '-ERR increment or decrement would overflow' ],
+      ]
+    end
+
+    it 'handles a max overflow' do
+      assert_command_results [
+        [ 'HSET h close-to-max 9223372036854775806', ':1' ],
+        [ 'HINCRBY h close-to-max 2', '-ERR increment or decrement would overflow' ],
+      ]
+    end
   end
 
   describe 'HINCRBYFLOAT' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HINCRBYFLOAT h', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
+        [ 'HINCRBYFLOAT h a', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
+        [ 'HINCRBYFLOAT h a b c', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
+      ]
+    end
 
-    it 'returns the new value, as a RESP integer of the value for the field, after the incr'
+    it 'returns the new value, as a RESP string of the value for the field, after the incr' do
+      assert_command_results [
+        [ 'HSET h a 1.0', ':1' ],
+        [ 'HINCRBYFLOAT h a 0.34', '1.34' ],
+      ]
+    end
 
-    it 'returns an error if the value for the field is not a number' # ERR hash value is not a float
-    it 'returns an error if the increment is not a number (float or int)'
+    it 'returns an error if the value for the field is not a number' do
+      assert_command_results [
+        [ 'HSET h f1 not-an-int a-float 1.0', ':2' ],
+        [ 'HINCRBYFLOAT h f1 1', '-ERR hash value is not a float' ],
+      ]
+    end
 
-    it 'creates a new field/value pair with a value of 0 if the field does not exist'
+    it 'returns an error if the increment is not a number (float or int)' do
+      assert_command_results [
+        [ 'HINCRBYFLOAT h f1 a', '-ERR value is not a valid float' ],
+      ]
+    end
 
-    it 'creates a new hash and a new field/value pair with a value of 0 if the hash does not exist'
+    it 'creates a new field/value pair with a value of 0 if the field does not exist' do
+      assert_command_results [
+        [ 'HSET h f2 v2', ':1' ],
+        [ 'HINCRBYFLOAT h f1 1.2', '1.2' ],
+      ]
+    end
+
+    it 'creates a new hash and a new field/value pair with a value of 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HINCRBYFLOAT h f1 1.2', '1.2' ],
+      ]
+    end
   end
 
   describe 'KEYS' do
@@ -183,7 +290,7 @@ describe 'BYORedis - Hash commands' do
 
   def hset_tests_as_list
     assert_command_results [
-      [ 'HSET h f1 k1 f2 k2', ':2' ],
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
       [ 'HSET h f2 k2', ':0' ],
       [ 'HSET h f2 k2-a', ':0' ],
       [ 'HSET h f2 k2-b f3 k3', ':1' ],
@@ -197,7 +304,7 @@ describe 'BYORedis - Hash commands' do
 
   def hgetall_tests_as_list
     with_server do |socket|
-      socket.write to_query('HSET', 'h', 'f1', 'k1', 'f2', 'k2')
+      socket.write to_query('HSET', 'h', 'f1', 'v1', 'f2', 'v2')
       IO.select([ socket ], [], [], 0.1)
       assert_response(':2', read_response(socket))
 
@@ -212,16 +319,16 @@ describe 'BYORedis - Hash commands' do
         r.each_slice(2).sort
       end
 
-      assert_equal([ [ '$2', 'f1' ], [ '$2', 'f2' ], [ '$2', 'k1' ], [ '$2', 'k2' ] ],
+      assert_equal([ [ '$2', 'f1' ], [ '$2', 'f2' ], [ '$2', 'v1' ], [ '$2', 'v2' ] ],
                    resp_array_elements)
     end
   end
 
   def hget_tests_as_list
     assert_command_results [
-      [ 'HSET h f1 k1 f2 k2', ':2' ],
-      [ 'HGET h f1', 'k1' ],
-      [ 'HGET h f2', 'k2' ],
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
+      [ 'HGET h f1', 'v1' ],
+      [ 'HGET h f2', 'v2' ],
       [ 'HGET h f3', BYORedis::NULL_BULK_STRING ],
     ]
   end
@@ -229,5 +336,30 @@ describe 'BYORedis - Hash commands' do
   def hget_tests_as_dict
     ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
     hget_tests_as_list
+  end
+
+  def hdel_tests_as_list
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+      [ 'HDEL h f1 not-a-field f2', ':2' ],
+    ]
+  end
+
+  def hdel_tests_as_dict
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
+    hdel_tests_as_list
+  end
+
+  def hdel_tests_keyspace_clear_as_list
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
+      [ 'HDEL h f1 f2', ':2' ],
+      [ 'TYPE h', '+none' ],
+    ]
+  end
+
+  def hdel_tests_keyspace_clear_as_dict
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
+    hdel_tests_keyspace_clear_as_list
   end
 end

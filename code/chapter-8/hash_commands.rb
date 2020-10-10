@@ -75,6 +75,27 @@ module BYORedis
   end
 
   class HExistsCommand < BaseCommand
+    def call
+      Utils.assert_args_length(2, @args)
+
+      hash = @db.data_store[@args[0]]
+
+      if hash.nil?
+        RESPInteger.new(0)
+      else
+        value = hash[@args[1]]
+        if value.nil?
+          RESPInteger.new(0)
+        else
+          RESPInteger.new(1)
+        end
+      end
+    end
+
+    def self.describe
+      Describe.new('hexists', 3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@hash', '@fast' ])
+    end
   end
 
   class HGetCommand < BaseCommand
@@ -103,9 +124,94 @@ module BYORedis
   end
 
   class HIncrByCommand < BaseCommand
+    def call
+      Utils.assert_args_length(3, @args)
+      OptionUtils.validate_integer(@args[2])
+
+      key = @args[0]
+      field = @args[1]
+      incr = Utils.string_to_integer(@args[2])
+
+      hash = @db.data_store[key]
+
+      if hash.nil?
+        hash = THash.new
+        @db.data_store[key] = hash
+      end
+
+      value = hash[field]
+      if value.nil?
+        value = 0
+      else
+        p "BEFORE"
+        p value
+        value = Utils.string_to_integer(value)
+        p 'AFTER'
+        p value
+      end
+
+      new_value = value + incr
+      if new_value > BYORedis::LLONG_MAX || new_value < BYORedis::LLONG_MIN
+        raise IntegerOverflow
+      end
+
+      hash[field] = Utils.integer_to_string(new_value)
+
+      RESPInteger.new(new_value)
+    rescue InvalidIntegerString => e
+      RESPError.new('ERR hash value is not an integer')
+    rescue IntegerOverflow => e
+      RESPError.new('ERR increment or decrement would overflow')
+    end
+
+    def self.describe
+      Describe.new('hincrby', 4, [ 'write', 'denyoom', 'fast' ], 1, 1, 1,
+                   [ '@write', '@hash', '@fast' ])
+    end
   end
 
   class HIncrByFloatCommand < BaseCommand
+    def call
+      Utils.assert_args_length(3, @args)
+      OptionUtils.validate_float_with_message(@args[2], 'ERR value is not a valid float')
+
+      key = @args[0]
+      field = @args[1]
+      incr = Utils.string_to_float(@args[2])
+
+      hash = @db.data_store[key]
+
+      if hash.nil?
+        hash = THash.new
+        @db.data_store[key] = hash
+      end
+
+      value = hash[field]
+      if value.nil?
+        value = 0.0
+      else
+        value = Utils.string_to_float(value)
+      end
+
+      new_value = value + incr
+      # isnan | isinfinity check
+      # if new_value > BYORedis::LLONG_MAX || new_value < BYORedis::LLONG_MIN
+        # raise IntegerOverflow
+      # end
+
+      hash[field] = new_value
+
+      RESPBulkString.new(Utils.float_to_string(new_value))
+    rescue InvalidFloatString => e
+      RESPError.new('ERR hash value is not a float')
+    rescue IntegerOverflow => e
+      RESPError.new('ERR increment or decrement would overflow')
+    end
+
+    def self.describe
+      Describe.new('hincrbyfloat', 4, [ 'write', 'denyoom', 'fast' ], 1, 1, 1,
+                   [ '@write', '@hash', '@fast' ])
+    end
   end
 
   class HKeysCommand < BaseCommand

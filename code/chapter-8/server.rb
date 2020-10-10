@@ -66,6 +66,9 @@ module BYORedis
     COMMANDS.set('hgetall', HGetAllCommand)
     COMMANDS.set('hget', HGetCommand)
     COMMANDS.set('hdel', HDelCommand)
+    COMMANDS.set('hexists', HExistsCommand)
+    COMMANDS.set('hincrby', HIncrByCommand)
+    COMMANDS.set('hincrbyfloat', HIncrByFloatCommand)
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
