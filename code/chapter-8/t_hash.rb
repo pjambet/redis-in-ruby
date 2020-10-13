@@ -144,7 +144,6 @@ module BYORedis
     end
 
     def convert_list_to_dict
-      puts 'L2D'
       dict = Dict.new
       iterator = List.left_to_right_iterator(@underlying_structure)
 
@@ -157,7 +156,6 @@ module BYORedis
     end
 
     def convert_dict_to_list
-      puts "D2L"
       list = List.new
       @underlying_structure.each do |key, value|
         list.right_push(ListEntry.new(key, value))
