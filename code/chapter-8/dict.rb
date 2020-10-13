@@ -140,6 +140,16 @@ module BYORedis
       end
     end
 
+    def keys
+      keys = []
+
+      each do |key, _|
+        keys << key
+      end
+
+      keys
+    end
+
     private
 
     def main_table

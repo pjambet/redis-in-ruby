@@ -216,9 +216,42 @@ module BYORedis
   end
 
   class HKeysCommand < BaseCommand
+    def call
+      Utils.assert_args_length(1, @args)
+
+      hash = @db.data_store[@args[0]]
+
+      if hash.nil?
+        NullArrayInstance
+      else
+        RESPArray.new(hash.keys)
+      end
+    end
+
+    def self.describe
+      Describe.new('hkeys', 2, [ 'readonly', 'sort_for_script' ], 1, 1, 1,
+                   [ '@read', '@hash', '@slow' ])
+    end
   end
 
   class HLenCommand < BaseCommand
+    def call
+      Utils.assert_args_length(1, @args)
+
+      hash = @db.data_store[@args[0]]
+      hash_length = 0
+
+      unless hash.nil?
+        hash_length = hash.length
+      end
+
+      RESPInteger.new(hash_length)
+    end
+
+    def self.describe
+      Describe.new('hlen', 2, [ 'readonly', 'sort_for_script' ], 1, 1, 1,
+                   [ '@read', '@hash', '@slow' ])
+    end
   end
 
   class HMGetCommand < BaseCommand

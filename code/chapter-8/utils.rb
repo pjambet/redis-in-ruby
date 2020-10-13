@@ -42,7 +42,7 @@ module BYORedis
     end
 
     def self.assert_args_length_multiple_of(multiple, args)
-      if args.length % multiple != 0
+      if args.length == 0 || args.length % multiple != 0
         raise InvalidArgsLength,
               "Expected args count to be a multiple of #{ multiple }, got #{ args }"
       end

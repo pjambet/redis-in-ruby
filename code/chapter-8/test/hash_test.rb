@@ -6,6 +6,8 @@ describe 'BYORedis - Hash commands' do
   describe 'HSET' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HSET', '-ERR wrong number of arguments for \'HSET\' command' ],
+        [ 'HSET h', '-ERR wrong number of arguments for \'HSET\' command' ],
         [ 'HSET h f1', '-ERR wrong number of arguments for \'HSET\' command' ],
         [ 'HSET h f1 v1 f2', '-ERR wrong number of arguments for \'HSET\' command' ],
         [ 'HSET h f1 v1 f2 v2 f3', '-ERR wrong number of arguments for \'HSET\' command' ],
@@ -49,6 +51,7 @@ describe 'BYORedis - Hash commands' do
   describe 'HGET' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HGET', '-ERR wrong number of arguments for \'HGET\' command' ],
         [ 'HGET h', '-ERR wrong number of arguments for \'HGET\' command' ],
         [ 'HGET h f a', '-ERR wrong number of arguments for \'HGET\' command' ],
       ]
@@ -76,6 +79,7 @@ describe 'BYORedis - Hash commands' do
   describe 'HDEL' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HDEL', '-ERR wrong number of arguments for \'HDEL\' command' ],
         [ 'HDEL h', '-ERR wrong number of arguments for \'HDEL\' command' ],
       ]
     end
@@ -100,6 +104,7 @@ describe 'BYORedis - Hash commands' do
   describe 'HEXISTS' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HEXISTS', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
         [ 'HEXISTS h', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
         [ 'HEXISTS h a b', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
       ]
@@ -129,6 +134,7 @@ describe 'BYORedis - Hash commands' do
   describe 'HINCRBY' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HINCRBY', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
         [ 'HINCRBY h', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
         [ 'HINCRBY h a', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
         [ 'HINCRBY h a b c', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
@@ -191,6 +197,7 @@ describe 'BYORedis - Hash commands' do
   describe 'HINCRBYFLOAT' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
+        [ 'HINCRBYFLOAT', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
         [ 'HINCRBYFLOAT h', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
         [ 'HINCRBYFLOAT h a', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
         [ 'HINCRBYFLOAT h a b c', '-ERR wrong number of arguments for \'HINCRBYFLOAT\' command' ],
@@ -231,20 +238,44 @@ describe 'BYORedis - Hash commands' do
     end
   end
 
-  describe 'KEYS' do
-    it 'rejects an invalid number of arguments'
+  describe 'HKEYS' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HKEYS', '-ERR wrong number of arguments for \'HKEYS\' command' ],
+        [ 'HKEYS h f1', '-ERR wrong number of arguments for \'HKEYS\' command' ],
+      ]
+    end
 
-    it 'returns a nil array if the hash does not exist'
+    it 'returns a nil array if the hash does not exist' do
+      assert_command_results [
+        [ 'HKEYS h', BYORedis::NULL_ARRAY ],
+      ]
+    end
 
-    it 'returns an array of all the fields in the hash'
+    it 'returns an array of all the fields in the hash' do
+      hkeys_tests_as_list
+      hkeys_tests_as_dict
+    end
   end
 
   describe 'HLEN' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HLEN', '-ERR wrong number of arguments for \'HLEN\' command' ],
+        [ 'HLEN h f1', '-ERR wrong number of arguments for \'HLEN\' command' ],
+      ]
+    end
 
-    it 'returns 0 if the hash does not exist'
+    it 'returns 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HLEN h', ':0' ],
+      ]
+    end
 
-    it 'returns the number of field/value pairs in the hash'
+    it 'returns the number of field/value pairs in the hash' do
+      hlen_tests_as_list
+      hlen_tests_as_dict
+    end
   end
 
   describe 'HMGET' do
@@ -284,11 +315,11 @@ describe 'BYORedis - Hash commands' do
   end
 
   def hset_tests_as_dict
-    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
-    hset_tests_as_list
+    hset_tests_as_list(max_list_size: 1)
   end
 
-  def hset_tests_as_list
+  def hset_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
     assert_command_results [
       [ 'HSET h f1 v1 f2 v2', ':2' ],
       [ 'HSET h f2 k2', ':0' ],
@@ -298,17 +329,86 @@ describe 'BYORedis - Hash commands' do
   end
 
   def hgetall_tests_as_dict
-    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
-    hgetall_tests_as_list
+    hgetall_tests_as_list(max_list_size: 1)
   end
 
-  def hgetall_tests_as_list
+  def hgetall_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_unordered_array_match(
+      hset_command: 'HSET h f1 v1 f2 v2',
+      main_command: 'HGETALL h',
+      expected_result: [ [ '$2', 'f1' ], [ '$2', 'f2' ], [ '$2', 'v1' ], [ '$2', 'v2' ] ])
+  end
+
+  def hget_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
+      [ 'HGET h f1', 'v1' ],
+      [ 'HGET h f2', 'v2' ],
+      [ 'HGET h f3', BYORedis::NULL_BULK_STRING ],
+    ]
+  end
+
+  def hget_tests_as_dict
+    hget_tests_as_list(max_list_size: 1)
+  end
+
+  def hdel_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+      [ 'HDEL h f1 not-a-field f2', ':2' ],
+    ]
+  end
+
+  def hdel_tests_as_dict
+    hdel_tests_as_list(max_list_size: 1)
+  end
+
+  def hdel_tests_keyspace_clear_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
+      [ 'HDEL h f1 f2', ':2' ],
+      [ 'TYPE h', '+none' ],
+    ]
+  end
+
+  def hdel_tests_keyspace_clear_as_dict
+    hdel_tests_keyspace_clear_as_list(max_list_size: 1)
+  end
+
+  def hkeys_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_unordered_array_match(hset_command: 'HSET h f1 v1 f2 v2',
+                                 main_command: 'HKEYS h',
+                                 expected_result: [ [ '$2', 'f1' ], [ '$2', 'f2' ] ])
+  end
+
+  def hkeys_tests_as_dict
+    hkeys_tests_as_list(max_list_size: 1)
+  end
+
+  def hlen_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_command_results [
+      [ 'HSET h f1 v1 f2 v2', ':2' ],
+      [ 'HLEN h', ':2' ],
+    ]
+  end
+
+  def hlen_tests_as_dict
+    hlen_tests_as_list(max_list_size: 1)
+  end
+
+  def assert_unordered_array_match(hset_command:, main_command:, expected_result:)
     with_server do |socket|
-      socket.write to_query('HSET', 'h', 'f1', 'v1', 'f2', 'v2')
+      socket.write to_query(*hset_command.split)
       IO.select([ socket ], [], [], 0.1)
       assert_response(':2', read_response(socket))
 
-      socket.write to_query('HGETALL', 'h')
+      socket.write to_query(*main_command.split)
       IO.select([ socket ], [], [], 0.1)
       response = read_response(socket)
 
@@ -319,47 +419,7 @@ describe 'BYORedis - Hash commands' do
         r.each_slice(2).sort
       end
 
-      assert_equal([ [ '$2', 'f1' ], [ '$2', 'f2' ], [ '$2', 'v1' ], [ '$2', 'v2' ] ],
-                   resp_array_elements)
+      assert_equal(expected_result, resp_array_elements)
     end
-  end
-
-  def hget_tests_as_list
-    assert_command_results [
-      [ 'HSET h f1 v1 f2 v2', ':2' ],
-      [ 'HGET h f1', 'v1' ],
-      [ 'HGET h f2', 'v2' ],
-      [ 'HGET h f3', BYORedis::NULL_BULK_STRING ],
-    ]
-  end
-
-  def hget_tests_as_dict
-    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
-    hget_tests_as_list
-  end
-
-  def hdel_tests_as_list
-    assert_command_results [
-      [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
-      [ 'HDEL h f1 not-a-field f2', ':2' ],
-    ]
-  end
-
-  def hdel_tests_as_dict
-    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
-    hdel_tests_as_list
-  end
-
-  def hdel_tests_keyspace_clear_as_list
-    assert_command_results [
-      [ 'HSET h f1 v1 f2 v2', ':2' ],
-      [ 'HDEL h f1 f2', ':2' ],
-      [ 'TYPE h', '+none' ],
-    ]
-  end
-
-  def hdel_tests_keyspace_clear_as_dict
-    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = '1'
-    hdel_tests_keyspace_clear_as_list
   end
 end

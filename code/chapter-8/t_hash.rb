@@ -15,6 +15,22 @@ module BYORedis
       @size == 0
     end
 
+    def keys
+      if @size <= @max_list_size
+        keys_list
+      else
+        @underlying_structure.keys
+      end
+    end
+
+    def length
+      if @size <= @max_list_size
+        @underlying_structure.size
+      else
+        @underlying_structure.used
+      end
+    end
+
     def set(key, value)
       if @size <= @max_list_size
         new_pair_count = set_list(key, value)
@@ -157,6 +173,19 @@ module BYORedis
       end
 
       was_deleted
+    end
+
+    def keys_list
+      iterator = List.left_to_right_iterator(@underlying_structure)
+      keys = []
+
+      while iterator.cursor
+        keys << iterator.cursor.value.key
+
+        iterator.next
+      end
+
+      keys
     end
   end
 end
