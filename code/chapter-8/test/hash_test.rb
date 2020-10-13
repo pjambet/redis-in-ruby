@@ -279,39 +279,117 @@ describe 'BYORedis - Hash commands' do
   end
 
   describe 'HMGET' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HMGET', '-ERR wrong number of arguments for \'HMGET\' command' ],
+        [ 'HMGET h', '-ERR wrong number of arguments for \'HMGET\' command' ],
+      ]
+    end
 
-    it 'returns a nil array if the hash does not exist'
+    it 'returns an array with nil values if the hash does not exist' do
+      assert_command_results [
+        [ 'HMGET h a b c', [ nil, nil, nil ] ],
+      ]
+    end
 
-    it 'returns an array of all the values for the given fields in the hash'
+    it 'returns an array of all the values for the given fields in the hash' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+        [ 'HMGET h f1 f3', [ 'v1', 'v3' ] ],
+      ]
+    end
 
-    it 'returns an array including nil values for non existing fields'
+    it 'returns an array including nil values for non existing fields' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+        [ 'HMGET h f1 not-a-thing f3 neither-is-this', [ 'v1', nil, 'v3', nil ] ],
+      ]
+    end
   end
 
   describe 'HSETNX' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HSETNX', '-ERR wrong number of arguments for \'HSETNX\' command' ],
+        [ 'HSETNX h', '-ERR wrong number of arguments for \'HSETNX\' command' ],
+        [ 'HSETNX h f', '-ERR wrong number of arguments for \'HSETNX\' command' ],
+        [ 'HSETNX h f v a', '-ERR wrong number of arguments for \'HSETNX\' command' ],
+      ]
+    end
 
-    it 'does nothing if the field already exists'
+    it 'does nothing if the field already exists' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+        [ 'HSETNX h f1 new-value', ':0' ],
+        [ 'HGET h f1', 'v1' ],
+      ]
+    end
 
-    it 'returns 1 if the hash does not exist'
+    it 'returns 1 if the hash does not exist' do
+      assert_command_results [
+        [ 'HSETNX h f1 new-value', ':1' ],
+        [ 'HGET h f1', 'new-value' ],
+      ]
+    end
 
-    it 'returns 1 if the field does not exist'
-
-    it 'returns 0 if the field already exists'
+    it 'returns 1 if the field does not exist' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+        [ 'HSETNX h new-field new-value', ':1' ],
+        [ 'HGET h new-field', 'new-value' ],
+      ]
+    end
   end
 
   describe 'HSTRLEN' do
-    it 'rejects an invalid number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HSTRLEN', '-ERR wrong number of arguments for \'HSTRLEN\' command' ],
+        [ 'HSTRLEN h', '-ERR wrong number of arguments for \'HSTRLEN\' command' ],
+        [ 'HSTRLEN h a b', '-ERR wrong number of arguments for \'HSTRLEN\' command' ],
+      ]
+    end
 
-    it 'returns 0 if the field does not exist'
-    it 'returns 0 if the hash does not exist'
-    it 'returns the length of the string stored for the given field'
+    it 'returns 0 if the field does not exist' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
+        [ 'HSTRLEN h not-a-thing', ':0' ],
+      ]
+    end
+
+    it 'returns 0 if the hash does not exist' do
+      assert_command_results [
+        [ 'HSTRLEN h not-a-thing', ':0' ],
+      ]
+    end
+
+    it 'returns the length of the string stored for the given field' do
+      assert_command_results [
+        [ 'HSET h f1 v1 f2 v2 f3 v3 a-long-string aaaaaaaaaa', ':4' ],
+        [ 'HSTRLEN h f1', ':2' ],
+        [ 'HSTRLEN h a-long-string', ':10' ],
+      ]
+    end
   end
 
   describe 'HVALS' do
-    it 'rejects an invalid number of arguments'
-    it 'returns an empty array if the hash does not exist'
-    it 'returns an array of all the values in the hash'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'HVALS', '-ERR wrong number of arguments for \'HVALS\' command' ],
+        [ 'HVALS a b', '-ERR wrong number of arguments for \'HVALS\' command' ],
+      ]
+    end
+
+    it 'returns an empty array if the hash does not exist' do
+      assert_command_results [
+        [ 'HVALS h', [] ],
+      ]
+    end
+
+    it 'returns an array of all the values in the hash' do
+      hvals_tests_as_list
+      hvals_tests_as_dict
+    end
   end
 
   def hset_tests_as_dict
@@ -388,6 +466,17 @@ describe 'BYORedis - Hash commands' do
 
   def hkeys_tests_as_dict
     hkeys_tests_as_list(max_list_size: 1)
+  end
+
+  def hvals_tests_as_list(max_list_size: 256)
+    ENV['HASH_MAX_ZIPLIST_ENTRIES'] = max_list_size.to_s
+    assert_unordered_array_match(hset_command: 'HSET h f1 v1 f2 v2',
+                                 main_command: 'HVALS h',
+                                 expected_result: [ [ '$2', 'v1' ], [ '$2', 'v2' ] ])
+  end
+
+  def hvals_tests_as_dict
+    hvals_tests_as_list(max_list_size: 1)
   end
 
   def hlen_tests_as_list(max_list_size: 256)

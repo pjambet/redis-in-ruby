@@ -255,14 +255,98 @@ module BYORedis
   end
 
   class HMGetCommand < BaseCommand
+    def call
+      Utils.assert_args_length_greater_than(1, @args)
+
+      key = @args.shift
+      hash = @db.data_store[key]
+
+      if hash.nil?
+        responses = Array.new(@args.length)
+      else
+        responses = @args.map do |field|
+          hash[field]
+        end
+      end
+
+      RESPArray.new(responses)
+    end
+
+    def self.describe
+      Describe.new('hmget', -3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@hash', '@fast' ])
+    end
   end
 
-  class HSetNxCommand < BaseCommand
+  class HSetNXCommand < BaseCommand
+    def call
+      Utils.assert_args_length(3, @args)
+      key = @args[0]
+      field = @args[1]
+      value = @args[2]
+
+      hash = @db.data_store[key]
+
+      if hash.nil?
+        hash = THash.new
+        @db.data_store[key] = hash
+      end
+
+      if hash[field]
+        RESPInteger.new(0)
+      else
+        hash[field] = value
+        RESPInteger.new(1)
+      end
+    end
+
+    def self.describe
+      Describe.new('hsetnx', 4, [ 'write', 'denyoom', 'fast' ], 1, 1, 1,
+                   [ '@write', '@hash', '@fast' ])
+    end
   end
 
   class HStrLenCommand < BaseCommand
+    def call
+      Utils.assert_args_length(2, @args)
+      key = @args[0]
+      field = @args[1]
+
+      hash = @db.data_store[key]
+      value_length = 0
+
+      unless hash.nil?
+        value = hash[field]
+        value_length = value.length unless value.nil?
+      end
+
+      RESPInteger.new(value_length)
+    end
+
+    def self.describe
+      Describe.new('hstrlen', 3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@hash', '@fast' ])
+    end
   end
 
   class HValsCommand < BaseCommand
+    def call
+      Utils.assert_args_length(1, @args)
+      key = @args[0]
+
+      hash = @db.data_store[key]
+      values = if hash.nil?
+                 []
+               else
+                 hash.values
+               end
+
+      RESPArray.new(values)
+    end
+
+    def self.describe
+      Describe.new('hvals', 2, [ 'readonly', 'sort_for_script' ], 1, 1, 1,
+                   [ '@read', '@hash', '@fast' ])
+    end
   end
 end

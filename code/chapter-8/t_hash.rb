@@ -23,6 +23,14 @@ module BYORedis
       end
     end
 
+    def values
+      if @size <= @max_list_size
+        values_list
+      else
+        @underlying_structure.values
+      end
+    end
+
     def length
       if @size <= @max_list_size
         @underlying_structure.size
@@ -186,6 +194,19 @@ module BYORedis
       end
 
       keys
+    end
+
+    def values_list
+      iterator = List.left_to_right_iterator(@underlying_structure)
+      values = []
+
+      while iterator.cursor
+        values << iterator.cursor.value.value
+
+        iterator.next
+      end
+
+      values
     end
   end
 end

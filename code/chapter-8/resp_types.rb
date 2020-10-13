@@ -53,6 +53,8 @@ module BYORedis
           RESPInteger.new(item).serialize
         when Array
           RESPArray.new(item).serialize
+        when nil
+          NULL_BULK_STRING
         end
       end
       "*#{ underlying_array.length }\r\n#{ serialized_items.join }"

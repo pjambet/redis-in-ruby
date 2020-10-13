@@ -71,6 +71,13 @@ module BYORedis
     COMMANDS.set('hincrbyfloat', HIncrByFloatCommand)
     COMMANDS.set('hkeys', HKeysCommand)
     COMMANDS.set('hlen', HLenCommand)
+    COMMANDS.set('hmget', HMGetCommand)
+    COMMANDS.set('hsetnx', HSetNXCommand)
+    COMMANDS.set('hstrlen', HStrLenCommand)
+    COMMANDS.set('hvals', HValsCommand)
+
+    # ...
+    COMMANDS.resize
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second
