@@ -158,7 +158,7 @@ module BYORedis
       hash[field] = Utils.integer_to_string(new_value)
 
       RESPInteger.new(new_value)
-    rescue InvalidIntegerString => e
+    rescue InvalidIntegerString
       RESPError.new('ERR hash value is not an integer')
     rescue IntegerOverflow => e
       RESPError.new('ERR increment or decrement would overflow')
@@ -202,7 +202,7 @@ module BYORedis
       hash[field] = new_value
 
       RESPBulkString.new(Utils.float_to_string(new_value))
-    rescue InvalidFloatString => e
+    rescue InvalidFloatString
       RESPError.new('ERR hash value is not a float')
     rescue FloatOverflow => e
       # Not sure how to _really_ test that
