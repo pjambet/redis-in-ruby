@@ -28,6 +28,17 @@ HMSET is deprecated
 
 ### Incrementing numeric values with HINCRBY & HINCRBYFLOAT
 
+BigDecimal instead of float
+
+examples:
+
+``` ruby
+1.1 + 1.3 => 2.4000000000000004
+l
+BigDecimal(1.1, 2) + 1.3 => 2.4
+```
+
+
 ### Utility commands
 
 **HDEL**

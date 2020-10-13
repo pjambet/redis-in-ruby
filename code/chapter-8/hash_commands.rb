@@ -194,18 +194,19 @@ module BYORedis
       end
 
       new_value = value + incr
-      # isnan | isinfinity check
-      # if new_value > BYORedis::LLONG_MAX || new_value < BYORedis::LLONG_MIN
-        # raise IntegerOverflow
-      # end
+
+      if new_value.nan? || new_value.infinite? # or call .finite?
+        raise FloatOverflow
+      end
 
       hash[field] = new_value
 
       RESPBulkString.new(Utils.float_to_string(new_value))
     rescue InvalidFloatString => e
       RESPError.new('ERR hash value is not a float')
-    rescue IntegerOverflow => e
-      RESPError.new('ERR increment or decrement would overflow')
+    rescue FloatOverflow => e
+      # Not sure how to _really_ test that
+      RESPError.new('ERR increment would produce NaN or Infinity')
     end
 
     def self.describe

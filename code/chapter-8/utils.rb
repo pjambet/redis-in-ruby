@@ -23,6 +23,7 @@ module BYORedis
     end
   end
   IntegerOverflow = Class.new(StandardError)
+  FloatOverflow = Class.new(StandardError)
   InvalidIntegerString = Class.new(StandardError)
   InvalidFloatString = Class.new(StandardError)
 
