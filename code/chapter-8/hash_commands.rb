@@ -143,11 +143,7 @@ module BYORedis
       if value.nil?
         value = 0
       else
-        p "BEFORE"
-        p value
         value = Utils.string_to_integer(value)
-        p 'AFTER'
-        p value
       end
 
       new_value = value + incr

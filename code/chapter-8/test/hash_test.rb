@@ -365,9 +365,11 @@ describe 'BYORedis - Hash commands' do
 
     it 'returns the length of the string stored for the given field' do
       assert_command_results [
-        [ 'HSET h f1 v1 f2 v2 f3 v3 a-long-string aaaaaaaaaa', ':4' ],
+        [ 'HSET h f1 v1 f2 v2 f4 v3 a-long-string aaaaaaaaaa an-emoji 👋 another-one 🤷‍♂️', ':6' ],
         [ 'HSTRLEN h f1', ':2' ],
         [ 'HSTRLEN h a-long-string', ':10' ],
+        [ 'HSTRLEN h an-emoji', ':4' ],
+        [ 'HSTRLEN h another-one', ':13' ],
       ]
     end
   end
