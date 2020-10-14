@@ -11,6 +11,13 @@ describe 'Set Commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SADD not-a-set 1 2', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'creates a set if necessary' do
       assert_command_results [
         [ 'SADD s 1', ':1' ],

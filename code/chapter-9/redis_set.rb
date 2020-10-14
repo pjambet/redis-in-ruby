@@ -4,23 +4,23 @@ require_relative './dict'
 module BYORedis
   class RedisSet
 
+    attr_reader :cardinality
+
     def initialize
       @max_list_size = ENV['SET_MAX_ZIPLIST_ENTRIES'].to_i.then do |max|
         max <= 0 ? 256 : max
       end
       @underlying_structure = IntSet.new
-      @size = 0
+      @cardinality = 0
     end
 
     def add(member)
-      p "Adding #{ member }"
-      p @underlying_structure
       if @underlying_structure.is_a?(IntSet)
 
         if int_member = can_be_represented_as_int?(member)
           added = @underlying_structure.add(int_member)
 
-          if added && @size + 1 > @max_list_size
+          if added && @cardinality + 1 > @max_list_size
             p "CONVERTING BECAUSE SIZE"
             convert_intset_to_dict
           end
@@ -35,19 +35,10 @@ module BYORedis
         raise "Unknown type for structure: #{ @underlying_structure }"
       end
 
-      @size += 1
+      @cardinality += 1 if added
       p @underlying_structure
 
       added
-    end
-
-    def cardinality
-      case @underlying_structure
-      when IntSet then @underlying_structure.cardinality
-      when Dict then @underlying_structure.used
-      else
-        raise "Unknown type for structure: #{ @underlying_structure }"
-      end
     end
 
     def diff(other_sets)
@@ -67,6 +58,7 @@ module BYORedis
           # If the other set contains the element then we know we don't want to add element to
           # the diff set
           break if other_set == self
+
           if other_set.contains?(element)
             p "#{ other_set.inspect } does contain #{ element }"
             break
@@ -76,10 +68,7 @@ module BYORedis
           i += 1
         end
 
-        p i
-        p (other_sets.length)
         if i == (other_sets.length)
-          p "ADDING"
           dest_set.add(element)
         end
       end
@@ -95,20 +84,6 @@ module BYORedis
       end
     end
 
-    def to_a
-      # TODO: Maybe a better serializer?
-      case @underlying_structure
-      when IntSet then @underlying_structure
-      when Dict then
-        members = []
-        @underlying_structure.each { |el, _| members << el }
-        members
-      else raise "Unknown type for structure #{ @underlying_structure }"
-      end
-    end
-
-    private
-
     def each(&block)
       case @underlying_structure
       when IntSet then @underlying_structure.each { |i| block.call(i.to_s) }
@@ -116,6 +91,8 @@ module BYORedis
       else raise "Unknown type for structure #{ @underlying_structure }"
       end
     end
+
+    private
 
     def add_to_dict_if_needed(member)
       present = @underlying_structure.include?(member)
@@ -144,6 +121,24 @@ module BYORedis
       Utils.string_to_integer(member)
     rescue InvalidIntegerString
       false
+    end
+  end
+
+  class SetSerializer
+
+    def initialize(set)
+      @set = set
+    end
+
+    def serialize
+      response = ''
+      @set.each do |member|
+        response << "$#{ member.size }\r\n#{ member }\r\n"
+      end
+
+      response.prepend("*#{ @set.cardinality }\r\n")
+
+      response
     end
   end
 end

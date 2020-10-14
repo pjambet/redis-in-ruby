@@ -14,6 +14,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HSET not-a-hash f1 v1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'creates a hash if necessary' do
       assert_command_results [
         [ 'TYPE h', '+none' ],
@@ -36,6 +43,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HGETALL not-a-hash', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns an empty array if the hash does not exist' do
       assert_command_results [
         [ 'HGETALL h', '*0' ],
@@ -54,6 +68,13 @@ describe 'BYORedis - Hash commands' do
         [ 'HGET', '-ERR wrong number of arguments for \'HGET\' command' ],
         [ 'HGET h', '-ERR wrong number of arguments for \'HGET\' command' ],
         [ 'HGET h f a', '-ERR wrong number of arguments for \'HGET\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HGET not-a-hash f1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 
@@ -84,6 +105,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HDEL not-a-hash f1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns the number of fields that were deleted from the hash' do
       hdel_tests_as_list
       hdel_tests_as_dict
@@ -107,6 +135,13 @@ describe 'BYORedis - Hash commands' do
         [ 'HEXISTS', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
         [ 'HEXISTS h', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
         [ 'HEXISTS h a b', '-ERR wrong number of arguments for \'HEXISTS\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HEXISTS not-a-hash f1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 
@@ -138,6 +173,13 @@ describe 'BYORedis - Hash commands' do
         [ 'HINCRBY h', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
         [ 'HINCRBY h a', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
         [ 'HINCRBY h a b c', '-ERR wrong number of arguments for \'HINCRBY\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HINCRBY not-a-hash f1 1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 
@@ -204,6 +246,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HINCRBYFLOAT not-a-hash f1 1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns the new value, as a RESP string of the value for the field, after the incr' do
       assert_command_results [
         [ 'HSET h a 1.0', ':1' ],
@@ -246,6 +295,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HKEYS not-a-hash', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns a nil array if the hash does not exist' do
       assert_command_results [
         [ 'HKEYS h', BYORedis::NULL_ARRAY ],
@@ -266,6 +322,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HLEN not-a-hash', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns 0 if the hash does not exist' do
       assert_command_results [
         [ 'HLEN h', ':0' ],
@@ -283,6 +346,13 @@ describe 'BYORedis - Hash commands' do
       assert_command_results [
         [ 'HMGET', '-ERR wrong number of arguments for \'HMGET\' command' ],
         [ 'HMGET h', '-ERR wrong number of arguments for \'HMGET\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HMGET not-a-hash a b c', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 
@@ -314,6 +384,13 @@ describe 'BYORedis - Hash commands' do
         [ 'HSETNX h', '-ERR wrong number of arguments for \'HSETNX\' command' ],
         [ 'HSETNX h f', '-ERR wrong number of arguments for \'HSETNX\' command' ],
         [ 'HSETNX h f v a', '-ERR wrong number of arguments for \'HSETNX\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HSETNX not-a-hash f1 v1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 
@@ -350,6 +427,13 @@ describe 'BYORedis - Hash commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HSTRLEN not-a-hash f1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns 0 if the field does not exist' do
       assert_command_results [
         [ 'HSET h f1 v1 f2 v2 f3 v3', ':3' ],
@@ -379,6 +463,13 @@ describe 'BYORedis - Hash commands' do
       assert_command_results [
         [ 'HVALS', '-ERR wrong number of arguments for \'HVALS\' command' ],
         [ 'HVALS a b', '-ERR wrong number of arguments for \'HVALS\' command' ],
+      ]
+    end
+
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-hash 1', '+OK' ],
+        [ 'HVALS not-a-hash', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
       ]
     end
 

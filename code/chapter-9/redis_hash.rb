@@ -1,5 +1,5 @@
 module BYORedis
-  class THash
+  class RedisHash
 
     ListEntry = Struct.new(:key, :value)
 
@@ -16,39 +16,41 @@ module BYORedis
     end
 
     def keys
-      if @size <= @max_list_size
-        keys_list
-      else
-        @underlying_structure.keys
+      case @underlying_structure
+      when List then keys_list
+      when Dict then @underlying_structure.keys
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
     end
 
     def values
-      if @size <= @max_list_size
-        values_list
-      else
-        @underlying_structure.values
+      case @underlying_structure
+      when List then values_list
+      when Dict then @underlying_structure.values
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
     end
 
     def length
-      if @size <= @max_list_size
-        @underlying_structure.size
-      else
-        @underlying_structure.used
+      case @underlying_structure
+      when List then @underlying_structure.size
+      when Dict then @underlying_structure.used
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
     end
 
     def set(key, value)
-      if @size <= @max_list_size
+      case @underlying_structure
+      when List then
         new_pair_count = set_list(key, value)
         if new_pair_count + @size > @max_list_size
           convert_list_to_dict
         end
-      else
+      when Dict then
         existing_pair_count = @underlying_structure.used
         @underlying_structure[key] = value
         new_pair_count = @underlying_structure.used - existing_pair_count
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
 
       @size += 1 if new_pair_count == 1
@@ -58,30 +60,33 @@ module BYORedis
     alias []= set
 
     def get_all
-      if @size <= @max_list_size
-        get_all_list
-      else
-        get_all_dict
+      case @underlying_structure
+      when List then get_all_list
+      when Dict then get_all_dict
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
     end
 
     def get(field)
-      if @size <= @max_list_size
-        get_list(field)
-      else
-        get_dict(field)
+      case @underlying_structure
+      when List then get_list(field)
+      when Dict then get_dict(field)
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
     end
     alias [] get
 
     def delete(field)
-      if @size <= @max_list_size
-        was_deleted = delete_from_list(field)
-      else
+      case @underlying_structure
+      when List then was_deleted = delete_from_list(field)
+      when Dict then
         was_deleted = !@underlying_structure.delete(field).nil?
         if was_deleted && @size - 1 == @max_list_size
           convert_dict_to_list
+        elsif @underlying_structure.needs_resize?
+          @underlying_structure.resize
         end
+      else raise "Unknown structure type: #{ @underlying_structre }"
       end
 
       @size -= 1 if was_deleted

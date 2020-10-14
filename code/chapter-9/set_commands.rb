@@ -7,11 +7,7 @@ module BYORedis
       key = @args.shift
       new_member_count = 0
 
-      set = @db.data_store[key]
-      if set.nil?
-        set = RedisSet.new
-        @db.data_store[key] = set
-      end
+      set = @db.lookup_set_for_write(key)
 
       @args.each do |member|
         added = set.add(member)
@@ -30,7 +26,7 @@ module BYORedis
   class SCardCommand < BaseCommand
     def call
       Utils.assert_args_length(1, @args)
-      set = @db.data_store[@args[0]]
+      set = @db.lookup_set(@args[0])
 
       cardinality = if set.nil?
                       0
@@ -50,14 +46,17 @@ module BYORedis
     def call
       Utils.assert_args_length_greater_than(0, @args)
       first_set = @db.lookup_set(@args.shift)
-      diff = []
 
       other_sets = @args.map { |other_set| @db.lookup_set(other_set) }
 
-      diff = first_set.diff(other_sets) if first_set
+      if first_set
+        diff = first_set.diff(other_sets)
+      else
+        diff = RedisSet.new
+      end
       p '---'
       p diff
-      RESPArray.new(diff.to_a)
+      SetSerializer.new(diff)
     end
 
     def self.describe

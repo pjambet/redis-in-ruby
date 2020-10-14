@@ -15,7 +15,7 @@ module BYORedis
                'string'
              when List
                'list'
-             when THash
+             when RedisHash
                'hash'
              when RedisSet
                'set'
