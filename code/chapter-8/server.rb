@@ -387,26 +387,11 @@ module BYORedis
     end
 
     def databases_cron
-      @db.data_store.resize if ht_needs_resize(@db.data_store)
-      @db.expires.resize if ht_needs_resize(@db.expires)
+      @db.data_store.resize if @db.data_store.needs_resize?(min_fill: HASHTABLE_MIN_FILL)
+      @db.expires.resize if @db.expires.needs_resize?(min_fill: HASHTABLE_MIN_FILL)
 
       @db.data_store.rehash_milliseconds(1)
       @db.expires.rehash_milliseconds(1)
-    end
-
-    def slots(dict)
-      dict.hash_tables[0].size + dict.hash_tables[1].size
-    end
-
-    def size(dict)
-      dict.hash_tables[0].used + dict.hash_tables[1].used
-    end
-
-    def ht_needs_resize(dict)
-      size = slots(dict)
-      used = size(dict)
-
-      size > Dict::INITIAL_SIZE && ((used * 100) / size < HASHTABLE_MIN_FILL)
     end
 
     def parse_integer(integer_str, error_message)

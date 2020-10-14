@@ -40,11 +40,17 @@ module BYORedis
     end
 
     def include?(key)
-      !get(key).nil?
+      !get_entry(key).nil?
     end
 
-    def set(key, value)
+    # Dangerous method that can create duplicate if used incorrectly, should only be called if
+    # get_entry was previously called and returned nil
+    # Explain that calling add while rehashing can create a race condition
+    def add(key, value)
       index = key_index(key)
+
+      # Only happens if we didn't check the presence before calling this method
+      return nil if index == -1
 
       rehash_step if rehashing?
 
@@ -53,18 +59,28 @@ module BYORedis
 
       entry = entry.next while entry && entry.key != key
 
-      if !entry.nil?
-        entry.value = value
-      else
+      if entry.nil?
         entry = DictEntry.new(key, value)
         entry.next = hash_table.table[index]
         hash_table.table[index] = entry
         hash_table.used += 1
+      else
+        raise "Unexpectedly found an entry with same key when trying to add #{ key } / #{ value }"
+      end
+    end
+
+    def set(key, value)
+      entry = get_entry(key)
+      if entry
+        entry.value = value
+      else
+        add(key, value)
+        # Maybe raise if didn't add?
       end
     end
     alias []= set
 
-    def get(key)
+    def get_entry(key)
       return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
@@ -77,13 +93,17 @@ module BYORedis
         entry = hash_table.table[index]
 
         while entry
-          return entry.value if entry.key == key
+          return entry if entry.key == key
 
           entry = entry.next
         end
       end
 
       nil
+    end
+
+    def get(key)
+      get_entry(key)&.value
     end
     alias [] get
 
@@ -160,7 +180,17 @@ module BYORedis
       values
     end
 
+    def needs_resize?(min_fill: 10)
+      size = slots
+
+      size > INITIAL_SIZE && ((used * 100) / size < min_fill)
+    end
+
     private
+
+    def slots
+      hash_tables[0].size + hash_tables[1].size
+    end
 
     def main_table
       @hash_tables[0]
@@ -213,6 +243,15 @@ module BYORedis
 
       iterate_through_hash_tables_unless_rehashing do |hash_table|
         index = hash & hash_table.sizemask
+        entry = hash_table.table[index]
+        while entry
+          # The key is already present in the hash so there's no valid index where to add it
+          if entry.key == key
+            return -1
+          else
+            entry = entry.next
+          end
+        end
       end
 
       index

@@ -18,6 +18,31 @@ describe 'Dict' do
       assert_equal('2', dict['a'])
       assert_equal(1, dict.used)
     end
+
+    it 'prevents duplicates even while rehashing' do
+      dict = new_dict([ 'a', '1' ], [ 'b', '2' ], [ 'c', '3' ], [ 'd', '4' ], [ 'e', '5' ],
+                      [ 'f', '6' ], [ 'g', '7' ], [ 'h', '8' ])
+      dict['i'] = '9' # Trigger rehashing with a 9th element
+      # Find an element that has not been rehashed
+      not_yet_rehashed_entry = dict.hash_tables[0].table.reject(&:nil?)[-1]
+
+      # Override that entry, and make sure it does not incorrectly add it to the rehashing table
+      # instead
+      dict[not_yet_rehashed_entry.key] = 'something else'
+
+      pairs = []
+      dict.each do |key, value|
+        pairs << [ key, value ]
+      end
+
+      # We only know at runtime which key we changed, so compute the expected result then
+      expected_pairs = [ [ 'a', '1' ], [ 'b', '2' ], [ 'c', '3' ], [ 'd', '4' ], [ 'e', '5' ],
+                         [ 'f', '6' ], [ 'g', '7' ], [ 'h', '8' ], [ 'i', '9' ] ]
+      updated_entry = expected_pairs.find { |p| p[0] == not_yet_rehashed_entry.key }
+      updated_entry[1] = 'something else'
+
+      assert_equal(expected_pairs, pairs.sort)
+    end
   end
 
   describe 'get' do
