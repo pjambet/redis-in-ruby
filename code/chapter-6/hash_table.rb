@@ -15,10 +15,10 @@ module BYORedis
       @size == 0
     end
 
-    def each
+    def each(&block)
       return unless @table
 
-      @table.each
+      @table.each(&block)
     end
   end
 end

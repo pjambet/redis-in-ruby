@@ -14,6 +14,10 @@ module BYORedis
       @rehashidx = -1
     end
 
+    def used
+      main_table.used + rehashing_table.used
+    end
+
     def rehash_milliseconds(millis)
       start = Time.now.to_f * 1000
       rehashes = 0
@@ -35,31 +39,18 @@ module BYORedis
       expand(minimal)
     end
 
-    def expand(size)
-      return if rehashing? || main_table.used > size
-
-      real_size = next_power(size)
-
-      return if real_size == main_table.size
-
-      new_hash_table = HashTable.new(real_size)
-
-      # Is this the first initialization? If so it's not really a rehashing
-      # we just set the first hash table so that it can accept keys.
-      if main_table.table.nil?
-        @hash_tables[0] = new_hash_table
-      else
-        @hash_tables[1] = new_hash_table
-        @rehashidx = 0
-      end
-    end
-
     def include?(key)
-      !get(key).nil?
+      !get_entry(key).nil?
     end
 
-    def set(key, value)
+    # Dangerous method that can create duplicate if used incorrectly, should only be called if
+    # get_entry was previously called and returned nil
+    # Explain that calling add while rehashing can create a race condition
+    def add(key, value)
       index = key_index(key)
+
+      # Only happens if we didn't check the presence before calling this method
+      return nil if index == -1
 
       rehash_step if rehashing?
 
@@ -68,18 +59,27 @@ module BYORedis
 
       entry = entry.next while entry && entry.key != key
 
-      if !entry.nil?
-        entry.value = value
-      else
+      if entry.nil?
         entry = DictEntry.new(key, value)
         entry.next = hash_table.table[index]
         hash_table.table[index] = entry
         hash_table.used += 1
+      else
+        raise "Unexpectedly found an entry with same key when trying to add #{ key } / #{ value }"
+      end
+    end
+
+    def set(key, value)
+      entry = get_entry(key)
+      if entry
+        entry.value = value
+      else
+        add(key, value)
       end
     end
     alias []= set
 
-    def get(key)
+    def get_entry(key)
       return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
@@ -92,13 +92,17 @@ module BYORedis
         entry = hash_table.table[index]
 
         while entry
-          return entry.value if entry.key == key
+          return entry if entry.key == key
 
           entry = entry.next
         end
       end
 
       nil
+    end
+
+    def get(key)
+      get_entry(key)&.value
     end
     alias [] get
 
@@ -121,12 +125,14 @@ module BYORedis
               hash_table.table[index] = entry.next
             end
             hash_table.used -= 1
-            return entry
+            return entry.value
           end
           previous_entry = entry
           entry = entry.next
         end
       end
+
+      nil
     end
 
     def each
@@ -163,6 +169,25 @@ module BYORedis
       @hash_tables[1]
     end
 
+    def expand(size)
+      return if rehashing? || main_table.used > size
+
+      real_size = next_power(size)
+
+      return if real_size == main_table.size
+
+      new_hash_table = HashTable.new(real_size)
+
+      # Is this the first initialization? If so it's not really a rehashing
+      # we just set the first hash table so that it can accept keys.
+      if main_table.table.nil?
+        @hash_tables[0] = new_hash_table
+      else
+        @hash_tables[1] = new_hash_table
+        @rehashidx = 0
+      end
+    end
+
     # In the Redis codebase, they extensively use the following pattern:
     # for (table = 0; table <= 1; table++) {
     #   ...
@@ -187,6 +212,15 @@ module BYORedis
 
       iterate_through_hash_tables_unless_rehashing do |hash_table|
         index = hash & hash_table.sizemask
+        entry = hash_table.table[index]
+        while entry
+          # The key is already present in the hash so there's no valid index where to add it
+          if entry.key == key
+            return -1
+          else
+            entry = entry.next
+          end
+        end
       end
 
       index

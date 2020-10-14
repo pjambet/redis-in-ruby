@@ -717,7 +717,7 @@ _listing 6.12: The Dict class_
 
 Our `Dict` class does not require any arguments, it is initialized with two empty hash tables, and a rehash index set to `-1`, indicating that it is not in a rehashing state. The rehashing index is used to keep track of the progress throughout rehashing. Its value will change from `0` to `@hash_tables[0].size - 1` as we rehash the table, and reset to `-1` when completed.
 
-The first method we need to add to the `Dict` class is `set`, it will be used to add or update an element to a dictionary. This is needed for the `SET` command.
+The first method we need to add to the `Dict` class is `add`, it will be used to add an element to a dictionary. This is needed for the `SET` command. This method always expects the called to check that the key is not already present and will fail if it finds a matching key.
 
 ``` ruby
 # dict.rb
@@ -726,8 +726,11 @@ module BYORedis
 
     # ...
 
-    def set(key, value)
+    def add(key, value)
       index = key_index(key)
+
+      # Only happens if we didn't check the presence before calling this method
+      return nil if index == -1
 
       rehash_step if rehashing?
 
@@ -736,20 +739,20 @@ module BYORedis
 
       entry = entry.next while entry && entry.key != key
 
-      if !entry.nil?
-        entry.value = value
-      else
+      if entry.nil?
         entry = DictEntry.new(key, value)
         entry.next = hash_table.table[index]
         hash_table.table[index] = entry
         hash_table.used += 1
+      else
+        raise "Unexpectedly found an entry with same key when trying to add #{ key } / #{ value }"
       end
     end
-    alias []= set
+    alias []= add
   end
 end
 ```
-_listing 6.13: The set method in the Dict class_
+_listing 6.13: The add method in the Dict class_
 
 The method is very similar to the pseudo code we looked at earlier in `add_or_update_key_value_pair`. We first obtain the index for the key, aka the location of the bucket the key should go into. We then perform a rehash step if we're in rehashing state.
 
@@ -802,7 +805,7 @@ The second line is necessary so that the head of list in the bucket points at th
 
 The last line, `hash_table.used += 1`, increments the counter of how many items are in the dictionary.
 
-Finally, we use the Ruby `alias` keyword to create an alias for `set` to `[]=`. This allows us to use a `Dict` instance similarly to how we use a Ruby `Hash`:
+Finally, we use the Ruby `alias` keyword to create an alias for `add` to `[]=`. This allows us to use a `Dict` instance similarly to how we use a Ruby `Hash`:
 
 ``` ruby
 dict = Dict.new
@@ -836,6 +839,15 @@ module BYORedis
 
       iterate_through_hash_tables_unless_rehashing do |hash_table|
         index = hash & hash_table.sizemask
+        entry = hash_table.table[index]
+        while entry
+          # The key is already present in the hash so there's no valid index where to add it
+          if entry.key == key
+            return -1
+          else
+            entry = entry.next
+          end
+        end
       end
 
       index
@@ -872,6 +884,7 @@ This method replaces the common pattern in the Redis C codebase using a `for` lo
 
 The implication for `key_index` is that if we're in a rehashing state, we'll first find the index in the first table, but `iterate_through_hash_tables_unless_rehashing` will `yield` a second time and `index` will end up being an index for the rehashing table.
 
+`key_index` is used to find the index of the bucket where a new entry should be added and it therefore does not make sense to return a value if an entry already exists with the same key. In such cases we'll need to update the existing entry, which we'll cover soon. This is necessary because of the rehashing process, which is explained below as well. In short, during rehashing, keys will be present in two different tables, the main one and the rehashing, and clearly separating the process of adding a new entry and updating an existing one allows to guarantees keys are unique.
 
 The `digest` method in the `SipHash` class requires a 16-byte key composed of random bytes. Redis does generates these with the [`getRandomBytes` function][redis-source-get-random-bytes], which attempts to use `/dev/urandom/` and defaults to a weaker seed based on the current time and the pid of the server if `/dev/urandom` is not accessible. Ruby's `SecureRandom` module provides a `random_bytes` method which uses `/dev/urandom` under the hood, so let's use it:
 
@@ -893,7 +906,12 @@ Now that we implemented the `set` method, and its alias, `[]=`, we need to add t
 ``` ruby
 module BYORedis
   class Dict
-    def get(key)
+
+    def used
+      main_table.used + rehashing_table.used
+    end
+
+    def get_entry(key)
       return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
@@ -906,7 +924,7 @@ module BYORedis
         entry = hash_table.table[index]
 
         while entry
-          return entry.value if entry.key == key
+          return entry if entry.key == key
 
           entry = entry.next
         end
@@ -914,10 +932,14 @@ module BYORedis
 
       nil
     end
+
+    def get(key)
+      get_entry(key)&.value
+    end
     alias [] get
 
     def include?(key)
-      !get(key).nil?
+      !get_entry(key).nil?
     end
 
     def each
@@ -948,7 +970,9 @@ end
 ```
 _listing 6.16: get, include? and each method in Dict.rb_
 
-The `get` method starts with an early `return` statement if both tables are empty. If that's the case, there's no need to continue, we know the key is not present in the table.
+The `get` method is a small wrapper around the lower level `get_entry` method. This lower level method is necessary to support `nil` as values. Without it, calling `dict.get(key)` would return `nil` if the key is not present, but also if it is present, but the value is `nil`. With `get_entry`, we will only receive `nil` when the key is not present, and will receive an instance of `DictEntry` otherwise.
+
+`get_entry` starts with an early `return` statement if both tables are empty. If that's the case, there's no need to continue, we know the key is not present in the table.
 
 The next step is similar to `add`, we perform a single rehash step if we're in a rehashing state. The approach allows Redis to incrementally work its way through the rehashing process, without affecting too much the performance of other operations. A single rehashing step does not require a lot of work, and will have a negligible impact on the performance of get, but it has the important benefits of advancing the rehashing process.
 
@@ -956,7 +980,7 @@ Once again, we follow a pattern similar to the pseudo code `lookup_key` from ear
 
 If we inspected all the element in the main table bucket, and potentially in the rehashing table bucket, and did not find any matches, we return nil. The key is not in the hash table.
 
-Similarly to what we did with `set` and `[]=`, we alias `get` to `[]`, which allows us to use the same syntax we use for `Hash` instances:
+Similarly to what we did with `add` and `[]=`, we alias `get` to `[]`, which allows us to use the same syntax we use for `Hash` instances:
 
 ``` ruby
 dict = Dict.new
@@ -966,6 +990,27 @@ dict[1]
 ```
 
 There is a use case where we only care about the presence of a key in a dictionary, but not about the value, this is what the `include?` method does. We do not need to reimplement the logic, we reuse the `get` method, discard its value and return a boolean instead.
+
+Now that we have the `get_entry` method, we can define the `set` method which performs the "add or update" operation, and update the `[]=` alias to point at `set` and not at `add` anymore.
+
+``` ruby
+module BYORedis
+  class Dict
+    # ...
+    def set(key, value)
+      entry = get_entry(key)
+      if entry
+        entry.value = value
+      else
+        add(key, value)
+      end
+    end
+    alias []= set
+    # ...
+  end
+end
+```
+_listing 6.17: The `set` method in Dict.rb aliased to `[]=`_
 
 Finally we add the `each` method, which will `yield` all the key/value pairs in the hash table. This time we do not use the `iterate_through_hash_tables_unless_rehashing`. This is because we're using a small optimization technique to avoid iterating over buckets we know are empty.
 
@@ -998,7 +1043,7 @@ module BYORedis
   end
 end
 ```
-_listing 6.17: expand_if_needed in the Dict class_
+_listing 6.18: expand_if_needed in the Dict class_
 
 If we are already in the process of rehashing the dict, then we can abort early, the process will continue incrementally, there's nothing else we should do until rehashing is over.
 If the table is empty we call `expand` with `INITIAL_SIZE`, which is set to `4`, otherwise we call it with a capacity set to twice the current size of the dictionary.
@@ -1048,7 +1093,7 @@ def rehashing?
   @rehashidx != -1
 end
 ```
-_listing 6.18: expand, next_power and rehashing? methods in the Dict class_
+_listing 6.19: expand, next_power and rehashing? methods in the Dict class_
 
 Similarly to `resize`, if we're already in the process of rehashing, we can abort early. We also abort early if the number of items in the array is greater than the new size. In this case, there's no point in resizing the table, it would be too small.
 
@@ -1112,7 +1157,7 @@ def rehash(n)
   end
 end
 ```
-_listing 6.19: rehashing related methods in the Dict class_
+_listing 6.20: rehashing related methods in the Dict class_
 
 `rehash_step` calls `rehash` with the parameter 1. The parameter to `rehash` dictates how many items it will rehash, that is, move from the main table to the rehashing one. Let's look at the method one line at a time.
 
@@ -1184,7 +1229,7 @@ def ht_needs_resize(dict)
   size > Dict::INITIAL_SIZE && ((used * 100) / size < HASHTABLE_MIN_FILL)
 end
 ```
-_listing 6.20: databases_cron method in the Server class_
+_listing 6.21: databases_cron method in the Server class_
 
 `databases_cron` performs two operations on the two dictionaries in the `Server` class, `@data_store`, that holds all the key/value pairs, and `@expires` which keeps track of the keys with TTLs. For each of these dictionaries, if first calls `resize`, which we've explored in the previous section, only if it thinks the dictionary needs to be resized.
 
@@ -1232,7 +1277,7 @@ def resize
   expand(minimal)
 end
 ```
-_listing 6.21: rehash_milliseconds and resize methods in the Dict class_
+_listing 6.22: rehash_milliseconds and resize methods in the Dict class_
 
 ### No more `Hash` & `{}`
 
@@ -1268,7 +1313,7 @@ module BYORedis
   end
 end
 ```
-_listing 6.22: Replacing usages of Hash with Dict in the Server class_
+_listing 6.23: Replacing usages of Hash with Dict in the Server class_
 
 The `SetCommand` class was using a `Hash` to store the configuration values of the possible options. We replace it similarly to what we did for the `COMMANDS` constant in `server.rb`:
 
@@ -1310,7 +1355,7 @@ module BYORedis
   end
 end
 ```
-_listing 6.23: Replacing usages of Hash with Dict in the SetCommand class_
+_listing 6.24: Replacing usages of Hash with Dict in the SetCommand class_
 
 **Changing `@clients` to a Dict**
 
@@ -1436,7 +1481,7 @@ module BYORedis
   end
 end
 ```
-_listing 6.24: The new DelCommand class_
+_listing 6.25: The new DelCommand class_
 
 The `DelCommand` class implements the behavior of the command, as well as defining the data for the `COMMAND` command, but it mainly relies on a non existing method on the `Dict` class, `delete`. Let's add it:
 
@@ -1469,7 +1514,7 @@ def delete(key)
   end
 end
 ```
-_listing 6.25: The delete method in the Dict class_
+_listing 6.26: The delete method in the Dict class_
 
 The logic in `delete` is similar to the `add` method. We start with a shortcut we've already seen, if the table is empty, there's no need to go any further, we can stop right there.
 
@@ -1554,7 +1599,7 @@ class BYOArray < BasicObject
   end
 end
 ```
-_listing 6.26: A Ruby implementation of an Array structure_
+_listing 6.27: A Ruby implementation of an Array structure_
 
 ``` ruby
 ary = BYOArray.new(2)
@@ -1790,7 +1835,7 @@ class SipHash
   end
 end
 ```
-_listing 6.27: A Ruby implementation of the siphash 1-2 algorithm_
+_listing 6.28: A Ruby implementation of the siphash 1-2 algorithm_
 
 [java-doc-tree-map]:https://docs.oracle.com/javase/8/docs/api/java/util/TreeMap.html
 [wikipedia-hash-table]:https://en.wikipedia.org/wiki/Hash_table

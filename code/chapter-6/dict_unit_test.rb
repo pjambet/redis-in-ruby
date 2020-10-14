@@ -1,5 +1,5 @@
 require_relative './test_helper'
-require_relative '../dict'
+require_relative './dict'
 
 describe 'Dict' do
   describe 'set' do
