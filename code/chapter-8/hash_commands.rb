@@ -1,4 +1,4 @@
-require_relative './t_hash'
+require_relative './redis_hash'
 
 module BYORedis
 
@@ -9,11 +9,7 @@ module BYORedis
       Utils.assert_args_length_multiple_of(2, @args)
       pairs = @args.each_slice(2).to_a
 
-      hash = @db.data_store[key]
-      if hash.nil?
-        hash = @db.data_store[key] = THash.new
-      end
-
+      hash = @db.lookup_hash_for_write(key)
       count = 0
 
       pairs.each do |pair|
@@ -37,7 +33,7 @@ module BYORedis
     def call
       Utils.assert_args_length(1, @args)
 
-      hash = @db.data_store[@args[0]]
+      hash = @db.lookup_hash(@args[0])
 
       if hash.nil?
         pairs = []
@@ -58,7 +54,7 @@ module BYORedis
     def call
       Utils.assert_args_length_greater_than(1, @args)
       key = @args.shift
-      hash = @db.data_store[key]
+      hash = @db.lookup_hash(key)
 
       delete_count = 0
       if hash
@@ -78,7 +74,7 @@ module BYORedis
     def call
       Utils.assert_args_length(2, @args)
 
-      hash = @db.data_store[@args[0]]
+      hash = @db.lookup_hash(@args[0])
 
       if hash.nil?
         RESPInteger.new(0)
@@ -102,7 +98,7 @@ module BYORedis
     def call
       Utils.assert_args_length(2, @args)
 
-      hash = @db.data_store[@args[0]]
+      hash = @db.lookup_hash(@args[0])
 
       if hash.nil?
         NullBulkStringInstance
@@ -131,13 +127,7 @@ module BYORedis
       key = @args[0]
       field = @args[1]
       incr = Utils.string_to_integer(@args[2])
-
-      hash = @db.data_store[key]
-
-      if hash.nil?
-        hash = THash.new
-        @db.data_store[key] = hash
-      end
+      hash = @db.lookup_hash_for_write(key)
 
       value = hash[field]
       if value.nil?
@@ -174,13 +164,7 @@ module BYORedis
       key = @args[0]
       field = @args[1]
       incr = Utils.string_to_float(@args[2])
-
-      hash = @db.data_store[key]
-
-      if hash.nil?
-        hash = THash.new
-        @db.data_store[key] = hash
-      end
+      hash = @db.lookup_hash_for_write(key)
 
       value = hash[field]
       if value.nil?
@@ -215,7 +199,7 @@ module BYORedis
     def call
       Utils.assert_args_length(1, @args)
 
-      hash = @db.data_store[@args[0]]
+      hash = @db.lookup_hash(@args[0])
 
       if hash.nil?
         NullArrayInstance
@@ -234,7 +218,7 @@ module BYORedis
     def call
       Utils.assert_args_length(1, @args)
 
-      hash = @db.data_store[@args[0]]
+      hash = @db.lookup_hash(@args[0])
       hash_length = 0
 
       unless hash.nil?
@@ -255,7 +239,7 @@ module BYORedis
       Utils.assert_args_length_greater_than(1, @args)
 
       key = @args.shift
-      hash = @db.data_store[key]
+      hash = @db.lookup_hash(key)
 
       if hash.nil?
         responses = Array.new(@args.length)
@@ -280,13 +264,7 @@ module BYORedis
       key = @args[0]
       field = @args[1]
       value = @args[2]
-
-      hash = @db.data_store[key]
-
-      if hash.nil?
-        hash = THash.new
-        @db.data_store[key] = hash
-      end
+      hash = @db.lookup_hash_for_write(key)
 
       if hash[field]
         RESPInteger.new(0)
@@ -308,7 +286,7 @@ module BYORedis
       key = @args[0]
       field = @args[1]
 
-      hash = @db.data_store[key]
+      hash = @db.lookup_hash(key)
       value_length = 0
 
       unless hash.nil?
@@ -330,7 +308,7 @@ module BYORedis
       Utils.assert_args_length(1, @args)
       key = @args[0]
 
-      hash = @db.data_store[key]
+      hash = @db.lookup_hash(key)
       values = if hash.nil?
                  []
                else

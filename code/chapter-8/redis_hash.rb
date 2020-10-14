@@ -1,5 +1,5 @@
 module BYORedis
-  class THash
+  class RedisHash
 
     ListEntry = Struct.new(:key, :value)
 

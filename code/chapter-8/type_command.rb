@@ -15,7 +15,7 @@ module BYORedis
         RESPSimpleString.new('string')
       when List
         RESPSimpleString.new('list')
-      when THash
+      when RedisHash
         RESPSimpleString.new('hash')
       else
         raise "Unknown type for #{ value }"

@@ -44,6 +44,23 @@ module BYORedis
       list
     end
 
+    def lookup_hash(key)
+      hash = @data_store[key]
+      raise WrongTypeError if hash && !hash.is_a?(RedisHash)
+
+      hash
+    end
+
+    def lookup_hash_for_write(key)
+      hash = lookup_hash(key)
+      if hash.nil?
+        hash = RedisHash.new
+        @data_store[key] = hash
+      end
+
+      hash
+    end
+
     def left_pop_from(key, list)
       generic_pop_wrapper(key, list) do
         list.left_pop
