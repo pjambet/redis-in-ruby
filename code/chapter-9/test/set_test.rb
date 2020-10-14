@@ -59,6 +59,13 @@ describe 'Set Commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SCARD not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns 0 for a non existing set' do
       assert_command_results [
         [ 'SCARD s', ':0' ],
@@ -84,6 +91,15 @@ describe 'Set Commands' do
       ]
     end
 
+    it 'fails if the key is not a hash' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SDIFF not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SADD a-set 1 2', ':2' ],
+        [ 'SDIFF a-set not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
     it 'returns an empty array with non existing sets' do
       assert_command_results [
         [ 'SDIFF s', [] ],
@@ -103,7 +119,7 @@ describe 'Set Commands' do
         socket.write to_query('SADD', 's1', 'a', 'b', 'c', 'd')
         socket.write to_query('SADD', 's2', 'c')
         socket.write to_query('SADD', 's3', 'a', 'c', 'e')
-        sleep 0.01 # Sleep long enough for the server to process all three commands
+        sleep 0.1 # Sleep long enough for the server to process all three commands
         read_response(socket)
 
         socket.write to_query('SDIFF', 's1', 's2', 's3')
