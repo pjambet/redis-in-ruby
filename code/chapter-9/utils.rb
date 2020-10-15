@@ -54,6 +54,10 @@ module BYORedis
       false
     end
 
+    def self.string_to_integer_or_nil(string)
+      string_to_integer(string) rescue nil
+    end
+
     def self.string_to_integer(string)
       raise InvalidIntegerString, 'Empty string' if string.empty?
 

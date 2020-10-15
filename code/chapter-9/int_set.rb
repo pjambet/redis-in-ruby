@@ -31,5 +31,16 @@ module BYORedis
     def each(&block)
       @underlying_array.each(&block)
     end
+
+    def contains?(member)
+      return false if member.nil?
+
+      p "Contains for #{ member.inspect } in #{ @underlying_array.inspect }"
+      @underlying_array.bsearch { |x| x >= member } == member
+    end
+
+    def members
+      @underlying_array
+    end
   end
 end

@@ -67,9 +67,26 @@ module BYORedis
 
   class SDiffStoreCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
+      destination_key = @args.shift
+      first_set = @db.lookup_set(@args.shift)
+
+      other_sets = @args.map { |other_set| @db.lookup_set(other_set) }
+
+      if first_set
+        diff = first_set.diff(other_sets)
+        @db.data_store[destination_key] = diff
+        cardinality = diff.cardinality
+      else
+        cardinality = 0
+      end
+
+      RESPInteger.new(cardinality)
     end
 
     def self.describe
+      Describe.new('sdiffstore', -3, [ 'write', 'denyoom' ], 1, -1, 1,
+                   [ '@write', '@set', '@slow' ])
     end
   end
 
@@ -107,9 +124,15 @@ module BYORedis
 
   class SMembersCommand < BaseCommand
     def call
+      Utils.assert_args_length(1, @args)
+      set = @db.lookup_set(@args[0])
+
+      RESPArray.new(set.members)
     end
 
     def self.describe
+      Describe.new('smembers', 2, [ 'readonly', 'sort_for_script' ], 1, 1, 1,
+                   [ '@read', '@set', '@slow' ])
     end
   end
 

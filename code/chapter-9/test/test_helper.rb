@@ -120,6 +120,14 @@ def assert_response(expected_result, response)
   else
     if expected_result&.is_a?(Array)
       expected_result = BYORedis::RESPArray.new(expected_result).serialize
+    elsif expected_result&.is_a?(UnorderedArray)
+      expected_result = BYORedis::RESPArray.new(expected_result.array.sort).serialize
+      response = response.then do |r|
+        parts = r.split
+        response_size = parts.shift
+        sorted_parts = parts.each_slice(2).sort_by { |p|  p[1]  }
+        sorted_parts.flatten.prepend(response_size).map { |p| p << "\r\n" }.join
+      end
     elsif expected_result && !%w(+ - : $ *).include?(expected_result[0])
       # Convert to a Bulk String unless it is a simple string (starts with a +)
       # or an error (starts with -)
@@ -161,4 +169,15 @@ end
 
 def to_query(*command_parts)
   BYORedis::RESPArray.new(command_parts).serialize
+end
+
+class UnorderedArray
+  attr_reader :array
+  def initialize(array)
+    @array = array
+  end
+end
+
+def unordered(array)
+  UnorderedArray.new(array)
 end

@@ -76,9 +76,33 @@ module BYORedis
       dest_set
     end
 
-    def contains?(member)
+    def members
       case @underlying_structure
-      when IntSet then !@underlying_structure.bsearch_index { |x| x == member }.nil?
+      when IntSet then @underlying_structure.members.map(&:to_s)
+      when Dict then @underlying_structure.keys
+      else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
+    def contains?(member)
+      return false if member.nil?
+
+      case @underlying_structure
+      when IntSet then
+        p "Weird intset check for #{ member.inspect }"
+        if member.is_a?(Integer)
+          member_as_int = member
+        else
+          member_as_int = Utils.string_to_integer_or_nil(member)
+        end
+        p member_as_int
+        if member_as_int
+          rest = @underlying_structure.contains?(member_as_int)
+          p rest
+          rest
+        else
+          false
+        end
       when Dict then @underlying_structure.include?(member)
       else raise "Unknown type for structure #{ @underlying_structure }"
       end

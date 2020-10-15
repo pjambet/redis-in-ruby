@@ -79,6 +79,8 @@ module BYORedis
     COMMANDS.set('sadd', SAddCommand)
     COMMANDS.set('scard', SCardCommand)
     COMMANDS.set('sdiff', SDiffCommand)
+    COMMANDS.set('sdiffstore', SDiffStoreCommand)
+    COMMANDS.set('smembers', SMembersCommand)
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second

@@ -115,27 +115,76 @@ describe 'Set Commands' do
     end
 
     it 'returns all the elements from the first set that are not in the other ones' do
-      with_server do |socket|
-        socket.write to_query('SADD', 's1', 'a', 'b', 'c', 'd')
-        socket.write to_query('SADD', 's2', 'c')
-        socket.write to_query('SADD', 's3', 'a', 'c', 'e')
-        sleep 0.1 # Sleep long enough for the server to process all three commands
-        read_response(socket)
-
-        socket.write to_query('SDIFF', 's1', 's2', 's3')
-        response = read_response(socket)
-
-        sorted_response = response.split.then do |r|
-          r.shift
-          r.each_slice(2).sort
-        end
-        assert_equal([ [ '$1', 'b' ], [ '$1', 'd' ] ], sorted_response)
-      end
+      assert_command_results [
+        [ 'SADD s1 a b c d', ':4' ],
+        [ 'SADD s2 c', ':1' ],
+        [ 'SADD s3 a c e', ':3' ],
+        [ 'SDIFF s1 s2 s3', unordered([ 'b', 'd' ]) ],
+      ]
     end
   end
 
   describe 'SDIFFSTORE' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SDIFFSTORE', '-ERR wrong number of arguments for \'SDIFFSTORE\' command' ],
+        [ 'SDIFFSTORE dest', '-ERR wrong number of arguments for \'SDIFFSTORE\' command' ],
+      ]
+    end
+
+    it 'returns an error if one of the inputs is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SADD a-set 1 2 3', ':3' ],
+        [ 'SDIFFSTORE dest not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SDIFFSTORE dest non-existing not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SDIFFSTORE dest a-set not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'does nothing and return 0 with a non existing set' do
+      assert_command_results [
+        [ 'SDIFFSTORE dest s', ':0' ],
+        [ 'TYPE dest', '+none' ],
+      ]
+    end
+
+    it 'stores the same set in dest with a single set argument' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SDIFFSTORE dest s1', ':3' ],
+        [ 'SCARD dest', ':3' ],
+        [ 'SMEMBERS dest', [ '10', '20', '30' ] ],
+        [ 'SADD s2 20 b c a 10', ':5' ],
+        [ 'SDIFFSTORE dest s2', ':5' ],
+        [ 'SCARD dest', ':5' ],
+        [ 'SMEMBERS dest', unordered([ '20', '10', 'b', 'c', 'a' ]) ],
+      ]
+    end
+
+    it 'stores the diff in dest' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SADD s2 40 30 50', ':3' ],
+        [ 'SDIFFSTORE dest s1 s2', ':2' ],
+        [ 'SMEMBERS dest', [ '10', '20' ] ],
+        [ 'SADD s1 b c a', ':3' ],
+        [ 'SADD s3 b a d', ':3' ],
+        [ 'SDIFFSTORE dest s1 s2 s3', ':3' ],
+        [ 'SMEMBERS dest', unordered([ '10', '20', 'c' ]) ],
+      ]
+    end
+
+    it 'can use one of the input sets as the dest, and overwrites it'
+
+    it 'overwrites destination if it already exists' do
+      assert_command_results [
+        [ 'SET dest a', '+OK' ],
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SDIFFSTORE dest s1', ':3' ],
+        [ 'SMEMBERS dest', unordered([ '10', '20', '30' ]) ],
+      ]
+    end
   end
 
   describe 'SINTER' do
@@ -150,7 +199,28 @@ describe 'Set Commands' do
   end
 
   describe 'SMEMBERS' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SMEMBERS', '-ERR wrong number of arguments for \'SMEMBERS\' command' ],
+        [ 'SMEMBERS a b', '-ERR wrong number of arguments for \'SMEMBERS\' command' ],
+      ]
+    end
+
+    it 'returns an error if one of the inputs is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SMEMBERS not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns all the elements in the set' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SMEMBERS s', [ '10', '20', '30' ] ],
+        [ 'SADD s b c d a', ':4' ],
+        [ 'SMEMBERS s', unordered([ '10', '20', '30', 'a', 'b', 'c', 'd' ]) ],
+      ]
+    end
   end
 
   describe 'SMOVE' do
