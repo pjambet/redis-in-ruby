@@ -86,7 +86,7 @@ module BYORedis
 
     def each(&block)
       case @underlying_structure
-      when IntSet then @underlying_structure.each { |i| block.call(i.to_s) }
+      when IntSet then @underlying_structure.each { |i| block.call(Utils.integer_to_string(i)) }
       when Dict then @underlying_structure.each(&block)
       else raise "Unknown type for structure #{ @underlying_structure }"
       end
