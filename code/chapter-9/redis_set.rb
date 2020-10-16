@@ -84,6 +84,32 @@ module BYORedis
       end
     end
 
+    def pop(count)
+      return [] if count == 0
+
+      case @underlying_structure
+      when IntSet then
+        popped = @underlying_structure.pop.to_s
+        @cardinality -= 1
+        popped
+      when Dict then
+        random_entry = @underlying_structure.random_entry
+        p random_entry
+        @underlying_structure.delete(random_entry.key)
+        @cardinality -= 1
+        random_entry.key
+      else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
+    def empty?
+      case @underlying_structure
+      when IntSet then @underlying_structure.empty?
+      when Dict then @underlying_structure.used == 0
+      else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
     def contains?(member)
       return false if member.nil?
 

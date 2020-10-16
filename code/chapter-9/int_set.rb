@@ -42,5 +42,14 @@ module BYORedis
     def members
       @underlying_array
     end
+
+    def pop
+      rand_index = rand(@underlying_array.size)
+      @underlying_array.delete_at(rand_index)
+    end
+
+    def empty?
+      @underlying_array.empty?
+    end
   end
 end

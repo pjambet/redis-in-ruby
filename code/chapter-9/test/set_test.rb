@@ -189,12 +189,51 @@ describe 'Set Commands' do
 
   describe 'SINTER' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if one of the inputs is not a set'
   end
+
   describe 'SINTERSTORE' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if one of the inputs is not a set'
   end
 
   describe 'SISMEMBER' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SISMEMBER', '-ERR wrong number of arguments for \'SISMEMBER\' command' ],
+      ]
+    end
+
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SISMEMBER not-a-set f', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns 0 if the element is not a member of the set, 1 otherwise' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SISMEMBER s a', ':0' ],
+        [ 'SISMEMBER s 20', ':1' ],
+        [ 'SISMEMBER s 21', ':0' ],
+        [ 'SADD s a d c', ':3' ],
+        [ 'SISMEMBER s a', ':1' ],
+        [ 'SISMEMBER s e', ':0' ],
+      ]
+    end
+
+    it 'returns 0 if the set does not exist' do
+      assert_command_results [
+        [ 'SISMEMBER s a', ':0' ],
+        [ 'SISMEMBER s 1', ':0' ],
+      ]
+    end
+  end
+
+  describe 'SMISMEMBER' do # New in 6.2.0
     it 'handles unexpected number of arguments'
   end
 
@@ -225,25 +264,90 @@ describe 'Set Commands' do
 
   describe 'SMOVE' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if the source is not a set'
   end
 
   describe 'SPOP' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SPOP', '-ERR wrong number of arguments for \'SPOP\' command' ],
+        [ 'SPOP a 1 a', '-ERR syntax error' ],
+      ]
+    end
+
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SPOP not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an error if count is not an integer' do
+      assert_command_results [
+        [ 'SPOP s a', '-ERR value is not an integer or out of range' ],
+      ]
+    end
+
+    it 'returns an error if count is negative' do
+      assert_command_results [
+        [ 'SPOP s -1', '-ERR index out of range' ],
+      ]
+    end
+
+    it 'removes an element from the set and returns it' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SPOP s', one_of([ '10', '20', '30' ]) ],
+        [ 'SADD s b a c', ':3' ],
+        [ 'SPOP s', one_of([ '10', '20', '30', 'a', 'b', 'c' ]) ],
+        [ 'SCARD s', ':4' ],
+      ]
+    end
+
+    it 'returns up to count elements with the count argument'
+
+    it 'returns a nil string for a non existing set' do
+      assert_command_results [
+        [ 'SPOP s', BYORedis::NULL_BULK_STRING ],
+      ]
+    end
+
+    it 'returns an empty array for a non existing set with a count argument' do
+      assert_command_results [
+        [ 'SPOP s 1', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
+
+    it 'returns an empty array for an existing set with a 0 count' do
+      assert_command_results [
+        [ 'SADD s a', ':1' ],
+        [ 'SPOP s 0', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
   end
 
   describe 'SRANDMEMBER' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if the key is not a set'
   end
 
   describe 'SREM' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if the key is not a set'
   end
 
   describe 'SUNION' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if one of the inputs is not a set'
   end
 
   describe 'SUNIONSTORE' do
     it 'handles unexpected number of arguments'
+
+    it 'returns an error if one of the inputs is not a set'
   end
 end

@@ -186,6 +186,21 @@ module BYORedis
       size > INITIAL_SIZE && ((used * 100) / size < min_fill)
     end
 
+    def random_entry
+      return if used == 0
+
+      bucket = nil
+      loop do
+        # TODO: Figure out how to do random while rehashin
+        table = rehashing? ? rehashing_table : main_table
+        random_index = rand(table.size)
+        bucket = table.table[random_index]
+        break if bucket
+      end
+
+      bucket
+    end
+
     private
 
     def slots

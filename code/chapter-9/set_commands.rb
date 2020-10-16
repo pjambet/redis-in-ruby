@@ -92,25 +92,41 @@ module BYORedis
 
   class SInterCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
     end
 
     def self.describe
+      Describe.new('sinter', -2, [ 'readonly', 'sort_for_script' ], 1, -1, 1,
+                   [ '@read', '@set', '@slow' ])
     end
   end
 
   class SInterStoreCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
     end
 
     def self.describe
+      Describe.new('sinterstore', -3, [ 'write', 'denyoom' ], 1, -1, 1,
+                   [ '@write', '@set', '@slow' ])
     end
   end
 
   class SIsMemberCommand < BaseCommand
     def call
+      Utils.assert_args_length(2, @args)
+      set = @db.lookup_set(@args[0])
+      if set
+        presence = set.contains?(@args[1]) ? 1 : 0
+        RESPInteger.new(presence)
+      else
+        RESPInteger.new(0)
+      end
     end
 
     def self.describe
+      Describe.new('sismember', 3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@set', '@fast' ])
     end
   end
 
@@ -138,49 +154,90 @@ module BYORedis
 
   class SMoveCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(3, @args)
     end
 
     def self.describe
+      Describe.new('smove', 4, [ 'write', 'fast' ], 1, 2, 1,
+                   [ '@write', '@set', '@fast' ])
     end
   end
 
   class SPopCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
+      raise RESPSyntaxError if @args.length > 2
+
+      if @args[1]
+        count = OptionUtils.validate_integer(@args[1])
+        return RESPError.new('ERR index out of range') if count < 0
+      end
+      set = @db.lookup_set(@args[0])
+
+      if set
+        if count
+          popped = set.pop(count)
+          @db.data_store.delete(@args[0]) if set.empty?
+          RESPArray.new(popped)
+        else
+          popped = set.pop(count)
+          @db.data_store.delete(@args[0]) if set.empty?
+          RESPBulkString.new(popped)
+        end
+      elsif count.nil?
+        NullBulkStringInstance
+      else
+        EmptyArrayInstance
+      end
     end
 
     def self.describe
+      Describe.new('spop', -2, [ 'write', 'random', 'fast' ], 1, 1, 1,
+                   [ '@write', '@set', '@fast' ])
     end
   end
 
   class SRandMemberCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
     end
 
     def self.describe
+      Describe.new('srandmember', -2, [ 'readonly', 'random' ], 1, 1, 1,
+                   [ '@read', '@set', '@slow' ])
     end
   end
 
   class SRemCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
     end
 
     def self.describe
+      Describe.new('srem', -3, [ 'write', 'fast' ], 1, 1, 1,
+                   [ '@write', '@set', '@fast' ])
     end
   end
 
   class SUnionCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
     end
 
     def self.describe
+      Describe.new('sunion', -2, [ 'readonly', 'sort_for_script' ], 1, -1, 1,
+                   [ '@read', '@set', '@slow' ])
     end
   end
 
   class SUnionStoreCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
     end
 
     def self.describe
+      Describe.new('sunionstore', -3, [ 'write', 'denyoom' ], 1, -1, 1,
+                   [ '@write', '@set', '@slow' ])
     end
   end
 end
