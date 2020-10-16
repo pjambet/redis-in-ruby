@@ -48,6 +48,11 @@ module BYORedis
       @underlying_array.delete_at(rand_index)
     end
 
+    def random_member
+      rand_index = rand(@underlying_array.size)
+      @underlying_array[rand_index]
+    end
+
     def empty?
       @underlying_array.empty?
     end

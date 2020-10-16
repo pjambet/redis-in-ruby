@@ -102,6 +102,65 @@ module BYORedis
       end
     end
 
+    def random_members_with_count(count)
+      return [] if count.nil? || count == 0
+
+      # Case 1: Count is negative, we return that many elements, ignoring duplicates
+      if count < 0
+        members = []
+        (-count).times do
+          members << random_member
+        end
+
+        return members
+      end
+
+      # Case 2: Count is positive and greater than the size, we return the whole thing
+      return self if count >= @cardinality
+
+      # For both case 3 & 4 we need a new set
+      new_set = RedisSet.new
+      # Case 3: Number of elements in the set is too small to grab n random distinct members
+      # from it so we instead pick random elements to remove from it
+      # Start by creating a new set identical to self and then remove elements from it
+      if false # TODO: compare count and card
+        each { |member| new_set.add(member) }
+      end
+
+      # Case 4: The number of elements in the set is big enough in comparison to count so we
+      # do the "classic" approach of picking count distinct elements
+      added = 0
+      while added < count
+        member = random_member
+        p "Trying to add #{ member } to #{ new_set.inspect }"
+        res = new_set.add(member)
+        p "Res: #{res}"
+        if res
+          added += 1
+        end
+      end
+      return new_set
+
+
+      # case @underlying_structure
+      # when IntSet then Utils.integer_to_string(@underlying_structure.random_member)
+      # when Dict then
+        # random_entry = @underlying_structure.random_entry
+        # random_entry.key
+      # else raise "Unknown type for structure #{ @underlying_structure }"
+      # end
+    end
+
+    def random_member
+      case @underlying_structure
+      when IntSet then Utils.integer_to_string(@underlying_structure.random_member)
+      when Dict then
+        random_entry = @underlying_structure.random_entry
+        random_entry.key
+      else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
     def empty?
       case @underlying_structure
       when IntSet then @underlying_structure.empty?
@@ -121,7 +180,7 @@ module BYORedis
         else
           member_as_int = Utils.string_to_integer_or_nil(member)
         end
-        p member_as_int
+
         if member_as_int
           rest = @underlying_structure.contains?(member_as_int)
           p rest

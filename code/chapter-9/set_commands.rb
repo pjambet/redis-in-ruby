@@ -175,15 +175,9 @@ module BYORedis
       set = @db.lookup_set(@args[0])
 
       if set
-        if count
-          popped = set.pop(count)
-          @db.data_store.delete(@args[0]) if set.empty?
-          RESPArray.new(popped)
-        else
-          popped = set.pop(count)
-          @db.data_store.delete(@args[0]) if set.empty?
-          RESPBulkString.new(popped)
-        end
+        popped = set.pop(count)
+        @db.data_store.delete(@args[0]) if set.empty?
+        RESPSerializer.serialize(popped)
       elsif count.nil?
         NullBulkStringInstance
       else
@@ -200,6 +194,26 @@ module BYORedis
   class SRandMemberCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(0, @args)
+      raise RESPSyntaxError if @args.length > 2
+
+      count = OptionUtils.validate_integer(@args[1]) if @args[1]
+      set = @db.lookup_set(@args[0])
+
+      if set
+        if count.nil?
+          random_members = set.random_member
+        else
+          random_members = set.random_members_with_count(count)
+          p '==='
+          p random_members
+        end
+
+        RESPSerializer.serialize(random_members)
+      elsif count.nil?
+        NullBulkStringInstance
+      else
+        EmptyArrayInstance
+      end
     end
 
     def self.describe

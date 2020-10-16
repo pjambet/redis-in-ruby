@@ -74,4 +74,26 @@ module BYORedis
       NULL_ARRAY
     end
   end
+
+  class RESPSerializer
+    def self.serialize(object)
+      case object
+      when Array then RESPArray.new(object)
+      when Dict
+        pairs = []
+        object.each { |k, v| pairs.push(k, v) }
+        RESPArray.new(pairs)
+      when RedisSet
+        # members = []
+        # object.each { |member| members << member }
+        # RESPArray.new(members)
+        SetSerializer.new(object)
+      when Integer then RESPInteger.new(object)
+      when String then RESPBulkString.new(object)
+      when nil then NullBulkStringInstance
+      else
+        raise "Unknown object for RESP serialization #{ object }"
+      end
+    end
+  end
 end

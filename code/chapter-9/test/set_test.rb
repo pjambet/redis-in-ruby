@@ -328,9 +328,180 @@ describe 'Set Commands' do
   end
 
   describe 'SRANDMEMBER' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SRANDMEMBER', '-ERR wrong number of arguments for \'SRANDMEMBER\' command' ],
+        [ 'SRANDMEMBER a 1 a', '-ERR syntax error' ],
+      ]
+    end
 
-    it 'returns an error if the key is not a set'
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SRANDMEMBER not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an error if count is not an integer' do
+      assert_command_results [
+        [ 'SRANDMEMBER s a', '-ERR value is not an integer or out of range' ],
+      ]
+    end
+
+    it 'returns an empty array with a negative count for a non existing set' do
+      assert_command_results [
+        [ 'SRANDMEMBER s -10', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
+
+    it 'returns up to count elements, allowing duplicates if count is negative' do
+      with_server do |socket|
+        socket.write(to_query('SADD', 's', '1', '2', '3'))
+        response = read_response(socket)
+        assert_equal(":3\r\n", response)
+
+        # With less than the total of elements, and only ints
+        socket.write(to_query('SRANDMEMBER', 's', '-2'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*2', length)
+        assert_equal(4, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+        end
+
+        # With more than the total of elements, and only ints
+        socket.write(to_query('SRANDMEMBER', 's', '-10'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*10', length)
+        assert_equal(20, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+        end
+
+        socket.write(to_query('SADD', 's', 'b', 'c', 'a'))
+        response = read_response(socket)
+        assert_equal(":3\r\n", response)
+
+        # With less than the total of elements and a mix of ints and strings
+        socket.write(to_query('SRANDMEMBER', 's', '-2'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*2', length)
+        assert_equal(4, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', 'a' ],
+                            [ '$1', 'b' ], [ '$1', 'c' ] ], part)
+        end
+
+        # With more than the total of elements and a mix of ints and strings
+        socket.write(to_query('SRANDMEMBER', 's', '-20'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*20', length)
+        assert_equal(40, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', 'a' ],
+                            [ '$1', 'b' ], [ '$1', 'c' ] ], part)
+        end
+      end
+    end
+
+    it 'returns an element from the set but does not remove it' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SRANDMEMBER s', one_of([ '10', '20', '30' ]) ],
+        [ 'SMEMBERS s', unordered([ '10', '20', '30']) ],
+        [ 'SADD s b a c', ':3' ],
+        [ 'SRANDMEMBER s', one_of([ '10', '20', '30', 'a', 'b', 'c' ]) ],
+        [ 'SMEMBERS s', unordered([ '10', '20', '30', 'a', 'b', 'c' ]) ],
+        [ 'SCARD s', ':6' ],
+      ]
+    end
+
+    it 'returns the whole set if count is positive and greater than the set\'s cardinality' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SRANDMEMBER s 3', unordered([ '10', '20', '30' ]) ],
+        [ 'SRANDMEMBER s 4', unordered([ '10', '20', '30' ]) ],
+        [ 'SADD s b c a', ':3' ],
+        [ 'SRANDMEMBER s 6', unordered([ '10', '20', '30', 'a', 'b', 'c' ]) ],
+        [ 'SRANDMEMBER s 7', unordered([ '10', '20', '30', 'a', 'b', 'c' ]) ],
+      ]
+    end
+
+    it 'returns up to count elements with the count argument' do
+      with_server do |socket|
+        socket.write(to_query('SADD', 's', '1', '2', '3'))
+        response = read_response(socket)
+        assert_equal(":3\r\n", response)
+
+        socket.write(to_query('SRANDMEMBER', 's', '1'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*1', length)
+        assert_equal(2, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+        end
+
+        socket.write(to_query('SRANDMEMBER', 's', '2'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*2', length)
+        assert_equal(4, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+        end
+
+        socket.write(to_query('SADD', 's', 'b', 'c', 'a'))
+        response = read_response(socket)
+        assert_equal(":3\r\n", response)
+        socket.write(to_query('SRANDMEMBER', 's', '2'))
+        response = read_response(socket)
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*2', length)
+        assert_equal(4, parts.length)
+        parts.each_slice(2) do |part|
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', 'a' ],
+                            [ '$1', 'b' ], [ '$1', 'c' ] ], part)
+        end
+      end
+    end
+
+    it 'returns a nil string for a non existing set' do
+      assert_command_results [
+        [ 'SRANDMEMBER s', BYORedis::NULL_BULK_STRING ],
+      ]
+    end
+
+    it 'returns an empty array for a non existing set with a count argument' do
+      assert_command_results [
+        [ 'SRANDMEMBER s 1', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
+
+    it 'returns an empty array for an existing set with a 0 count' do
+      assert_command_results [
+        [ 'SADD s a', ':1' ],
+        [ 'SRANDMEMBER s 0', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
   end
 
   describe 'SREM' do
