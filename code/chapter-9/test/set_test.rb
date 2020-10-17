@@ -188,15 +188,96 @@ describe 'Set Commands' do
   end
 
   describe 'SINTER' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SINTER', '-ERR wrong number of arguments for \'SINTER\' command' ],
+      ]
+    end
 
-    it 'returns an error if one of the inputs is not a set'
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SINTER not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an empty array if one the keys does not exist' do
+      assert_command_results [
+        [ 'SINTER s', BYORedis::EMPTY_ARRAY ],
+      ]
+    end
+
+    it 'returns the set itself if not other sets are given' do
+      assert_command_results [
+        [ 'SADD s 1 2 3', ':3' ],
+        [ 'SINTER s', [ '1', '2', '3' ] ],
+        [ 'SADD s b a', ':2' ],
+        [ 'SINTER s', unordered([ 'a', 'b', '1', '2', '3' ]) ],
+      ]
+    end
+
+    it 'returns the intersection of all the sets' do
+      assert_command_results [
+        [ 'SADD s1 1 2 3 4', ':4' ],
+        [ 'SADD s2 3', ':1' ],
+        [ 'SADD s3 1 3 5', ':3' ],
+        [ 'SINTER s1 s2 s3', unordered([ '3' ]) ],
+        [ 'DEL s1 s2 s3', ':3' ],
+        [ 'SADD s1 a b c d', ':4' ],
+        [ 'SADD s2 c', ':1' ],
+        [ 'SADD s3 a c e', ':3' ],
+        [ 'SINTER s1 s2 s3', unordered([ 'c' ]) ],
+      ]
+    end
   end
 
   describe 'SINTERSTORE' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SINTERSTORE', '-ERR wrong number of arguments for \'SINTERSTORE\' command' ],
+        [ 'SINTERSTORE dest', '-ERR wrong number of arguments for \'SINTERSTORE\' command' ],
+      ]
+    end
 
-    it 'returns an error if one of the inputs is not a set'
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SINTERSTORE dest not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns 0 and delete dest if one the keys does not exist' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SINTERSTORE not-a-set s', ':0' ],
+        [ 'TYPE not-a-set', '+none' ],
+      ]
+    end
+
+    it 'store the the set itself in dest if not other sets are given' do
+      assert_command_results [
+        [ 'SADD s 1 2 3', ':3' ],
+        [ 'SINTERSTORE dest s', ':3' ],
+        [ 'SMEMBERS dest', unordered([ '1', '2', '3' ]) ],
+        [ 'SADD s b a', ':2' ],
+        [ 'SINTERSTORE dest s', ':5' ],
+        [ 'SMEMBERS dest', unordered([ '1', '2', '3', 'a', 'b' ]) ],
+      ]
+    end
+
+    it 'stores the intersection of all the sets in dest' do
+      assert_command_results [
+        [ 'SADD s1 1 2 3 4', ':4' ],
+        [ 'SADD s2 3', ':1' ],
+        [ 'SADD s3 1 3 5', ':3' ],
+        [ 'SINTERSTORE dest s1 s2 s3', ':1' ],
+        [ 'DEL s1 s2 s3', ':3' ],
+        [ 'SADD s1 a b c d', ':4' ],
+        [ 'SADD s2 c', ':1' ],
+        [ 'SADD s3 a c e', ':3' ],
+        [ 'SINTERSTORE dest s1 s2 s3', ':1' ],
+      ]
+    end
   end
 
   describe 'SISMEMBER' do
@@ -235,6 +316,7 @@ describe 'Set Commands' do
 
   describe 'SMISMEMBER' do # New in 6.2.0
     it 'handles unexpected number of arguments'
+    it 'returns an error if the key is not a set'
   end
 
   describe 'SMEMBERS' do
@@ -306,6 +388,7 @@ describe 'Set Commands' do
     end
 
     it 'returns up to count elements with the count argument'
+    it 'returns the whole set if count is equal to or greater than the cardinality'
 
     it 'returns a nil string for a non existing set' do
       assert_command_results [
@@ -525,9 +608,23 @@ describe 'Set Commands' do
   end
 
   describe 'SREM' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SREM', '-ERR wrong number of arguments for \'SREM\' command' ],
+        [ 'SREM s', '-ERR wrong number of arguments for \'SREM\' command' ],
+      ]
+    end
 
-    it 'returns an error if the key is not a set'
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SREM not-a-set s1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns the number of removed elements'
+
+    it 'returns 0 if the set does not exist'
   end
 
   describe 'SUNION' do

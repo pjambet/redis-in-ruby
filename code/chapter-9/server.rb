@@ -84,6 +84,11 @@ module BYORedis
     COMMANDS.set('smembers', SMembersCommand)
     COMMANDS.set('spop', SPopCommand)
     COMMANDS.set('srandmember', SRandMemberCommand)
+    COMMANDS.set('srem', SRemCommand)
+    COMMANDS.set('sinter', SInterCommand)
+    COMMANDS.set('sinterstore', SInterStoreCommand)
+    COMMANDS.set('sunion', SUnionCommand)
+    COMMANDS.set('sunionstore', SUnionStoreCommand)
 
     MAX_EXPIRE_LOOKUPS_PER_CYCLE = 20
     DEFAULT_FREQUENCY = 10 # How many times server_cron runs per second

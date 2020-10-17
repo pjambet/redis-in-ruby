@@ -93,6 +93,36 @@ module BYORedis
   class SInterCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(0, @args)
+      sets = @args.map do |set_key|
+        set = @db.lookup_set(set_key)
+
+        if set.nil?
+          return EmptyArrayInstance
+        else
+          set
+        end
+      end
+
+      intersection = []
+      sets.sort_by!(&:cardinality)
+      sets[0].each do |member|
+        present_in_all_other_sets = true
+        sets[1..-1].each do |set|
+          unless set.contains?(member)
+            present_in_other_sets = false
+            break
+          end
+        end
+        intersection.append(member) if present_in_all_other_sets
+      end
+
+      RESPSerializer.serialize(intersection)
+
+      # Sort the sets smallest to largest
+      # ...
+      # Iterate over the first set, if we find a set that does not contain it, discard
+      # ...
+      # Otherwise, keep
     end
 
     def self.describe
@@ -104,6 +134,37 @@ module BYORedis
   class SInterStoreCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(1, @args)
+      dest_key = @args.shift
+      sets = @args.map do |set_key|
+        set = @db.lookup_set(set_key)
+
+        if set.nil?
+          @db.data_store.delete(dest_key)
+          return RESPInteger.new(0)
+        else
+          set
+        end
+      end
+
+      new_set = RedisSet.new
+      sets.sort_by!(&:cardinality)
+      sets[0].each do |member|
+        present_in_all_other_sets = true
+        sets[1..-1].each do |set|
+          unless set.contains?(member)
+            present_in_other_sets = false
+            break
+          end
+        end
+        new_set.add(member) if present_in_all_other_sets
+      end
+
+      if new_set.cardinality > 0
+        @db.data_store[dest_key] = new_set
+      end
+
+      cardinality = new_set.cardinality
+      RESPInteger.new(cardinality)
     end
 
     def self.describe
@@ -223,6 +284,9 @@ module BYORedis
   class SRemCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(1, @args)
+      set = @db.lookup_set(@args.shift)
+      member_keys = @args
+
     end
 
     def self.describe
