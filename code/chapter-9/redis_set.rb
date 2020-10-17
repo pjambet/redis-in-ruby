@@ -4,6 +4,12 @@ require_relative './dict'
 module BYORedis
   class RedisSet
 
+    # How many times bigger should be the set compared to the requested size
+    # for us to don't use the "remove elements" strategy? Read later in the
+    # implementation for more info.
+    # See: https://github.com/antirez/redis/blob/6.0.0/src/t_set.c#L609-L612
+    SRANDMEMBER_SUB_STRATEGY_MUL = 3
+
     attr_reader :cardinality
 
     def initialize
@@ -36,7 +42,6 @@ module BYORedis
       end
 
       @cardinality += 1 if added
-      p @underlying_structure
 
       added
     end
@@ -119,27 +124,35 @@ module BYORedis
       return self if count >= @cardinality
 
       # For both case 3 & 4 we need a new set
-      new_set = RedisSet.new
+      new_set = Dict.new
       # Case 3: Number of elements in the set is too small to grab n random distinct members
       # from it so we instead pick random elements to remove from it
       # Start by creating a new set identical to self and then remove elements from it
-      if false # TODO: compare count and card
-        each { |member| new_set.add(member) }
+      p "Count: #{ count }"
+      if count * SRANDMEMBER_SUB_STRATEGY_MUL > @cardinality
+        size = @cardinality
+        each { |member| new_set.add(member, nil) }
+        while size > count
+          random_entry = new_set.random_entry
+          new_set.delete(random_entry.key)
+          size -= 1
+        end
+        return new_set.keys
       end
 
       # Case 4: The number of elements in the set is big enough in comparison to count so we
       # do the "classic" approach of picking count distinct elements
       added = 0
       while added < count
-        member = random_member
-        p "Trying to add #{ member } to #{ new_set.inspect }"
-        res = new_set.add(member)
+        member = self.random_member
+        p "Trying to add #{ member } for set of size #{ new_set.used } / #{added}"
+        res = new_set.add(member, nil)
         p "Res: #{res}"
         if res
           added += 1
         end
       end
-      return new_set
+      return new_set.keys
 
 
       # case @underlying_structure
@@ -156,6 +169,17 @@ module BYORedis
       when IntSet then Utils.integer_to_string(@underlying_structure.random_member)
       when Dict then
         random_entry = @underlying_structure.random_entry
+        unless random_entry.next.nil?
+          until random_entry.next.nil?
+            if rand(2) == 0
+              break
+            else
+              random_entry = random_entry.next
+            end
+          end
+        end
+        p '==='
+        p random_entry
         random_entry.key
       else raise "Unknown type for structure #{ @underlying_structure }"
       end

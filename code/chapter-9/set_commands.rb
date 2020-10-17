@@ -204,8 +204,6 @@ module BYORedis
           random_members = set.random_member
         else
           random_members = set.random_members_with_count(count)
-          p '==='
-          p random_members
         end
 
         RESPSerializer.serialize(random_members)

@@ -441,9 +441,9 @@ describe 'Set Commands' do
 
     it 'returns up to count elements with the count argument' do
       with_server do |socket|
-        socket.write(to_query('SADD', 's', '1', '2', '3'))
+        socket.write(to_query('SADD', 's', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
         response = read_response(socket)
-        assert_equal(":3\r\n", response)
+        assert_equal(":9\r\n", response)
 
         socket.write(to_query('SRANDMEMBER', 's', '1'))
         response = read_response(socket)
@@ -453,7 +453,9 @@ describe 'Set Commands' do
         assert_equal('*1', length)
         assert_equal(2, parts.length)
         parts.each_slice(2) do |part|
-          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', '4' ],
+                            [ '$1', '5' ], [ '$1', '6' ], [ '$1', '7' ], [ '$1', '8' ],
+                            [ '$1', '9' ] ], part)
         end
 
         socket.write(to_query('SRANDMEMBER', 's', '2'))
@@ -464,7 +466,9 @@ describe 'Set Commands' do
         assert_equal('*2', length)
         assert_equal(4, parts.length)
         parts.each_slice(2) do |part|
-          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ] ], part)
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', '4' ],
+                            [ '$1', '5' ], [ '$1', '6' ], [ '$1', '7' ], [ '$1', '8' ],
+                            [ '$1', '9' ] ], part)
         end
 
         socket.write(to_query('SADD', 's', 'b', 'c', 'a'))
@@ -478,9 +482,25 @@ describe 'Set Commands' do
         assert_equal('*2', length)
         assert_equal(4, parts.length)
         parts.each_slice(2) do |part|
-          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', 'a' ],
-                            [ '$1', 'b' ], [ '$1', 'c' ] ], part)
+          assert_includes([ [ '$1', '1' ], [ '$1', '2' ], [ '$1', '3' ], [ '$1', '4' ],
+                            [ '$1', '5' ], [ '$1', '6' ], [ '$1', '7' ], [ '$1', '8' ],
+                            [ '$1', '9' ], [ '$1', 'a' ], [ '$1', 'b' ], [ '$1', 'c' ] ], part)
         end
+
+        socket.write(
+          to_query(*(300.times.map { |i| (i + 100).to_s }.prepend('SADD', 's')))
+        )
+        response = read_response(socket)
+        assert_equal(":300\r\n", response)
+        socket.write(to_query('SRANDMEMBER', 's', '311'))
+        response = read_response(socket)
+        assert(!response.nil?,
+               'Expected to have received a response before timeout for SRANDMEMBER')
+
+        parts = response.split("\r\n")
+        length = parts.shift
+        assert_equal('*311', length)
+        assert_equal(622, parts.length)
       end
     end
 
