@@ -17,14 +17,14 @@ description: "List of all chapters"
 - [Chapter 6 - Building a Hash Table](/post/chapter-6-building-a-hash-table/)
 - [Chapter 7 - Adding List Commands](/post/chapter-7-adding-list-commands/)
 - [Chapter 8 - Hashes](/post/chapter-8-adding-hash-commands/)
-- [Chapter 9 - Sets](/post/chapter-9-adding-set-commands/)
+- [Chapter 9 - Sets](/post/chapter-9-sets/)
 
 Coming Soon
 
-- [Chapter 10 - Sorted Sets](/)
-- [Chapter 11 - Bitmaps](/)
-- [Chapter 12 - HyperLogLogs](/)
-- [Chapter 13 - GEO* commands](/)
-- [Chapter 14 - Pub/Sub](/)
-- [Chapter 15 - Redis as an LRU cache](/)
-- [Chapter 16 - Transactions](/)
+- [Chapter 10 - Sorted Sets](/post/chapter-10-sorted-sets/)
+- [Chapter 11 - Bitmaps](/post/chapter-11-bitmaps/)
+- [Chapter 12 - HyperLogLogs](/post/chapter-12-hyperloglogs/)
+- [Chapter 13 - GEO* commands](/post/chapter-13-geo-commands/)
+- [Chapter 14 - Pub/Sub](/post/chapter-14-pub-sub-commands/)
+- [Chapter 15 - Redis as an LRU cache](/post/chapter-15-lru-cache/)
+- [Chapter 16 - Transactions](/post/chapter-16-transactions/)
