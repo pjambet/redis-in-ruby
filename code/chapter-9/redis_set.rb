@@ -26,6 +26,27 @@ module BYORedis
       @cardinality = 0
     end
 
+    def self.intersection(sets)
+      sets.sort_by!(&:cardinality)
+      sets[0].intersection(sets[1..-1])
+    end
+
+    def self.union(sets)
+      if sets.empty?
+        RedisSet.new
+      else
+        sets[0].union(sets[1..-1])
+      end
+    end
+
+    def self.difference(sets)
+      if sets[0]
+        sets[0].difference(sets[1..-1])
+      else
+        RedisSet.new
+      end
+    end
+
     def add(member)
       if @underlying_structure.is_a?(IntSet)
 
@@ -51,7 +72,7 @@ module BYORedis
       added
     end
 
-    def diff(other_sets)
+    def difference(other_sets)
       return self if other_sets.empty?
 
       dest_set = RedisSet.new

@@ -28,11 +28,7 @@ module BYORedis
       Utils.assert_args_length(1, @args)
       set = @db.lookup_set(@args[0])
 
-      cardinality = if set.nil?
-                      0
-                    else
-                      set.cardinality
-                    end
+      cardinality = set.nil? ? 0 : set.cardinality
       RESPInteger.new(cardinality)
     end
 
@@ -45,17 +41,9 @@ module BYORedis
   class SDiffCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(0, @args)
-      first_set = @db.lookup_set(@args.shift)
+      sets = @args.map { |other_set| @db.lookup_set(other_set) }
 
-      other_sets = @args.map { |other_set| @db.lookup_set(other_set) }
-
-      if first_set
-        diff = first_set.diff(other_sets)
-      else
-        diff = RedisSet.new
-      end
-
-      SetSerializer.new(diff)
+      RESPSerializer.serialize(RedisSet.difference(sets))
     end
 
     def self.describe
@@ -68,16 +56,14 @@ module BYORedis
     def call
       Utils.assert_args_length_greater_than(1, @args)
       destination_key = @args.shift
-      first_set = @db.lookup_set(@args.shift)
+      sets = @args.map { |other_set| @db.lookup_set(other_set) }
+      diff = RedisSet.difference(sets)
 
-      other_sets = @args.map { |other_set| @db.lookup_set(other_set) }
-
-      if first_set
-        diff = first_set.diff(other_sets)
+      if diff.empty?
+        cardinality = 0
+      else
         @db.data_store[destination_key] = diff
         cardinality = diff.cardinality
-      else
-        cardinality = 0
       end
 
       RESPInteger.new(cardinality)
@@ -101,8 +87,8 @@ module BYORedis
           set
         end
       end
-      sets.sort_by!(&:cardinality)
-      RESPSerializer.serialize(sets[0].intersection(sets[1..-1]))
+
+      RESPSerializer.serialize(RedisSet.intersection(sets))
     end
 
     def self.describe
@@ -126,10 +112,9 @@ module BYORedis
         end
       end
 
-      sets.sort_by!(&:cardinality)
-      new_set = sets[0].intersection(sets[1..-1])
+      new_set = RedisSet.intersection(sets)
 
-      if new_set.cardinality > 0
+      unless new_set.empty?
         @db.data_store[dest_key] = new_set
       end
 
@@ -318,13 +303,7 @@ module BYORedis
       Utils.assert_args_length_greater_than(0, @args)
       sets = @args.map { |set_key| @db.lookup_set(set_key) }.compact
 
-      if sets.empty?
-        union = []
-      else
-        union = sets[0].union(sets[1..-1])
-      end
-
-      RESPSerializer.serialize(union)
+      RESPSerializer.serialize(RedisSet.union(sets))
     end
 
     def self.describe
@@ -338,17 +317,16 @@ module BYORedis
       Utils.assert_args_length_greater_than(1, @args)
       dest_key = @args.shift
       sets = @args.map { |set_key| @db.lookup_set(set_key) }.compact
-      cardinality = 0
 
-      if sets.empty?
+      new_set = RedisSet.union(sets)
+
+      if new_set.empty?
         @db.data_store.delete(dest_key)
       else
-        new_set = sets[0].union(sets[1..-1])
         @db.data_store[dest_key] = new_set
-        cardinality = new_set.cardinality
       end
 
-      RESPSerializer.serialize(cardinality)
+      RESPSerializer.serialize(new_set.cardinality)
     end
 
     def self.describe
