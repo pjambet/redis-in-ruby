@@ -36,7 +36,7 @@ module BYORedis
       return false if member.nil?
 
       p "Contains for #{ member.inspect } in #{ @underlying_array.inspect }"
-      @underlying_array.bsearch { |x| x >= member } == member
+      !@underlying_array.bsearch { |x| member <=> x }.nil?
     end
 
     def members
@@ -55,6 +55,17 @@ module BYORedis
 
     def empty?
       @underlying_array.empty?
+    end
+
+    def remove(member)
+      index = @underlying_array.bsearch_index { |x| member <=> x }
+      p index
+      if index
+        @underlying_array.delete_at(index)
+        true
+      else
+        false
+      end
     end
   end
 end

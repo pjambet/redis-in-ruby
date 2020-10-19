@@ -107,7 +107,7 @@ module BYORedis
     end
     alias [] get
 
-    def delete(key)
+    def delete_entry(key)
       return if main_table.used == 0 && rehashing_table.used == 0
 
       rehash_step if rehashing?
@@ -126,7 +126,7 @@ module BYORedis
               hash_table.table[index] = entry.next
             end
             hash_table.used -= 1
-            return entry.value
+            return entry
           end
           previous_entry = entry
           entry = entry.next
@@ -134,6 +134,10 @@ module BYORedis
       end
 
       nil
+    end
+
+    def delete(key)
+      delete_entry(key)&.value
     end
 
     def each

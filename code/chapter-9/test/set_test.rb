@@ -622,20 +622,120 @@ describe 'Set Commands' do
       ]
     end
 
-    it 'returns the number of removed elements'
+    it 'returns the number of removed elements' do
+      assert_command_results [
+        [ 'SADD s 1 2 3', ':3' ],
+        [ 'SREM s 3 2 4 5', ':2' ],
+        [ 'SREM s a', ':0' ],
+        [ 'SMEMBERS s', unordered([ '1' ]) ],
+        [ 'SADD s b c a', ':3' ],
+        [ 'SREM s d a b', ':2' ],
+        [ 'SMEMBERS s', unordered([ '1', 'c' ]) ],
+      ]
+    end
 
-    it 'returns 0 if the set does not exist'
+    it 'returns 0 if the set does not exist' do
+      assert_command_results [
+        [ 'SREM s a', ':0' ],
+      ]
+    end
   end
 
   describe 'SUNION' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SUNION', '-ERR wrong number of arguments for \'SUNION\' command' ],
+      ]
+    end
 
-    it 'returns an error if one of the inputs is not a set'
+    it 'returns an error if one of the inputs is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SADD a-set 1 2 3', ':3' ],
+        [ 'SUNION not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SUNION non-existing not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SUNION a-set not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an empty array for a non existing set' do
+      assert_command_results [
+        [ 'SUNION s', [] ],
+      ]
+    end
+
+    it 'returns the union of all the given sets' do
+      assert_command_results [
+        [ 'SADD s1 1 2 3', ':3' ],
+        [ 'SADD s2 3 4 5', ':3' ],
+        [ 'SUNION s1 s2', unordered([ '1', '2', '3', '4', '5' ]) ],
+        [ 'SADD s1 a b c', ':3' ],
+        [ 'SADD s2 c d e', ':3' ],
+        [ 'SUNION s1 s2', unordered([ '1', '2', '3', '4', '5', 'a', 'b', 'c', 'd', 'e' ]) ],
+      ]
+    end
   end
 
   describe 'SUNIONSTORE' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SUNIONSTORE', '-ERR wrong number of arguments for \'SUNIONSTORE\' command' ],
+        [ 'SUNIONSTORE dest', '-ERR wrong number of arguments for \'SUNIONSTORE\' command' ],
+      ]
+    end
 
-    it 'returns an error if one of the inputs is not a set'
+    it 'returns an error if one of the inputs is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SADD a-set 1 2 3', ':3' ],
+        [ 'SUNIONSTORE dest not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SUNIONSTORE dest non-existing not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'SUNIONSTORE dest a-set not-a-set', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns 0 for a non existing set' do
+      assert_command_results [
+        [ 'SUNIONSTORE dest s', ':0' ],
+        [ 'TYPE dest', '+none' ],
+      ]
+    end
+
+    it 'returns the size of the new set and store the union of all the given sets' do
+      assert_command_results [
+        [ 'SADD s1 1 2 3', ':3' ],
+        [ 'SADD s2 3 4 5', ':3' ],
+        [ 'SUNIONSTORE dest s1 s2', ':5' ],
+        [ 'SMEMBERS dest', unordered([ '1', '2', '3', '4', '5' ]) ],
+        [ 'SADD s1 a b c', ':3' ],
+        [ 'SADD s2 c d e', ':3' ],
+        [ 'SUNIONSTORE dest s1 s2', ':10' ],
+        [ 'SMEMBERS dest', unordered([ '1', '2', '3', '4', '5', 'a', 'b', 'c', 'd', 'e' ]) ],
+      ]
+    end
+
+    it 'stores the same set in dest with a single set argument' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SUNIONSTORE dest s1', ':3' ],
+        [ 'SCARD dest', ':3' ],
+        [ 'SMEMBERS dest', [ '10', '20', '30' ] ],
+        [ 'SADD s2 20 b c a 10', ':5' ],
+        [ 'SUNIONSTORE dest s2', ':5' ],
+        [ 'SCARD dest', ':5' ],
+        [ 'SMEMBERS dest', unordered([ '20', '10', 'b', 'c', 'a' ]) ],
+      ]
+    end
+
+    it 'can use one of the input sets as the dest, and overwrites it'
+
+    it 'overwrites destination if it already exists' do
+      assert_command_results [
+        [ 'SET dest a', '+OK' ],
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SUNIONSTORE dest s1', ':3' ],
+        [ 'SMEMBERS dest', unordered([ '10', '20', '30' ]) ],
+      ]
+    end
   end
 end

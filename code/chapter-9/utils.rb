@@ -55,7 +55,11 @@ module BYORedis
     end
 
     def self.string_to_integer_or_nil(string)
-      string_to_integer(string) rescue nil
+      begin
+        string_to_integer(string)
+      rescue InvalidIntegerString
+        nil
+      end
     end
 
     def self.string_to_integer(string)

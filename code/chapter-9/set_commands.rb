@@ -285,8 +285,15 @@ module BYORedis
     def call
       Utils.assert_args_length_greater_than(1, @args)
       set = @db.lookup_set(@args.shift)
-      member_keys = @args
+      remove_count = 0
 
+      if set
+        @args.each do |member|
+          remove_count += 1 if set.remove(member)
+        end
+      end
+
+      RESPInteger.new(remove_count)
     end
 
     def self.describe
@@ -298,6 +305,15 @@ module BYORedis
   class SUnionCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(0, @args)
+      sets = @args.map { |set_key| @db.lookup_set(set_key) }.compact
+
+      if sets.empty?
+        union = []
+      else
+        union = sets[0].union(sets[1..-1])
+      end
+
+      RESPSerializer.serialize(union)
     end
 
     def self.describe
@@ -309,6 +325,21 @@ module BYORedis
   class SUnionStoreCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(1, @args)
+      dest_key = @args.shift
+      sets = @args.map { |set_key| @db.lookup_set(set_key) }.compact
+      cardinality = 0
+
+      if sets.empty?
+        @db.data_store.delete(dest_key)
+      else
+        new_set = sets[0].union(sets[1..-1])
+        @db.data_store[dest_key] = new_set
+        p sets
+        p new_set
+        cardinality = new_set.cardinality
+      end
+
+      RESPSerializer.serialize(cardinality)
     end
 
     def self.describe

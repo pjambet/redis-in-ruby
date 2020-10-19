@@ -81,6 +81,19 @@ module BYORedis
       dest_set
     end
 
+    def intersection(other_sets)
+    end
+
+    def union(other_sets)
+      union_set = RedisSet.new
+      each { |member| union_set.add(member) }
+      other_sets.each do |set|
+        set.each { |member| union_set.add(member) }
+      end
+
+      union_set
+    end
+
     def members
       case @underlying_structure
       when IntSet then @underlying_structure.members.map(&:to_s)
@@ -221,6 +234,21 @@ module BYORedis
       case @underlying_structure
       when IntSet then @underlying_structure.each { |i| block.call(Utils.integer_to_string(i)) }
       when Dict then @underlying_structure.each(&block)
+      else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
+    def remove(member)
+      case @underlying_structure
+      when IntSet
+        member_as_integer = Utils.string_to_integer_or_nil(member)
+        if member_as_integer
+          @underlying_structure.remove(member_as_integer)
+        else
+          false
+        end
+      when Dict
+        !@underlying_structure.delete_entry(member).nil?
       else raise "Unknown type for structure #{ @underlying_structure }"
       end
     end
