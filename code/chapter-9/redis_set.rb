@@ -29,15 +29,14 @@ module BYORedis
     def add(member)
       if @underlying_structure.is_a?(IntSet)
 
-        if int_member = can_be_represented_as_int?(member)
+        int_member = can_be_represented_as_int?(member)
+        if int_member
           added = @underlying_structure.add(int_member)
 
           if added && @cardinality + 1 > @max_list_size
-            p "CONVERTING BECAUSE SIZE"
             convert_intset_to_dict
           end
         else
-          p "CONVERTING BECAUSE STRING"
           convert_intset_to_dict
           added = add_to_dict_if_needed(member)
         end
@@ -70,24 +69,40 @@ module BYORedis
           # the diff set
           break if other_set == self
 
-          if other_set.contains?(element)
-            p "#{ other_set.inspect } does contain #{ element }"
-            break
-          else
-            p "#{ other_set.inspect } does not contain #{ element }"
-          end
+          break if other_set.contains?(element)
+
           i += 1
         end
 
-        if i == (other_sets.length)
+        if i == other_sets.length
           dest_set.add(element)
         end
       end
+
+      # TODO: Implement algo 2
 
       dest_set
     end
 
     def intersection(other_sets)
+      # Sort the sets smallest to largest
+      # ...
+      # Iterate over the first set, if we find a set that does not contain it, discard
+      # ...
+      # Otherwise, keep
+      intersection_set = RedisSet.new
+      each do |member|
+        present_in_all_other_sets = true
+        other_sets.each do |set|
+          unless set.contains?(member)
+            present_in_all_other_sets = false
+            break
+          end
+        end
+        intersection_set.add(member) if present_in_all_other_sets
+      end
+
+      intersection_set
     end
 
     def union(other_sets)
@@ -116,7 +131,6 @@ module BYORedis
         popped
       when Dict then
         random_entry = @underlying_structure.random_entry
-        p random_entry
         @underlying_structure.delete(random_entry.key)
         @cardinality -= 1
         random_entry.key
@@ -175,7 +189,6 @@ module BYORedis
       # Case 3: Number of elements in the set is too small to grab n random distinct members
       # from it so we instead pick random elements to remove from it
       # Start by creating a new set identical to self and then remove elements from it
-      p "Count: #{ count }"
       if count * SRANDMEMBER_SUB_STRATEGY_MUL > @cardinality
         size = @cardinality
         each { |member| new_set.add(member, nil) }
@@ -191,24 +204,11 @@ module BYORedis
       # do the "classic" approach of picking count distinct elements
       added = 0
       while added < count
-        member = self.random_member
-        p "Trying to add #{ member } for set of size #{ new_set.used } / #{added}"
-        res = new_set.add(member, nil)
-        p "Res: #{res}"
-        if res
-          added += 1
-        end
+        member = random_member
+        added += 1 if new_set.add(member, nil)
       end
-      return new_set.keys
 
-
-      # case @underlying_structure
-      # when IntSet then Utils.integer_to_string(@underlying_structure.random_member)
-      # when Dict then
-        # random_entry = @underlying_structure.random_entry
-        # random_entry.key
-      # else raise "Unknown type for structure #{ @underlying_structure }"
-      # end
+      new_set.keys
     end
 
     def random_member
@@ -225,8 +225,6 @@ module BYORedis
             end
           end
         end
-        p '==='
-        p random_entry
         random_entry.key
       else raise "Unknown type for structure #{ @underlying_structure }"
       end
@@ -245,7 +243,6 @@ module BYORedis
 
       case @underlying_structure
       when IntSet then
-        p "Weird intset check for #{ member.inspect }"
         if member.is_a?(Integer)
           member_as_int = member
         else
@@ -253,9 +250,7 @@ module BYORedis
         end
 
         if member_as_int
-          rest = @underlying_structure.contains?(member_as_int)
-          p rest
-          rest
+          @underlying_structure.contains?(member_as_int)
         else
           false
         end
@@ -311,8 +306,6 @@ module BYORedis
       @underlying_structure.each do |member|
         dict[Utils.integer_to_string(member)] = nil
       end
-
-      p "Conversion done#: #{ dict.inspect } from #{ @underlying_structure.inspect }"
 
       @underlying_structure = dict
     end

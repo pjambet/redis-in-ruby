@@ -54,8 +54,7 @@ module BYORedis
       else
         diff = RedisSet.new
       end
-      p '---'
-      p diff
+
       SetSerializer.new(diff)
     end
 
@@ -102,27 +101,8 @@ module BYORedis
           set
         end
       end
-
-      intersection = []
       sets.sort_by!(&:cardinality)
-      sets[0].each do |member|
-        present_in_all_other_sets = true
-        sets[1..-1].each do |set|
-          unless set.contains?(member)
-            present_in_other_sets = false
-            break
-          end
-        end
-        intersection.append(member) if present_in_all_other_sets
-      end
-
-      RESPSerializer.serialize(intersection)
-
-      # Sort the sets smallest to largest
-      # ...
-      # Iterate over the first set, if we find a set that does not contain it, discard
-      # ...
-      # Otherwise, keep
+      RESPSerializer.serialize(sets[0].intersection(sets[1..-1]))
     end
 
     def self.describe
@@ -146,18 +126,8 @@ module BYORedis
         end
       end
 
-      new_set = RedisSet.new
       sets.sort_by!(&:cardinality)
-      sets[0].each do |member|
-        present_in_all_other_sets = true
-        sets[1..-1].each do |set|
-          unless set.contains?(member)
-            present_in_all_other_sets = false
-            break
-          end
-        end
-        new_set.add(member) if present_in_all_other_sets
-      end
+      new_set = sets[0].intersection(sets[1..-1])
 
       if new_set.cardinality > 0
         @db.data_store[dest_key] = new_set
