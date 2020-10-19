@@ -216,15 +216,6 @@ module BYORedis
       when IntSet then Utils.integer_to_string(@underlying_structure.random_member)
       when Dict then
         random_entry = @underlying_structure.random_entry
-        unless random_entry.next.nil?
-          until random_entry.next.nil?
-            if rand(2) == 0
-              break
-            else
-              random_entry = random_entry.next
-            end
-          end
-        end
         random_entry.key
       else raise "Unknown type for structure #{ @underlying_structure }"
       end

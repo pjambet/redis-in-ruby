@@ -193,16 +193,55 @@ module BYORedis
     def random_entry
       return if used == 0
 
-      bucket = nil
-      loop do
-        # TODO: Figure out how to do random while rehashin
-        table = rehashing? ? rehashing_table : main_table
-        random_index = rand(table.size)
-        bucket = table.table[random_index]
-        break if bucket
+      rehash_step if rehashing?
+
+      hash_entry = nil
+
+      if rehashing?
+        # There are no elements indexes from 0 to rehashidx-1 so we know the only places we can
+        # find an element are in main_table[rehashidx..-1] and anywhere in the rehashing table
+        # We generate the random_index between the total number of slots (the two sizes), minus
+        # the rehashing index. An example, we're growing from 8 to 16 buckets, that's 24 total
+        # slots, now let's imagine that @rehashidx is 4, we generate an index between 0 and 20
+        # (excluded), and we add 4 to it, that means that we _never_ have a value under 4.
+        # If the random index is 8 or more, we need to look in the rehashing table, but we need
+        # adjust it by removing 8, the size of the main table to it, so say it was initially 19,
+        # plus four, that' 23, minus 8, that's 15, the last bucket in the rehashing table.
+        # If the random index is between 4 and 7, then we look directly in the main table
+        while hash_entry.nil?
+          max = slots - @rehashidx
+          random_index = @rehashidx + SecureRandom.rand(max)
+          hash_entry =
+            if random_index >= main_table.size
+              rehashing_table.table[random_index - main_table.size]
+            else
+              main_table.table[random_index]
+            end
+        end
+      else
+        while hash_entry.nil?
+          random_index = SecureRandom.rand(main_table.size)
+          hash_entry = main_table.table[random_index]
+        end
       end
 
-      bucket
+      # Now that we found a non empty bucket, we need to pick a random element from it, but if
+      # there's only one item, we can save some time and return right away
+      return hash_entry if hash_entry.next.nil?
+
+      list_length = 0
+      original_hash_entry = hash_entry
+      while hash_entry
+        list_length += 1
+        hash_entry = hash_entry.next
+      end
+      random_list_index = SecureRandom.rand(list_length)
+      hash_entry = original_hash_entry
+      random_list_index.times do
+        hash_entry = hash_entry.next
+      end
+
+      hash_entry
     end
 
     private
