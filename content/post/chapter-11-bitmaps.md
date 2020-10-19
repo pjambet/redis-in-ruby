@@ -10,6 +10,8 @@ summary: ""
 
 <!--more-->
 
+https://redis.io/topics/data-types-intro#bitmaps
+
 BITCOUNT
 BITFIELD
 BITOP
