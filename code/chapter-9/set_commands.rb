@@ -152,7 +152,7 @@ module BYORedis
         present_in_all_other_sets = true
         sets[1..-1].each do |set|
           unless set.contains?(member)
-            present_in_other_sets = false
+            present_in_all_other_sets = false
             break
           end
         end
@@ -193,9 +193,24 @@ module BYORedis
 
   class SMIsMemberCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
+      set = @db.lookup_set(@args.shift)
+      members = @args
+
+      if set.nil?
+        result = Array.new(members.size, 0)
+      else
+        result = members.map do |member|
+          set.contains?(member) ? 1 : 0
+        end
+      end
+
+      RESPSerializer.serialize(result)
     end
 
     def self.describe
+      Describe.new('smismember', -3, [ 'readonly', 'fast' ], 1, 1, 1,
+                   [ '@read', '@set', '@fast' ])
     end
   end
 
@@ -215,7 +230,28 @@ module BYORedis
 
   class SMoveCommand < BaseCommand
     def call
-      Utils.assert_args_length_greater_than(3, @args)
+      Utils.assert_args_length(3, @args)
+      source = @db.lookup_set(@args[0])
+      destination = @db.lookup_set(@args[1])
+      member = @args[2]
+
+      if source.nil?
+        result = 0
+      else
+        removed = source.remove(member)
+        if removed
+          if destination.nil?
+            destination = RedisSet.new
+            @db.data_store[@args[1]] = destination
+          end
+          destination.add(member)
+          result = 1
+        else
+          result = 0
+        end
+      end
+
+      RESPSerializer.serialize(result)
     end
 
     def self.describe
@@ -236,9 +272,14 @@ module BYORedis
       set = @db.lookup_set(@args[0])
 
       if set
-        popped = set.pop(count)
+        if count.nil?
+          popped_members = set.pop
+        else
+          popped_members = set.pop_with_count(count)
+        end
         @db.data_store.delete(@args[0]) if set.empty?
-        RESPSerializer.serialize(popped)
+
+        RESPSerializer.serialize(popped_members)
       elsif count.nil?
         NullBulkStringInstance
       else
@@ -334,8 +375,6 @@ module BYORedis
       else
         new_set = sets[0].union(sets[1..-1])
         @db.data_store[dest_key] = new_set
-        p sets
-        p new_set
         cardinality = new_set.cardinality
       end
 

@@ -175,7 +175,14 @@ describe 'Set Commands' do
       ]
     end
 
-    it 'can use one of the input sets as the dest, and overwrites it'
+    it 'can use one of the input sets as the dest, and overwrites it' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SADD s2 10 30 40', ':3' ],
+        [ 'SDIFFSTORE s1 s1 s2', ':1' ],
+        [ 'SMEMBERS s1', [ '20' ] ],
+      ]
+    end
 
     it 'overwrites destination if it already exists' do
       assert_command_results [
@@ -254,7 +261,7 @@ describe 'Set Commands' do
       ]
     end
 
-    it 'store the the set itself in dest if not other sets are given' do
+    it 'store the the set itself in dest if no other sets are given' do
       assert_command_results [
         [ 'SADD s 1 2 3', ':3' ],
         [ 'SINTERSTORE dest s', ':3' ],
@@ -265,17 +272,28 @@ describe 'Set Commands' do
       ]
     end
 
+    it 'can use one of the input sets as the dest, and overwrites it' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SADD s2 10 30 40', ':3' ],
+        [ 'SINTERSTORE s1 s1 s2', ':2' ],
+        [ 'SMEMBERS s1', unordered([ '10', '30' ]) ],
+      ]
+    end
+
     it 'stores the intersection of all the sets in dest' do
       assert_command_results [
         [ 'SADD s1 1 2 3 4', ':4' ],
         [ 'SADD s2 3', ':1' ],
         [ 'SADD s3 1 3 5', ':3' ],
         [ 'SINTERSTORE dest s1 s2 s3', ':1' ],
+        [ 'SMEMBERS dest', [ '3' ] ],
         [ 'DEL s1 s2 s3', ':3' ],
         [ 'SADD s1 a b c d', ':4' ],
         [ 'SADD s2 c', ':1' ],
         [ 'SADD s3 a c e', ':3' ],
         [ 'SINTERSTORE dest s1 s2 s3', ':1' ],
+        [ 'SMEMBERS dest', [ 'c' ] ],
       ]
     end
   end
@@ -284,6 +302,7 @@ describe 'Set Commands' do
     it 'handles unexpected number of arguments' do
       assert_command_results [
         [ 'SISMEMBER', '-ERR wrong number of arguments for \'SISMEMBER\' command' ],
+        [ 'SISMEMBER s', '-ERR wrong number of arguments for \'SISMEMBER\' command' ],
       ]
     end
 
@@ -314,9 +333,38 @@ describe 'Set Commands' do
     end
   end
 
-  describe 'SMISMEMBER' do # New in 6.2.0
-    it 'handles unexpected number of arguments'
-    it 'returns an error if the key is not a set'
+  describe 'SMISMEMBER' do
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SMISMEMBER', '-ERR wrong number of arguments for \'SMISMEMBER\' command' ],
+        [ 'SMISMEMBER s', '-ERR wrong number of arguments for \'SMISMEMBER\' command' ],
+      ]
+    end
+
+    it 'returns an error if the key is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SMISMEMBER not-a-set f', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an array of 0s and 1s depending on whether the members are in the set or not' do
+      assert_command_results [
+        [ 'SADD s 20 10 30', ':3' ],
+        [ 'SMISMEMBER s a', [ 0 ] ],
+        [ 'SMISMEMBER s 20 a 21', [ 1, 0, 0 ] ],
+        [ 'SADD s a d c', ':3' ],
+        [ 'SMISMEMBER s a', [ 1 ] ],
+        [ 'SMISMEMBER s d e f', [ 1, 0, 0 ] ],
+      ]
+    end
+
+    it 'returns an array of 0s if the set does not exist' do
+      assert_command_results [
+        [ 'SMISMEMBER s a b c', [ 0, 0, 0 ] ],
+        [ 'SMISMEMBER s 1 2 3', [ 0, 0, 0 ] ],
+      ]
+    end
   end
 
   describe 'SMEMBERS' do
@@ -345,9 +393,58 @@ describe 'Set Commands' do
   end
 
   describe 'SMOVE' do
-    it 'handles unexpected number of arguments'
+    it 'handles unexpected number of arguments' do
+      assert_command_results [
+        [ 'SMOVE', '-ERR wrong number of arguments for \'SMOVE\' command' ],
+        [ 'SMOVE src', '-ERR wrong number of arguments for \'SMOVE\' command' ],
+        [ 'SMOVE src dest', '-ERR wrong number of arguments for \'SMOVE\' command' ],
+        [ 'SMOVE src dest member a', '-ERR wrong number of arguments for \'SMOVE\' command' ],
+      ]
+    end
 
-    it 'returns an error if the source is not a set'
+    it 'returns an error if the source is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SMOVE not-a-set dest a', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an error if the destination is not a set' do
+      assert_command_results [
+        [ 'SET not-a-set 1', '+OK' ],
+        [ 'SMOVE src not-a-set a', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns 0 if src is empty' do
+      assert_command_results [
+        [ 'SMOVE src dest a', ':0' ],
+      ]
+    end
+
+    it 'returns 1 if the member was moved' do
+      assert_command_results [
+        [ 'SADD s 1 2 3', ':3' ],
+        [ 'SMOVE s dest 4', ':0' ],
+        [ 'SMOVE s dest 2', ':1' ],
+        [ 'SMEMBERS s', unordered([ '1', '3' ]) ],
+        [ 'SMEMBERS dest', unordered([ '2' ]) ],
+        [ 'SADD s 2', ':1' ],
+        [ 'SMOVE s dest 2', ':1' ], # Still returns 1 even if it already exists in dest
+        [ 'SMEMBERS s', unordered([ '1', '3' ]) ],
+        [ 'SMEMBERS dest', unordered([ '2' ]) ],
+        [ 'DEL s dest', ':2' ],
+        [ 'SADD s a b c', ':3' ],
+        [ 'SMOVE s dest e', ':0' ],
+        [ 'SMOVE s dest b', ':1' ],
+        [ 'SMEMBERS s', unordered([ 'a', 'c' ]) ],
+        [ 'SMEMBERS dest', unordered([ 'b' ]) ],
+        [ 'SADD s b', ':1' ],
+        [ 'SMOVE s dest b', ':1' ], # Still returns 1 even if it already exists in dest
+        [ 'SMEMBERS s', unordered([ 'a', 'c' ]) ],
+        [ 'SMEMBERS dest', unordered([ 'b' ]) ],
+      ]
+    end
   end
 
   describe 'SPOP' do
@@ -387,8 +484,49 @@ describe 'Set Commands' do
       ]
     end
 
-    it 'returns up to count elements with the count argument'
-    it 'returns the whole set if count is equal to or greater than the cardinality'
+    def tests_for_spop(socket, set_members, count)
+      socket.write(to_query(*[ 'SADD', 's' ] + set_members))
+      response = read_response(socket)
+      assert_equal(":#{ set_members.size }\r\n", response)
+
+      socket.write(to_query('SPOP', 's', count.to_s))
+      response = read_response(socket)
+      response_parts = response.split("\r\n")
+      length = response_parts.shift
+      assert_equal("*#{ count }", length)
+      response_parts = response_parts.each_slice(2).to_a.sort
+      assert_equal(response_parts, response_parts.uniq) # No duplicates
+      response_parts.each do |part|
+        # part[0] is the length of the RESP string such as $1, part[1] is the string
+        assert(set_members.include?(part[1]))
+      end
+    end
+
+    it 'returns up to count elements with the count argument' do
+      with_server do |socket|
+        tests_for_spop(socket, [ '1', '2', '3', '4' ], 2) # Case 2 for an intset
+        socket.write(to_query('DEL', 's'))
+        read_response(socket)
+        tests_for_spop(socket, [ 'a', 'b', 'c', 'd' ], 2) # Case 2 for a hash table
+        socket.write(to_query('DEL', 's'))
+        read_response(socket)
+        tests_for_spop(socket, [ '1', '2', '3', '4', '5', '6' ], 5) # Case 3 for an intset
+        socket.write(to_query('DEL', 's'))
+        read_response(socket)
+        tests_for_spop(socket, [ 'a', 'b', 'c', 'd', 'e', 'f' ], 5) # Case 3 for a hash table
+      end
+    end
+
+    it 'returns the whole set if count is equal to or greater than the cardinality' do
+      assert_command_results [
+        [ 'SADD s 1 2 3 4', ':4' ],
+        [ 'SPOP s 5', unordered([ '1', '2', '3', '4' ]) ],
+        [ 'TYPE s', '+none' ],
+        [ 'SADD s a b c d', ':4' ],
+        [ 'SPOP s 5', unordered([ 'a', 'b', 'c', 'd' ]) ],
+        [ 'TYPE s', '+none' ],
+      ]
+    end
 
     it 'returns a nil string for a non existing set' do
       assert_command_results [
@@ -727,7 +865,14 @@ describe 'Set Commands' do
       ]
     end
 
-    it 'can use one of the input sets as the dest, and overwrites it'
+    it 'can use one of the input sets as the dest, and overwrites it' do
+      assert_command_results [
+        [ 'SADD s1 20 10 30', ':3' ],
+        [ 'SADD s2 10 30 40', ':3' ],
+        [ 'SUNIONSTORE s1 s1 s2', ':4' ],
+        [ 'SMEMBERS s1', unordered([ '10', '20', '30', '40' ]) ],
+      ]
+    end
 
     it 'overwrites destination if it already exists' do
       assert_command_results [

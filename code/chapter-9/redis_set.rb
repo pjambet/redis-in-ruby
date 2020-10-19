@@ -10,7 +10,13 @@ module BYORedis
     # See: https://github.com/antirez/redis/blob/6.0.0/src/t_set.c#L609-L612
     SRANDMEMBER_SUB_STRATEGY_MUL = 3
 
-    attr_reader :cardinality
+    # How many times bigger should be the set compared to the remaining size
+    # for us to use the "create new set" strategy? Read later in the
+    # implementation for more info.
+    # See: https://github.com/antirez/redis/blob/6.0.0/src/t_set.c#L413-416
+    SPOP_MOVE_STRATEGY_MUL = 5
+
+    attr_reader :cardinality, :underlying_structure
 
     def initialize
       @max_list_size = ENV['SET_MAX_ZIPLIST_ENTRIES'].to_i.then do |max|
@@ -102,9 +108,7 @@ module BYORedis
       end
     end
 
-    def pop(count)
-      return [] if count == 0
-
+    def pop
       case @underlying_structure
       when IntSet then
         popped = @underlying_structure.pop.to_s
@@ -117,6 +121,36 @@ module BYORedis
         @cardinality -= 1
         random_entry.key
       else raise "Unknown type for structure #{ @underlying_structure }"
+      end
+    end
+
+    def pop_with_count(count)
+      return [] if count.nil? || count == 0
+
+      # Case 1: count is greater or equal to the size of the set, we return the whole thing
+      if count >= @cardinality
+        all_members = members
+        clear
+        return all_members
+      end
+
+      remaining = @cardinality - count
+      if remaining * SPOP_MOVE_STRATEGY_MUL > count
+        # Case 2: Count is small compared to the size of the set, we "just" pop random elements
+
+        return count.times.map do
+          pop
+        end
+      else
+        # Case 3: count is big and close to the size of the set, we do the reverse, we pick
+        # remaining elements, and they become the new set
+        new_set = RedisSet.new
+        remaining.times do
+          new_set.add(pop)
+        end
+        result = members
+        @underlying_structure = new_set.underlying_structure
+        result
       end
     end
 
@@ -254,6 +288,11 @@ module BYORedis
     end
 
     private
+
+    def clear
+      @cardinality = 0
+      @underlying_structure = IntSet.new
+    end
 
     def add_to_dict_if_needed(member)
       present = @underlying_structure.include?(member)
