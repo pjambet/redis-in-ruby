@@ -119,7 +119,10 @@ describe 'Set Commands' do
         [ 'SADD s1 a b c d', ':4' ],
         [ 'SADD s2 c', ':1' ],
         [ 'SADD s3 a c e', ':3' ],
-        [ 'SDIFF s1 s2 s3', unordered([ 'b', 'd' ]) ],
+        [ 'SDIFF s1 s2 s3', unordered([ 'b', 'd' ]) ], # Algo 1
+        [ 'SADD s1 e f g h i j k l', ':8' ],
+        [ 'SDIFF s1 s2 s3', unordered([ 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+                                        'b', 'd' ]) ], # Algo 2
       ]
     end
   end

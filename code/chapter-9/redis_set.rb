@@ -27,24 +27,115 @@ module BYORedis
     end
 
     def self.intersection(sets)
+      # Sort the sets smallest to largest
       sets.sort_by!(&:cardinality)
-      sets[0].intersection(sets[1..-1])
+
+      intersection_set = RedisSet.new
+      # Iterate over the first set, if we find a set that does not contain it, discard
+
+      sets[0].each do |member|
+        present_in_all_other_sets = true
+        sets[1..-1].each do |set|
+          unless set.contains?(member)
+            present_in_all_other_sets = false
+            break
+          end
+        end
+        # Otherwise, keep
+        intersection_set.add(member) if present_in_all_other_sets
+      end
+
+      intersection_set
     end
 
     def self.union(sets)
       if sets.empty?
         RedisSet.new
       else
-        sets[0].union(sets[1..-1])
+        union_set = RedisSet.new
+        sets[0].each { |member| union_set.add(member) }
+        sets[1..-1].each do |set|
+          set.each { |member| union_set.add(member) }
+        end
+
+        union_set
       end
     end
 
     def self.difference(sets)
-      if sets[0]
-        sets[0].difference(sets[1..-1])
-      else
-        RedisSet.new
+      first_set = sets[0]
+      return RedisSet.new if first_set.nil?
+
+      # Decide which algorithm to use
+      algo_one_work = 0
+      algo_two_work = 0
+      sets.each do |other_set|
+        algo_one_work += sets[0].cardinality
+        algo_two_work += other_set ? other_set.cardinality : 0
       end
+      # Directly from Redis:
+      # Algorithm 1 has better constant times and performs less operations
+      # if there are elements in common. Give it some advantage:
+      algo_one_work /= 2
+      diff_algo = (algo_one_work <= algo_two_work) ? 1 : 2
+
+      if diff_algo == 1
+        if sets.length > 1
+          sets.sort_by! { |s| -1 * s.cardinality }
+        end
+        difference_1(sets)
+      else
+        difference_2(sets)
+      end
+    end
+
+    def self.difference_1(sets)
+      return RedisSet.new if sets.empty? || sets[0].nil?
+
+      dest_set = RedisSet.new
+
+      sets[0].each do |element|
+        i = 0
+        other_sets = sets[1..-1]
+        while i < other_sets.length
+          other_set = other_sets[i]
+          # There's nothing to do when one of the sets does not exist
+          next if other_set.nil?
+          # If the other set contains the element then we know we don't want to add element to
+          # the diff set
+          break if other_set == self
+
+          break if other_set.contains?(element)
+
+          i += 1
+        end
+
+        if i == other_sets.length
+          dest_set.add(element)
+        end
+      end
+
+      dest_set
+    end
+
+    def self.difference_2(sets)
+      return self if sets.empty? || sets[0].nil?
+
+      dest_set = RedisSet.new
+
+      # Add all the elements from the first set to the new one
+      sets[0].each do |element|
+        dest_set.add(element)
+      end
+
+      # Iterate over all the other sets and remove them from the first one
+      sets[1..-1].each do |set|
+        set.each do |member|
+          dest_set.remove(member)
+        end
+      end
+
+      dest_set
     end
 
     def add(member)
@@ -70,70 +161,6 @@ module BYORedis
       @cardinality += 1 if added
 
       added
-    end
-
-    def difference(other_sets)
-      return self if other_sets.empty?
-
-      dest_set = RedisSet.new
-      # TODO
-      # Sort other_sets?
-
-      # algo 1
-      each do |element|
-        i = 0
-        while i < other_sets.length
-          other_set = other_sets[i]
-          # There's nothing to do when one of the sets does not exist
-          next if other_set.nil?
-          # If the other set contains the element then we know we don't want to add element to
-          # the diff set
-          break if other_set == self
-
-          break if other_set.contains?(element)
-
-          i += 1
-        end
-
-        if i == other_sets.length
-          dest_set.add(element)
-        end
-      end
-
-      # TODO: Implement algo 2
-
-      dest_set
-    end
-
-    def intersection(other_sets)
-      # Sort the sets smallest to largest
-      # ...
-      # Iterate over the first set, if we find a set that does not contain it, discard
-      # ...
-      # Otherwise, keep
-      intersection_set = RedisSet.new
-      each do |member|
-        present_in_all_other_sets = true
-        other_sets.each do |set|
-          unless set.contains?(member)
-            present_in_all_other_sets = false
-            break
-          end
-        end
-        intersection_set.add(member) if present_in_all_other_sets
-      end
-
-      intersection_set
-    end
-
-    def union(other_sets)
-      union_set = RedisSet.new
-      each { |member| union_set.add(member) }
-      other_sets.each do |set|
-        set.each { |member| union_set.add(member) }
-      end
-
-      union_set
     end
 
     def members
@@ -284,12 +311,16 @@ module BYORedis
       when IntSet
         member_as_integer = Utils.string_to_integer_or_nil(member)
         if member_as_integer
-          @underlying_structure.remove(member_as_integer)
+          removed = @underlying_structure.remove(member_as_integer)
+          @cardinality -= 1 if removed
+          removed
         else
           false
         end
       when Dict
-        !@underlying_structure.delete_entry(member).nil?
+        removed = !@underlying_structure.delete_entry(member).nil?
+        @cardinality -= 1 if removed
+        removed
       else raise "Unknown type for structure #{ @underlying_structure }"
       end
     end
