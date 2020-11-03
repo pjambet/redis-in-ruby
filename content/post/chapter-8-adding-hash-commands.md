@@ -5,7 +5,7 @@ lastmod: 2020-10-02T18:54:07-04:00
 draft: false
 comment: false
 keywords: []
-summary:  "In this chapter we add support for a new data type, Lists. We implement all the commands related to lists, such as HSET, HGET & HGETALL"
+summary:  "In this chapter we add support for a new data type, Lists. We implement all the commands related to hashes, such as HSET, HGET & HGETALL"
 ---
 
 ## What we'll cover
