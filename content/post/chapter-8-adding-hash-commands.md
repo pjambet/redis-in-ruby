@@ -1,7 +1,7 @@
 ---
 title: "Chapter 8 Adding Hash Commands"
-date: 2020-10-02T18:54:07-04:00
-lastmod: 2020-10-02T18:54:07-04:00
+date: 2020-11-03T14:36:32-05:00
+lastmod: 2020-11-03T14:36:38-05:00
 draft: false
 comment: false
 keywords: []
