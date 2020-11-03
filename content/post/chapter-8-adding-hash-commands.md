@@ -1903,6 +1903,7 @@ def test_with_config_values(combinations)
 
     yield
   end
+end
 ```
 
 You can find all the tests on GitHub, but here is an example of the tests we can now write with the `test_with_config_values` helper:
