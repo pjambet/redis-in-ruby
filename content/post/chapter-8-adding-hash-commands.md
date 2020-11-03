@@ -1332,6 +1332,7 @@ module BYORedis
   end
 end
 ```
+_listing 8.23 The `List#remove_node` & `ListNode#remove` methods_
 
 The `remove_node` method removes the given node from the list, while updating the `@head` and `@tail` variables if needed. It uses the `ListNode#remove` method, which delegates all the `next_node`/`prev_node` handling to the struct itself. The whole process is very mechanical and reminiscent of the previous chapter, all the node pointers have to be updated, while being careful to check for nil values at each step of the way.
 
@@ -1369,7 +1370,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.23 The `HDelCommend` class_
+_listing 8.24 The `HDelCommend` class_
 
 The command uses the `RedisHash#get`, through its `[]` alias, to check for the existence of the field, and return the appropriate number, acting as a boolean.
 
@@ -1402,7 +1403,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.24 The `HKeysCommand` class_
+_listing 8.25 The `HKeysCommand` class_
 
 The command uses the new `RedisHash#keys` method:
 
@@ -1438,7 +1439,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.25 The `RedisHash#keys` method_
+_listing 8.26 The `RedisHash#keys` method_
 
 When `@underlying` is a `Dict`, we can delegate directly to the `Dict#keys` method, on the other hand, if it is a `List`, we need to manually iterate through all the pairs in the list and accumulate the keys in an array.
 
@@ -1470,7 +1471,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.26 The `HValsCommand` class_
+_listing 8.27 The `HValsCommand` class_
 
 This implementation is also very similar to `HKeysCommand`, except that we call `RedisHash#values`:
 
@@ -1506,7 +1507,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.27 The `RedisHash#values` method_
+_listing 8.28 The `RedisHash#values` method_
 
 Similarly to `RedisHash#keys`, in the `Dict` case we call `Dict#values`, and in the `List` case we iterate through the list and accumulate all the values in an array.
 
@@ -1540,7 +1541,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.28 The `HLenCommand` class_
+_listing 8.29 The `HLenCommand` class_
 
 We use the `RedisHash#length` method to return the length of the hash:
 
@@ -1561,7 +1562,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.29 The `RedisHash#length` method_
+_listing 8.30 The `RedisHash#length` method_
 
 The `length` method is pretty succinct, it either calls `List#size` or `Dict#used`, which both return the number of elements they contain.
 
@@ -1598,7 +1599,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.30 The `HStrLenCommand` class_
+_listing 8.31 The `HStrLenCommand` class_
 
 This command does not need any new methods from the `RedisHash` class, it obtains the string stored at `field` with the `RedisHash#get` method and uses the Ruby `String#length` method to return its length.
 
@@ -1641,7 +1642,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.31 The `ConfigCommand` class_
+_listing 8.32 The `ConfigCommand` class_
 
 The version of `CONFIG GET` we implemented is a simplified version of the one in Redis which supports glob-style patterns, with `*`.
 
@@ -1675,7 +1676,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.32 The `FlushDBCommend` class_
+_listing 8.33 The `FlushDBCommend` class_
 
 Let's add the `DB#flush` method:
 
@@ -1704,7 +1705,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.33 The `DB#flush` method_
+_listing 8.34 The `DB#flush` method_
 
 Ruby makes our lives really easy here, to flush the database, we can simply instantiate a few fresh `Dict`, `List` and `SortedArray` and call it a day, the garbage collector will take care of freeing the memory of the previous ones now that they're not referenced anymore.
 
@@ -1852,7 +1853,7 @@ def with_server
   server_socket.close
 end
 ```
-_listing 8.34 Updates to the `test_helper.rb` file_
+_listing 8.35 Updates to the `test_helper.rb` file_
 
 Bare with me for a minute, I know that global variables are frowned upon, but we're only using them to make our lives easier.
 I would not describe global variables as something to never use, but instead, as something to be extremely careful with. They can indeed become really problematic if they're used a lot throughout a codebase, especially if the value they hold changes a lot. Doing so could require a lot of headache . By using a global variable, we make it easier to maintain a single instance of the child process, without having to create a class, instantiate it, and burying the logic, what we want is actually not that much:
@@ -1905,7 +1906,7 @@ def test_with_config_values(combinations)
   end
 end
 ```
-_listing 8.35 the `test_with_config_values` helper in `test_helper.rb`_
+_listing 8.36 the `test_with_config_values` helper in `test_helper.rb`_
 
 You can find all the tests on GitHub, but here is an example of the tests we can now write with the `test_with_config_values` helper:
 
@@ -1921,7 +1922,7 @@ describe 'HVALS' do
   end
 end
 ```
-_listing 8.36 Example of a test using `test_with_config_values` for the `HVALS` command_
+_listing 8.37 Example of a test using `test_with_config_values` for the `HVALS` command_
 
 The implementation of the `HVALS` command is different depending on whether the `RedisHash` instance is using a `List` or `Dict` to store the key/value pairs, so ideally we'd want to test both cases. Given that the test themselves are identical, at the end of the day, we do want to test the same output, but with two different implementation, it would be really repetitive to write the tests twice.
 
