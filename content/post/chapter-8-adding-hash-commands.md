@@ -1940,7 +1940,7 @@ As usual, you can find the [code on GitHub][code-github-link]. In the next chapt
 [redis-doc-scan]:http://redis.io/commands/scan
 [redis-src-dict-scan-doc]:https://github.com/antirez/redis/blob/6.0.0/src/dict.c#L778-L861
 [redis-src-string2ll]:https://github.com/redis/redis/blob/6.0.0/src/util.c#L360-L424
-[code-github-link]:https://
+[code-github-link]:https://github.com/pjambet/redis-in-ruby/tree/master/code/chapter-8
 [ruby-doc-big-decimal-method]:https://ruby-doc.org/stdlib-2.7.1/libdoc/bigdecimal/rdoc/Kernel.html#BigDecimal-method
 [c-std-strtold]:http://www.cplusplus.com/reference/cstdlib/strtold/
 [floating-point-errors]:https://0.30000000000000004.com/
