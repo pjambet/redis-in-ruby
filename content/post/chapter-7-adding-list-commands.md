@@ -59,24 +59,24 @@ Identical data structures could be implemented by reversing the side of each ope
 
 Redis supports [eighteen list related commands][list-commands-docs]:
 
-- LINDEX: Gets an element by its index
-- LINSERT: Inserts an element
-- LLEN: Returns the length of the list
-- LPOP: Removes an element on the left of the list
-- LPOS: Returns the position of one or elements
-- LPUSH: Adds an element to the left of the list, creating it if needed
-- LPUSHX: Same as LPUSH, but does not create a new list if it doesn't already exist
-- LRANGE: Returns elements from the list
-- LREM: Removes one or more elements from the list
-- LSET: Replaces an element in a list
-- LTRIM: Keeps a subset of the list
-- RPOP: Removes an element on the right of the list
-- RPOPLPUSH: Removes an element to the right of a list and adds it to the left of another list
-- RPUSH: Adds an element to the right of the list, creating it if needed
-- RPUSHX: Same as RPUSH, but does not create a new list if it doesn't already exist
-- BLPOP: Blocking variant of LPOP
-- BRPOP: Blocking variant of RPOP
-- BRPOPLPUSH: Blocking variant of RPOPLPUSH
+- **LINDEX**: Gets an element by its index
+- **LINSERT**: Inserts an element
+- **LLEN**: Returns the length of the list
+- **LPOP**: Removes an element on the left of the list
+- **LPOS**: Returns the position of one or elements
+- **LPUSH**: Adds an element to the left of the list, creating it if needed
+- **LPUSHX**: Same as LPUSH, but does not create a new list if it doesn't already exist
+- **LRANGE**: Returns elements from the list
+- **LREM**: Removes one or more elements from the list
+- **LSET**: Replaces an element in a list
+- **LTRIM**: Keeps a subset of the list
+- **RPOP**: Removes an element on the right of the list
+- **RPOPLPUSH**: Removes an element to the right of a list and adds it to the left of another list
+- **RPUSH**: Adds an element to the right of the list, creating it if needed
+- **RPUSHX**: Same as RPUSH, but does not create a new list if it doesn't already exist
+- **BLPOP**: Blocking variant of LPOP
+- **BRPOP**: Blocking variant of RPOP
+- **BRPOPLPUSH**: Blocking variant of RPOPLPUSH
 
 
 ## How does Redis do it
