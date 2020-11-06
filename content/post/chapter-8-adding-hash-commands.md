@@ -43,21 +43,21 @@ With the `HSET` command we can set as many key/value pairs as we want for the gi
 
 There are [15 commands][redis-doc-hash-commands] for the Hash data type:
 
-- HDEL: Delete one or more fields from a hash
-- HEXISTS: Check for the existence of a field in a hash
-- HGET: Return the value for the given field
-- HGETALL: Return all the key/value pairs
-- HINCRBY: Increment the value for the given field, by the given integer, positive or negative
-- HINCRBYFLOAT: Increment the value for the given field, by the given float, positive or negative
-- HKEYS: Return all the keys
-- HLEN: Return the number of pairs
-- HMGET: Return all the values for the given keys
-- HMSET: This command is deprecated, it was necessary before HSET gained the capability to set multiple key/value pairs at once
-- HSCAN: Return a subset of key/value pairs as well as a scan cursor. This is similar to the [SCAN command][redis-doc-scan-command]
-- HSET: Set one or more key/value pairs, creating the hash if it does not already exist
-- HSETNX: Set the value for the given field in the hash, only if the field does not already exist
-- HSTRLEN: Return the length of the string stored for the given field
-- HVALS: Return all the values
+- **HDEL**: Delete one or more fields from a hash
+- **HEXISTS**: Check for the existence of a field in a hash
+- **HGET**: Return the value for the given field
+- **HGETALL**: Return all the key/value pairs
+- **HINCRBY**: Increment the value for the given field, by the given integer, positive or negative
+- **HINCRBYFLOAT**: Increment the value for the given field, by the given float, positive or negative
+- **HKEYS**: Return all the keys
+- **HLEN**: Return the number of pairs
+- **HMGET**: Return all the values for the given keys
+- **HMSET**: This command is deprecated, it was necessary before HSET gained the capability to set multiple key/value pairs at once
+- **HSCAN**: Return a subset of key/value pairs as well as a scan cursor. This is similar to the [SCAN command][redis-doc-scan-command]
+- **HSET**: Set one or more key/value pairs, creating the hash if it does not already exist
+- **HSETNX**: Set the value for the given field in the hash, only if the field does not already exist
+- **HSTRLEN**: Return the length of the string stored for the given field
+- **HVALS**: Return all the values
 
 We will only implement thirteen of these fifteen commands, we will not implement `HMSET`, because as noted above, it was made obsolete when `HSET` was updated in 4.0.0 to become variadic. That's just a fancy word to say that it accepts one or more key/value pairs. Prior to that it would only accept a single pair.
 
