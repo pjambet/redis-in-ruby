@@ -404,6 +404,35 @@ _listing 8.6 The `HSetNX` class_
 
 This new command uses existing methods, if the given field already exists in the hash, we directly return `0` and leave the hash untouched. On the other hand, if the field is not already present, we add it, using the `RedisHash#[]=` this time, since we know it will add the element, and return `1`.
 
+Now that we can create hashes, we need to update the `TypeCommand` class to respond with `set` for set keys:
+
+``` ruby
+module BYORedis
+  class TypeCommand < BaseCommand
+
+    def call
+      Utils.assert_args_length(1, @args)
+
+      key = @args[0]
+      ExpireHelper.check_if_expired(@db, key)
+      value = @db.data_store[key]
+
+      case value
+      when nil       then RESPSimpleString.new('none')
+      when String    then RESPSimpleString.new('string')
+      when List      then RESPSimpleString.new('list')
+      when RedisHash then RESPSimpleString.new('hash')
+      else raise "Unknown type for #{ value }"
+      end
+    end
+
+    # ...
+
+  end
+end
+```
+_listing 8.7 Updates to the `TypeCommand` class to handle `RedisHash` instances_
+
 ### Reading Hash values with HGET, HMGET & HGETALL
 
 Now that we can create Hash instances in our database, we need to add the ability to read data from these hashes for them to be _actually_ useful. Redis hash three commands to do so, `HGET`, to retrieve a single value, `HMGET`, to retrieve multiple values at once, and `HGETALL` to retrieve all the key/value pairs.
@@ -439,7 +468,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.7 The `HGetCommand` class_
+_listing 8.8 The `HGetCommand` class_
 
 If the hash does not exist, or if the hash exists but does not contain the field, we return a null string, otherwise, we return the string stored for that field. We need to add the ability to find a key/value pair to the `RedisHash` class:
 
@@ -474,7 +503,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.8 The `RedisHash#get` method_
+_listing 8.9 The `RedisHash#get` method_
 
 Once again, the `Dict` branch is simpler, so we perform it inline, we call the `Dict#[]` method, and return its result, a string or nil. In the `List` case, we go to the `get_list` private method. The approach here is very similar to the `set_list` method we wrote earlier, we iterate through the list, starting at the head, and stop if we find a `ListEntry` for which the `key` attribute matches the `field` parameter. If no entry matches, the method returns `nil`. Note that this is a perfect example of the worst case scenario time complexity we previously discussed. If the `field` is not present in the hash, we still have to iterate through the entire list to check every `ListEntry` instances.
 
@@ -508,7 +537,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.9 The `HMGetCommand` class_
+_listing 8.10 The `HMGetCommand` class_
 
 The `HMGET` command is very similar to `HGET`, the only difference is that it accepts multiple fields as its input, and returns an array. The implementation uses the same method from `RedisHash`, `get`, which we use through its alias, `[]`, and call it in the block passed to `Array#map`. Using `map` here allows us to maintain the order of the results, we create an array where the n-th item will be the value for the n-th field passed as command argument after the hash key itself.
 
@@ -541,7 +570,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.10 The `HGetAllCommand` class_
+_listing 8.11 The `HGetAllCommand` class_
 
 This time we need a new method in `RedisHash`, `get_all`:
 
@@ -725,7 +754,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.11 The `HIncrByCommand` class_
+_listing 8.12 The `HIncrByCommand` class_
 
 Once the validations are done, we look at the value for the given field and initialize it to `0` if the field does not exist. If the field does exist, we want to convert the string to an integer, returning an error if it cannot be converted. We use a new method in the `Utils` module to do so, `string_to_integer`.
 
@@ -824,7 +853,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.12 The `string_to_integer` method_
+_listing 8.13 The `string_to_integer` method_
 
 There's a lot going on in this method, so let's take it one step at a time. The overall approach is to look at all the characters in the string, starting from the left, and converting them to a number, and accumulate it to the final result. The accumulated number is an unsigned number, and the last step is to make sure that the parsed number can fit within a signed number. Let's dive right in:
 
@@ -897,7 +926,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.13 The `validate_integer` method_
+_listing 8.14 The `validate_integer` method_
 
 We catch both exceptions here `IntegerOverflow` and `InvalidIntegerString`, and raise a `ValidationError` instead. This allows us to keep using the code in `BaseCommand` we introduced in the previous chapter.
 
@@ -927,7 +956,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.14 The `validate_integer` method_
+_listing 8.15 The `validate_integer` method_
 
 We start this method by converting the input to a positive integer in case it was negative, this allows us to process it regardless of its sign, and we prepend the `'-'` character at the end if the input was indeed negative.
 
@@ -1024,7 +1053,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.15 The `HIncrByFloatCommand` class_
+_listing 8.16 The `HIncrByFloatCommand` class_
 
 In the previous chapter we introduced the `OptionUtils.validate_float` method, but as we just did with `validate_integer`, we are going to use a new method in the `Utils` package, and use `BigDecimal` instead of the `Float` class as we used to:
 
@@ -1052,7 +1081,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.16 The `validate_float` method_
+_listing 8.17 The `validate_float` method_
 
 The method mainly relies on `Kernel#BigDecimal` to do the heavy lifting, but we have to add a few custom pieces of logic. The first one is to translate the Redis representation of infinity to the `BigDecimal` one.
 
@@ -1103,7 +1132,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.17 The `float_to_string` method_
+_listing 8.18 The `float_to_string` method_
 
 If the value is either `INFINITY` or `-INFINITY`, we transform it to the valid Redis representation, `inf` & `-inf`. This is not necessary for now, but will become useful with other commands.
 
@@ -1135,7 +1164,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.18 The `validate_timeout` method_
+_listing 8.19 The `validate_timeout` method_
 
 And we can now update the blocking list commands:
 
@@ -1173,7 +1202,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.19 Updates to the blocking list commands_
+_listing 8.20 Updates to the blocking list commands_
 
 ### Utility commands
 
@@ -1209,7 +1238,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.20 The `HDelCommend` class_
+_listing 8.21 The `HDelCommend` class_
 
 We call the `DB#delete_from_hash` method, so let's create this method now:
 
@@ -1231,7 +1260,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.21 The `delete_from_hash` method_
+_listing 8.22 The `delete_from_hash` method_
 
 The method iterates over all the given fields and calls `RedisHash#delete`, incrementing a counter for all successful deletions, returning this count at the end of the process. The method also takes care of deleting the hash from the database if the hash is empty after deleting all fields. Let's look at the `delete` method:
 
@@ -1288,7 +1317,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.22 The `RedisHash#delete` method_
+_listing 8.23 The `RedisHash#delete` method_
 
 The deletion process for a list is delegated to the private method `delete_from_list`, while it is inlined for a `Dict`. For the latter, we call the `Dict#delete` method, which returns `nil` if nothing was deleted, or the value for the key it is was found and deleted. We perform two additional checks, first, if the size of the hash is now below the threshold, we convert the dict back to a list, through the private method `convert_dict_to_list`. Finally, we check whether or not the `Dict` instance needs resizing, `Dict` instances automatically grow but do not automatically shrink, so this check will make sure that a `Hash` can reduce its memory footprint and avoid waste.
 
@@ -1332,7 +1361,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.23 The `List#remove_node` & `ListNode#remove` methods_
+_listing 8.24 The `List#remove_node` & `ListNode#remove` methods_
 
 The `remove_node` method removes the given node from the list, while updating the `@head` and `@tail` variables if needed. It uses the `ListNode#remove` method, which delegates all the `next_node`/`prev_node` handling to the struct itself. The whole process is very mechanical and reminiscent of the previous chapter, all the node pointers have to be updated, while being careful to check for nil values at each step of the way.
 
@@ -1370,7 +1399,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.24 The `HDelCommend` class_
+_listing 8.25 The `HDelCommend` class_
 
 The command uses the `RedisHash#get`, through its `[]` alias, to check for the existence of the field, and return the appropriate number, acting as a boolean.
 
@@ -1403,7 +1432,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.25 The `HKeysCommand` class_
+_listing 8.26 The `HKeysCommand` class_
 
 The command uses the new `RedisHash#keys` method:
 
@@ -1439,7 +1468,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.26 The `RedisHash#keys` method_
+_listing 8.27 The `RedisHash#keys` method_
 
 When `@underlying` is a `Dict`, we can delegate directly to the `Dict#keys` method, on the other hand, if it is a `List`, we need to manually iterate through all the pairs in the list and accumulate the keys in an array.
 
@@ -1471,7 +1500,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.27 The `HValsCommand` class_
+_listing 8.28 The `HValsCommand` class_
 
 This implementation is also very similar to `HKeysCommand`, except that we call `RedisHash#values`:
 
@@ -1507,7 +1536,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.28 The `RedisHash#values` method_
+_listing 8.29 The `RedisHash#values` method_
 
 Similarly to `RedisHash#keys`, in the `Dict` case we call `Dict#values`, and in the `List` case we iterate through the list and accumulate all the values in an array.
 
@@ -1541,7 +1570,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.29 The `HLenCommand` class_
+_listing 8.30 The `HLenCommand` class_
 
 We use the `RedisHash#length` method to return the length of the hash:
 
@@ -1562,7 +1591,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.30 The `RedisHash#length` method_
+_listing 8.31 The `RedisHash#length` method_
 
 The `length` method is pretty succinct, it either calls `List#size` or `Dict#used`, which both return the number of elements they contain.
 
@@ -1599,7 +1628,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.31 The `HStrLenCommand` class_
+_listing 8.32 The `HStrLenCommand` class_
 
 This command does not need any new methods from the `RedisHash` class, it obtains the string stored at `field` with the `RedisHash#get` method and uses the Ruby `String#length` method to return its length.
 
@@ -1642,7 +1671,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.32 The `ConfigCommand` class_
+_listing 8.33 The `ConfigCommand` class_
 
 The version of `CONFIG GET` we implemented is a simplified version of the one in Redis which supports glob-style patterns, with `*`.
 
@@ -1676,7 +1705,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.33 The `FlushDBCommend` class_
+_listing 8.34 The `FlushDBCommend` class_
 
 Let's add the `DB#flush` method:
 
@@ -1705,7 +1734,7 @@ module BYORedis
   end
 end
 ```
-_listing 8.34 The `DB#flush` method_
+_listing 8.35 The `DB#flush` method_
 
 Ruby makes our lives really easy here, to flush the database, we can simply instantiate a few fresh `Dict`, `List` and `SortedArray` and call it a day, the garbage collector will take care of freeing the memory of the previous ones now that they're not referenced anymore.
 
@@ -1853,7 +1882,7 @@ def with_server
   server_socket.close
 end
 ```
-_listing 8.35 Updates to the `test_helper.rb` file_
+_listing 8.36 Updates to the `test_helper.rb` file_
 
 Bare with me for a minute, I know that global variables are frowned upon, but we're only using them to make our lives easier.
 I would not describe global variables as something to never use, but instead, as something to be extremely careful with. They can indeed become really problematic if they're used a lot throughout a codebase, especially if the value they hold changes a lot. Doing so could require a lot of headache . By using a global variable, we make it easier to maintain a single instance of the child process, without having to create a class, instantiate it, and burying the logic, what we want is actually not that much:
@@ -1906,7 +1935,7 @@ def test_with_config_values(combinations)
   end
 end
 ```
-_listing 8.36 the `test_with_config_values` helper in `test_helper.rb`_
+_listing 8.37 the `test_with_config_values` helper in `test_helper.rb`_
 
 You can find all the tests on GitHub, but here is an example of the tests we can now write with the `test_with_config_values` helper:
 
@@ -1922,7 +1951,7 @@ describe 'HVALS' do
   end
 end
 ```
-_listing 8.37 Example of a test using `test_with_config_values` for the `HVALS` command_
+_listing 8.38 Example of a test using `test_with_config_values` for the `HVALS` command_
 
 The implementation of the `HVALS` command is different depending on whether the `RedisHash` instance is using a `List` or `Dict` to store the key/value pairs, so ideally we'd want to test both cases. Given that the test themselves are identical, at the end of the day, we do want to test the same output, but with two different implementation, it would be really repetitive to write the tests twice.
 
