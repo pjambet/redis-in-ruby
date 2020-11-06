@@ -404,7 +404,7 @@ _listing 8.6 The `HSetNX` class_
 
 This new command uses existing methods, if the given field already exists in the hash, we directly return `0` and leave the hash untouched. On the other hand, if the field is not already present, we add it, using the `RedisHash#[]=` this time, since we know it will add the element, and return `1`.
 
-Now that we can create hashes, we need to update the `TypeCommand` class to respond with `set` for set keys:
+Now that we can create hashes, we need to update the `TypeCommand` class to respond with `hash` for hash keys:
 
 ``` ruby
 module BYORedis
