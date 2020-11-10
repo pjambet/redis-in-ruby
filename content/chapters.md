@@ -17,11 +17,11 @@ description: "List of all chapters"
 - [Chapter 6 - Building a Hash Table](/post/chapter-6-building-a-hash-table/)
 - [Chapter 7 - Adding List Commands](/post/chapter-7-adding-list-commands/)
 - [Chapter 8 - Hashes](/post/chapter-8-adding-hash-commands/)
+- [Chapter 9 - Sets](/post/chapter-9-adding-set-commands/)
 
 Coming Soon
 
-- [Chapter 9 - Sets](/post/chapter-9-sets/)
-- [Chapter 10 - Sorted Sets](/post/chapter-10-sorted-sets/)
+- [Chapter 10 - Sorted Sets](/post/chapter-10-adding-sorted-set-commands/)
 - [Chapter 11 - Bitmaps](/post/chapter-11-bitmaps/)
 - [Chapter 12 - HyperLogLogs](/post/chapter-12-hyperloglogs/)
 - [Chapter 13 - GEO* commands](/post/chapter-13-geo-commands/)
