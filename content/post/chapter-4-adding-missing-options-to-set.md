@@ -957,7 +957,7 @@ In no particular orders, the following is a list of links to the Redis source co
 If you want to manually interact with the server, an easy way is to use `nc`, the same way we used in [Chapter 1][chapter-1]. `nc` has no awareness of the Redis command syntax, so it will not stop you from making typos:
 
 ``` bash
-❯ nc localhost 2000
+> nc localhost 2000
 GET 1
 (nil)
 SET 1 2
