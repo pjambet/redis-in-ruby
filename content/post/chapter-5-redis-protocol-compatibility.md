@@ -717,7 +717,7 @@ irb(main):058:0> print_length_and_bytesize('😬')
 
 As we can see, all of these strings return `1` for `length`, but different values, respectively 2, 3 & 4 for `bytesize`. Going into details about UTF-8 encoding is out of scope, but the main takeaway from this is that what we consider to be a single character, might span over multiple bytes.
 
-If a client had sent `你` has a Bulk String, we'd expect it to pass the length as 3, and therefore we need to advance the cursor by 3 in the `StringScanner` instance. We also add two to account for the trailing `CRLF` characters. Note that, like Redis, we do not actually check that these two characters are indeed `CR` & `LF`, we just skip over them.
+If a client had sent `你` as a Bulk String, we'd expect it to pass the length as 3, and therefore we need to advance the cursor by 3 in the `StringScanner` instance. We also add two to account for the trailing `CRLF` characters. Note that, like Redis, we do not actually check that these two characters are indeed `CR` & `LF`, we just skip over them.
 
 
 ### Updating the command responses
