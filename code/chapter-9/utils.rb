@@ -156,7 +156,7 @@ module BYORedis
     end
 
     def self.validate_float(str, error_message)
-      case str
+      case str.downcase
       when '+inf', 'inf', 'infinity', '+infinity' then BigDecimal::INFINITY
       when '-inf', '-infinity' then -BigDecimal::INFINITY
       else

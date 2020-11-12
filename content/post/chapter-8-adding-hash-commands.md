@@ -1064,7 +1064,7 @@ module BYORedis
     # ...
 
     def self.validate_float(str, error_message)
-      case str
+      case str.downcase
       when '+inf', 'inf', 'infinity', '+infinity' then BigDecimal::INFINITY
       when '-inf', '-infinity' then -BigDecimal::INFINITY
       else
@@ -1085,7 +1085,7 @@ _listing 8.17 The `validate_float` method_
 
 The method mainly relies on `Kernel#BigDecimal` to do the heavy lifting, but we have to add a few custom pieces of logic. The first one is to translate the Redis representation of infinity to the `BigDecimal` one.
 
-Redis recognizes the strings `'inf'`, `'+inf'`, `'infinity'`, `'+infinity'`, `'-inf'` & `'-infinity'` as special values representing the positive and negative infinity values, which are valid floats.
+Redis recognizes the strings `'inf'`, `'+inf'`, `'infinity'`, `'+infinity'`, `'-inf'` & `'-infinity'` as special values representing the positive and negative infinity values, which are valid floats. We use `case str.downcase` to ignore the case of the string, like Redis does. The string `'+InFiNiTy'` is valid.
 
 The constraint of the `HINCRBYFLOAT` regarding infinity are interesting given that `HSET` can be used to set the value of a field to either `infinity` or `-infinity` but the result of `HINCRBYFLOAT` cannot be either of these values:
 
