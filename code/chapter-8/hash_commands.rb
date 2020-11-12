@@ -173,16 +173,16 @@ module BYORedis
 
       new_value = value + incr
 
-      raise FloatOverflow if new_value.nan? || new_value.infinite?
+      if new_value.nan? || new_value.infinite?
+        RESPError.new('ERR increment would produce NaN or Infinity')
+      else
+        new_value_as_string = Utils.float_to_string(new_value)
+        hash[field] = new_value_as_string
 
-      new_value_as_string = Utils.float_to_string(new_value)
-      hash[field] = new_value_as_string
-
-      RESPBulkString.new(new_value_as_string)
+        RESPBulkString.new(new_value_as_string)
+      end
     rescue InvalidFloatString
       RESPError.new('ERR hash value is not a float')
-    rescue FloatOverflow
-      RESPError.new('ERR increment would produce NaN or Infinity')
     end
 
     def self.describe
