@@ -1474,6 +1474,58 @@ end
 ```
 _listing 9.27 The `SRandMemberCommand` class_
 
+In this command we extract the `count` option, if present, and decide which method to call on `RediSet` depending on whether or not it was passed. We perform this check here because the logic behind getting a single random element, which is what `RediSet#random_member` does, is significantly simpler than getting multiple random elements, which is what `RedisSet#random_members_with_count` does. On top of that, the return type of the command is different, it is either `nil` or a single element in the first case and is an array, empty or not, otherwise
+
+We could check for the type of the `random_members` variable in the `call` method, and call `RESPBulkString.new` on it, or `RESPArray.new`, depending on its type. There is a slightly better approach, as in, easier to reuse in different places, which is what the `JSON.generate` method from the standard library does:
+
+``` ruby
+irb(main):005:0> JSON.generate(1)
+=> "1"
+irb(main):006:0> JSON.generate({a: 1, b: 2})
+=> "{\"a\":1,\"b\":2}"
+irb(main):007:0> JSON.generate([1,2,3])
+=> "[1,2,3]"
+irb(main):008:0> JSON.generate('a')
+=> "\"a\""
+```
+
+With `generate`, you can pass anything that can be serialized, and it'll return the serialized value for you. And while, yes, Ruby also provides `to_json` methods of most types, and it returns the same result:
+
+``` ruby
+irb(main):010:0> {a: 1, b: 2}.to_json
+=> "{\"a\":1,\"b\":2}"
+```
+
+I personally prefer the first approach as it avoids crowding objects with many methods, and instead separate functionalities across different classes/objects. Both options work, I happen to prefer the first one, so let's mimic it with `RESPSerializer`:
+
+``` ruby
+module BYORedis
+
+  # ...
+
+  class RESPSerializer
+    def self.serialize(object)
+      case object
+      when Array then RESPArray.new(object)
+      when RedisSet then RESPArray.new(object.members)
+      when List then ListSerializer.new(object)
+      when Integer then RESPInteger.new(object)
+      when String then RESPBulkString.new(object)
+      when Dict
+        pairs = []
+        object.each { |k, v| pairs.push(k, v) }
+        RESPArray.new(pairs)
+      when nil then NullBulkStringInstance
+      else
+        raise "Unknown object for RESP serialization #{ object }"
+      end
+    end
+  end
+end
+```
+
+With this class we can now call `RESPSerializer.new(object)` with any objects that can be serialized to RESP, without having to know its exact type. If we happen to know the type of the object we're dealing, we might as well call its specific RESP serializer, which is what we'll keep doing through the rest of the book.
+
 Getting a random element from an `IntSet` does not require as many steps as it does for a `Dict`. Given that the structure behind an `IntSet` is an array, we can pick a random index, between `0` and `size - 1`, and return the element at that index. As long as the random function we use is "random enough", the element returned will be random. We're using quotes here because the topic of randomness if fairly complicated, luckily Ruby does a lot of the heavy lifting for us, with the `Kernel.rand` method and the `SecureRandom` module. The difference between the two different approaches is a little bit out of scope for now, and we'll be using `Kernel.rand` since it is sufficient for our needs.
 
 On the other hand, getting a random entry for a set using a `Dict` is way more complicated. It might seem similar at first glance, the data structure powering a hash table is also an array, but some buckets might be empty, so we cannot "just" pick a random index and return the value stored there, given that it could be empty. This problem is not insurmountable, we can add some form of retry logic, until a non empty bucket is found. We also need to take into account that the `Dict` might be in the middle of the rehashing process, in which case the buckets will be split across two different hash tables. Finally, even if we dealt with these issues, there is still a major issue, buckets contain zero or more entries, and given the nature of the SipHash algorithm, there is no way to expect the distribution of entries across buckets.
