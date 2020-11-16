@@ -40,10 +40,12 @@ module BYORedis
       return if index.nil?
 
       element_at_index = @underlying[index]
-      indices_for_deletion = []
+      first_index_to_delete = nil
+      number_of_items_to_delete = 0
       while element_at_index
         if element_at_index == element
-          indices_for_deletion << index
+          first_index_to_delete ||= index
+          number_of_items_to_delete += 1
         end
 
         index += 1
@@ -55,7 +57,7 @@ module BYORedis
         end
       end
 
-      indices_for_deletion.each { |i| @underlying.delete_at(i) }
+      @underlying.slice!(first_index_to_delete, number_of_items_to_delete)
     end
   end
 end
