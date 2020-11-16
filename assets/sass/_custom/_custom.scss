@@ -16,13 +16,9 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
     word-break: break-word;
 }
 
-.highlight + p:has(> em) {
-  color: red;
-}
-
 // The goal here is to _try_ to only focus the _listing_ thingies
 // Let's hope I'll never start a chapter with an em ... fingers crossed
-.highlight + p > em:first-child {
+.highlight + p > em.listing:only-child {
   font-size: 0.9em;
 }
 
