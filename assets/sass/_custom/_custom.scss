@@ -16,10 +16,10 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
     word-break: break-word;
 }
 
-// The goal here is to _try_ to only focus the _listing_ thingies
-// Let's hope I'll never start a chapter with an em ... fingers crossed
 .highlight + p > em.listing:only-child {
   font-size: 0.9em;
+  position: relative;
+  top: -10px;
 }
 
 .post-content h4 {
