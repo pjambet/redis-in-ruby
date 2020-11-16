@@ -20,7 +20,9 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
   color: red;
 }
 
-.highlight + p > em {
+// The goal here is to _try_ to only focus the _listing_ thingies
+// Let's hope I'll never start a chapter with an em ... fingers crossed
+.highlight + p > em:first-child {
   font-size: 0.9em;
 }
 
