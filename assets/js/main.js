@@ -4,35 +4,35 @@ Even._initToc = function() {
     const $footer = $('.post-footer');
 
     if ($toc.length) {
-      const minScrollTop = $toc.offset().top - SPACING;
-      const maxScrollTop = $footer.offset().top - $toc.height() - SPACING;
+        const minScrollTop = $toc.offset().top - SPACING;
+        const maxScrollTop = $footer.offset().top - $toc.height() - SPACING;
 
-      const tocState = {
-        start: {
-          'position': 'absolute',
-          'top': minScrollTop,
-        },
-        process: {
-          'position': 'fixed',
-          'top': SPACING,
-        },
-        end: {
-          'position': 'absolute',
-          'top': maxScrollTop,
-        },
-      };
+        const tocState = {
+            start: {
+                'position': 'absolute',
+                'top': minScrollTop,
+            },
+            process: {
+                'position': 'fixed',
+                'top': SPACING,
+            },
+            end: {
+                'position': 'absolute',
+                'top': maxScrollTop,
+            },
+        };
 
-      $(window).scroll(function() {
-        const scrollTop = $(window).scrollTop();
+        $(window).scroll(function() {
+            const scrollTop = $(window).scrollTop();
 
-        if (scrollTop < minScrollTop) {
-          $toc.css(tocState.start);
-        } else if (scrollTop > maxScrollTop) {
-          $toc.css(tocState.end);
-        } else {
-          $toc.css(tocState.process);
-        }
-      });
+            if (scrollTop < minScrollTop) {
+                $toc.css(tocState.start);
+            } else if (scrollTop > maxScrollTop) {
+                $toc.css(tocState.end);
+            } else {
+                $toc.css(tocState.process);
+            }
+        });
     }
 
     const HEADERFIX = 30;
@@ -40,49 +40,49 @@ Even._initToc = function() {
     const $headerlink2 = $('.headerlink');
     const $headerlink = [];
     $headerlink2.each(function(i, a) {
-      $toclink.each(function(j, a2) {
-        if (a.href === a2.href) {
-          $headerlink.push(a);
-        }
-      });
+        $toclink.each(function(j, a2) {
+            if (a.href === a2.href) {
+                $headerlink.push(a);
+            }
+        });
     });
     const $tocLinkLis = $('.post-toc-content li');
 
     const headerlinkTop = $.map($headerlink, function(link) {
-      return $(link).offset().top;
+        return $(link).offset().top;
     });
 
     const headerLinksOffsetForSearch = $.map(headerlinkTop, function(offset) {
-      return offset - HEADERFIX;
+        return offset - HEADERFIX;
     });
 
     const searchActiveTocIndex = function(array, target) {
-      for (let i = 0; i < array.length - 1; i++) {
-        if (target > array[i] && target <= array[i + 1]) return i;
-      }
-      if (target > array[array.length - 1]) return array.length - 1;
-      return -1;
+        for (let i = 0; i < array.length - 1; i++) {
+            if (target > array[i] && target <= array[i + 1]) return i;
+        }
+        if (target > array[array.length - 1]) return array.length - 1;
+        return -1;
     };
 
     $(window).scroll(function() {
-      const scrollTop = $(window).scrollTop();
-      const activeTocIndex = searchActiveTocIndex(headerLinksOffsetForSearch, scrollTop);
+        const scrollTop = $(window).scrollTop();
+        const activeTocIndex = searchActiveTocIndex(headerLinksOffsetForSearch, scrollTop);
 
-      $($toclink).removeClass('active');
-      $($tocLinkLis).removeClass('has-active');
+        $($toclink).removeClass('active');
+        $($tocLinkLis).removeClass('has-active');
 
-      if (activeTocIndex !== -1) {
-        $($toclink[activeTocIndex]).addClass('active');
-        let ancestor = $toclink[activeTocIndex].parentNode;
-        while (ancestor.tagName !== 'NAV') {
-          $(ancestor).addClass('has-active');
-          ancestor = ancestor.parentNode.parentNode;
+        if (activeTocIndex !== -1) {
+            $($toclink[activeTocIndex]).addClass('active');
+            let ancestor = $toclink[activeTocIndex].parentNode;
+            while (ancestor.tagName !== 'NAV') {
+                $(ancestor).addClass('has-active');
+                ancestor = ancestor.parentNode.parentNode;
+            }
         }
-      }
     });
-  };
+};
 
-  $(document).ready(function () {
+$(document).ready(function () {
     Even.backToTop();
     Even.mobileNavbar();
     Even.toc();
@@ -90,15 +90,15 @@ Even._initToc = function() {
 
     // Hack to add a class to all the listing ... in <em> tags
     $('em:contains(listing)').addClass('listing');
-  });
+});
 
-  Even.responsiveTable();
-  Even.flowchart();
-  Even.sequence();
+Even.responsiveTable();
+Even.flowchart();
+Even.sequence();
 
-  if (window.hljs) {
+if (window.hljs) {
     hljs.initHighlighting();
     Even.highlight();
-  } else {
+} else {
     Even.chroma();
-  }
+}

@@ -223,4 +223,4 @@ copyright = ""            # default: author.name ↓
 [markup]
   [markup.tableOfContents]
     # startLevel = 1
-    endLevel = 4
+    endLevel = 3
