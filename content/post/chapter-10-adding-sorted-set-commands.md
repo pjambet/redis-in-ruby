@@ -8,7 +8,7 @@ keywords: []
 summary: "In this chapter we add support for the Sorted Set data type. We implement most of the sorted commands, such as ZADD, ZRANGE & BZPOPMAX"
 ---
 
-**Still a Work In Progress**
+**⚠️ Still a Work In Progress⚠️**
 
 ## What we'll cover
 
