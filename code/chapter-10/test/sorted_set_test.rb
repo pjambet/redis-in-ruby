@@ -482,6 +482,9 @@ describe 'Sorted Set Commands' do
         [ 'ZINTER 1', '-ERR wrong number of arguments for \'ZINTER\' command' ],
         [ 'ZINTER 2 z', '-ERR syntax error' ],
         [ 'ZINTER 2 z1 z2 z3', '-ERR syntax error' ],
+        [ 'ZINTER 0', '-ERR wrong number of arguments for \'ZINTER\' command' ],
+        [ 'ZINTER 0 z', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
+        [ 'ZINTER -1 z1', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
       ]
     end
 
@@ -628,6 +631,9 @@ describe 'Sorted Set Commands' do
         [ 'ZINTERSTORE d 1', '-ERR wrong number of arguments for \'ZINTERSTORE\' command' ],
         [ 'ZINTERSTORE d 2 z', '-ERR syntax error' ],
         [ 'ZINTERSTORE d 2 z1 z2 z3', '-ERR syntax error' ],
+        [ 'ZINTERSTORE d 0', '-ERR wrong number of arguments for \'ZINTERSTORE\' command' ],
+        [ 'ZINTERSTORE d 0 z', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
+        [ 'ZINTERSTORE d -1 z1', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
       ]
     end
 
@@ -760,6 +766,9 @@ describe 'Sorted Set Commands' do
         [ 'ZUNION 1', '-ERR wrong number of arguments for \'ZUNION\' command' ],
         [ 'ZUNION 2 z', '-ERR syntax error' ],
         [ 'ZUNION 2 z1 z2 z3', '-ERR syntax error' ],
+        [ 'ZUNION 0', '-ERR wrong number of arguments for \'ZUNION\' command' ],
+        [ 'ZUNION 0 z', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
+        [ 'ZUNION -1 z1', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
       ]
     end
 
@@ -905,6 +914,9 @@ describe 'Sorted Set Commands' do
         [ 'ZUNIONSTORE d 1', '-ERR wrong number of arguments for \'ZUNIONSTORE\' command' ],
         [ 'ZUNIONSTORE d 2 z', '-ERR syntax error' ],
         [ 'ZUNIONSTORE d 2 z1 z2 z3', '-ERR syntax error' ],
+        [ 'ZUNIONSTORE d 0', '-ERR wrong number of arguments for \'ZUNIONSTORE\' command' ],
+        [ 'ZUNIONSTORE d 0 z', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
+        [ 'ZUNIONSTORE d -1 z1', '-ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE' ],
       ]
     end
 

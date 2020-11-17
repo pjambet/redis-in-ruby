@@ -111,25 +111,25 @@ module BYORedis
     end
 
     def pop_max_from(key, sorted_set)
-      generic_pop_wrapper(key, sorted_set) do
+      generic_pop(key, sorted_set) do
         sorted_set.pop_max(1)
       end
     end
 
     def pop_min_from(key, sorted_set)
-      generic_pop_wrapper(key, sorted_set) do
+      generic_pop(key, sorted_set) do
         sorted_set.pop_min(1)
       end
     end
 
     def left_pop_from(key, list)
-      generic_pop_wrapper(key, list) do
+      generic_pop(key, list) do
         list.left_pop.value
       end
     end
 
     def right_pop_from(key, list)
-      generic_pop_wrapper(key, list) do
+      generic_pop(key, list) do
         list.right_pop.value
       end
     end
@@ -156,28 +156,16 @@ module BYORedis
       removed
     end
 
-    def pop_from_set(key, set, count)
-      popped_members = if count.nil?
-                         set.pop
-                       else
-                         set.pop_with_count(count)
-                       end
-
-      @data_store.delete(key) if set.empty?
-
-      popped_members
-    end
-
-    private
-
-    def generic_pop_wrapper(key, list)
+    def generic_pop(key, collection)
       popped = yield
-      @data_store.delete(key) if list.empty?
+      @data_store.delete(key) if collection.empty?
 
       if popped
         popped
       else
-        @logger.warn("Unexpectedly popped from an empty list or a nil value: #{ key }")
+        @logger.warn(
+          "Popped from an empty collection or a nil value: #{ key }/#{ collection.class }")
+
         nil
       end
     end

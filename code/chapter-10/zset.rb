@@ -13,10 +13,14 @@ module BYORedis
     end
 
     def add(score, member, options)
+      unless [ nil, :nx, :xx ].include?(options[:presence])
+        raise "Unknown presence value: #{ options[:presence] }"
+      end
+
       entry = @dict.get_entry(member)
 
       if entry
-        return false if options[:presence] == 'nx'
+        return false if options[:presence] == :nx
 
         if entry.value != score || options[:incr]
 
@@ -56,7 +60,7 @@ module BYORedis
           options[:ch] # false by default
         end
       else
-        return false if options[:presence] == 'xx'
+        return false if options[:presence] == :xx
 
         @array << new_pair(score, member)
         @dict[member] = score
@@ -80,9 +84,7 @@ module BYORedis
     end
 
     def remove_lex_range(range_spec)
-      generic_remove(range_spec) do |pair|
-        pair.member
-      end
+      generic_remove(range_spec, &:member)
     end
 
     def remove_rank_range(start, stop)
@@ -96,21 +98,15 @@ module BYORedis
     end
 
     def remove_score_range(range_spec)
-      generic_remove(range_spec) do |pair|
-        pair.score
-      end
+      generic_remove(range_spec, &:score)
     end
 
     def count_in_lex_range(range_spec)
-      generic_count(range_spec) do |pair|
-        pair.member
-      end
+      generic_count(range_spec, &:member)
     end
 
-    def count_in_rank_range(range_spec)
-      generic_count(range_spec) do |pair|
-        pair.score
-      end
+    def count_in_score_range(range_spec)
+      generic_count(range_spec, &:score)
     end
 
     private

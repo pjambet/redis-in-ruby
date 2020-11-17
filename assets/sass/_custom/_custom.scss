@@ -61,7 +61,8 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
 }
 
 #content .post .post-content hr {
-  margin: 2.5rem 0;
+  margin: 2.5rem auto;
+  width: 50%;
 }
 
 #content .post .post-content a:hover {
@@ -69,6 +70,25 @@ $logo-font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif !defau
   border: none;
 }
 
+// No underling for the little icon to the left of titles
+#content .post .post-content a.anchor:hover {
+  text-decoration: none;
+}
+
+#content .post .post-content a.anchor {
+  top: 0.1em;
+  position: relative;
+}
+
 .post-toc-content a:hover {
   text-decoration: underline;
+}
+
+.post-toc {
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+.post .post-content p code {
+  padding: 1px 3px;
 }

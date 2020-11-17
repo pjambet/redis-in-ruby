@@ -42,6 +42,16 @@ module BYORedis
       Iterator.new(list.tail, list.size - 1, ->(node) { node.prev_node }, ->(i) { i - 1 })
     end
 
+    def each(&block)
+      raise 'No block given' unless block
+
+      iterator = List.left_to_right_iterator(self)
+      while iterator.cursor
+        block.call(iterator.cursor.value)
+        iterator.next
+      end
+    end
+
     def empty?
       @size == 0
     end
