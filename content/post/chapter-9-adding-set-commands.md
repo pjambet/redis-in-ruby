@@ -1830,7 +1830,13 @@ module BYORedis
       set = @db.lookup_set(key)
 
       if set
-        popped_members = @db.pop_from_set(key, set, count)
+        popped_members = @db.generic_pop(key, set) do
+          if count.nil?
+            set.pop
+          else
+            set.pop_with_count(count)
+          end
+        end
 
         RESPSerializer.serialize(popped_members)
       elsif count.nil?
@@ -1851,32 +1857,7 @@ _listing 9.30 The `SPopCommand` class_
 
 Similarly to `SRANDMEMBER`, `SPOP` accepts a `count` argument, describing how many items can be returned, contrary to `SRANDMEMBER`, `SPOP` does not accept negative `count` values, and a value of `0` is effectively a no-op, no members are popped.
 
-Let's start with the `DB#pop_from_set` method:
-
-``` ruby
-module BYORedis
-  class DB
-
-    # ...
-
-    def pop_from_set(key, set, count)
-      popped_members = if count.nil?
-                         set.pop
-                       else
-                         set.pop_with_count(count)
-                       end
-
-      @data_store.delete(key) if set.empty?
-
-      popped_members
-    end
-
-    # ...
-
-  end
-end
-```
-_listing 9.31 The `DB#pop_from_set` method_
+We renamed the `DB#generic_pop_wrapper` that used to only work with `List` instances to `generic_pop` and we use it with `RedisSet` instances now.
 
 We now need to add `RedisSet#pop` and `RedisSet#pop_with_count`:
 
@@ -1944,7 +1925,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.32 The `pop` & `pop_with_count` methods in `RedisSet`_
+_listing 9.31 The `pop` & `pop_with_count` methods in `RedisSet`_
 
 `pop` is straightforward in the `IntSet` case given that we already implemented the `IntSet#pop` method, we can call it and directly return from it.
 
@@ -1985,7 +1966,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.33 The `SRemCommand` class_
+_listing 9.32 The `SRemCommand` class_
 
 `SREM` relies on `DB#remove_from_set`, let's add it:
 
@@ -2035,7 +2016,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.34 The `RedisSet#remove` method_
+_listing 9.33 The `RedisSet#remove` method_
 
 Up until now the `Dict#remove` method used to return the value of the deleted pair, or `nil` if the dict did not contain the given key. The problem with this approach is that if the value stored in the `Dict` was `nil`, the caller would not be able to differentiate the successful deletion of a pair, or a "miss" if the dictionary did not contain the key.
 
@@ -2085,7 +2066,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.35 The `delete` & `delete_entry` methods in the `Dict` class_
+_listing 9.34 The `delete` & `delete_entry` methods in the `Dict` class_
 
 The `delete` method is now written in terms of `delete_entry`. The `&.` operator allows us to concisely return `nil` from `delete` if `delete_entry` returned `nil` itself, in the case where the `Dict` does not contain `key`. If the `value` field of the `DictEntry` is `nil`, then callers of `delete` have no way of differentiating a miss, when the `Dict` does not contain `key`, and a successful deletion. If this is important to the callers, which in the case in `SRemCommand`, then callers can use `delete_entry` instead.
 
@@ -2128,7 +2109,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.36 The `SMoveCommand` class_
+_listing 9.35 The `SMoveCommand` class_
 
 If the `source` set does not exist, there is nothing to do since we have no set to remove `member` from. If it does exist, then we call `DB#remove_from_set`, which we added earlier for the `SREM` command, if it returns `true` then we add the `member` in `destination`. Note that we return `1` as long as `member` was found in `source`, even if it was already in `destination`.
 
@@ -2174,7 +2155,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.37 The `initialize` & `add` methods in the `IntSet` class_
+_listing 9.36 The `initialize` & `add` methods in the `IntSet` class_
 
 The first thing we do in `add` is check that the argument is indeed an `Integer`, and abort if it isn't. It is up to callers of these methods to do the due diligence of calling this method with the correct argument type.
 
@@ -2196,7 +2177,7 @@ def include?(member)
 end
 alias member? include?
 ```
-_listing 9.38 The `IntSet#include?` method_
+_listing 9.37 The `IntSet#include?` method_
 
 We're following Ruby's `Set` class naming convention here, naming the method `include?`, also accessible through the `member?` alias. We'll use the `member?` method throughout this chapter to use the same language used by the Redis commands such as `SISMEMBER`.
 
@@ -2228,7 +2209,7 @@ def remove(member)
   end
 end
 ```
-_listing 9.39 The `IntSet#remove` method_
+_listing 9.38 The `IntSet#remove` method_
 
 The `method` method uses the `bsearch_index` method in a way almost identical to how the `include?` method uses the `bsearch` method. By using the `Interger#<=>` method, we will either receive the index of `member` in the array, or `nil`. If `index` is `nil`, there's nothing to remove, so we can return `false` and call it a day. On the other hand, if `index` is not `nil`, we use the `Array#delete_at` method, which deletes the element at the given index.
 
@@ -2246,7 +2227,7 @@ def random_member
   @underlying_array[rand_index]
 end
 ```
-_listing 9.40 The `pop`, & `random_member` methods in the `IntSet` class_
+_listing 9.39 The `pop`, & `random_member` methods in the `IntSet` class_
 
 Finally, we need a few more methods to provide an easy to use API for the `IntSet` class, namely, the methods `empty?` to check if the sets is empty or not, `members`, to return all the members in the set, `cardinality`, to return the size of the set, and `each`, to provide a way to iterate over all the members in the set. Ruby gives us tools that allow us to provide these methods without having to explicitly define them. We're using the [`Forwardable` module][ruby-doc-forwardable] to delegate some methods directly to the `Array` instance, `@underlying_array`. We're also using the `alias` keyword to provide some of these methods through the same naming conventions used in Redis. We also use the `attr_reader` approach to create an accessor for the `@underlying_array` instance variable, and alias it to `members` to provide a more explicit method name:
 
@@ -2273,7 +2254,7 @@ module BYORedis
   end
 end
 ```
-_listing 9.41 The `members`, `empty?`, `each` & `cardinality` methods in the `IntSet` class_
+_listing 9.40 The `members`, `empty?`, `each` & `cardinality` methods in the `IntSet` class_
 
 And with these aliases, we now have completed the `IntSet` class, let's now use it, in combination with the `Dict` class, to implement the Set commands, starting with the one allowing us to create a new set.
 

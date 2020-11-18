@@ -83,14 +83,14 @@ module BYORedis
     end
 
     def left_pop_from(key, list)
-      generic_pop_wrapper(key, list) do
-        list.left_pop
+      generic_pop(key, list) do
+        list.left_pop.value
       end
     end
 
     def right_pop_from(key, list)
-      generic_pop_wrapper(key, list) do
-        list.right_pop
+      generic_pop(key, list) do
+        list.right_pop.value
       end
     end
 
@@ -128,16 +128,16 @@ module BYORedis
       popped_members
     end
 
-    private
-
-    def generic_pop_wrapper(key, list)
+    def generic_pop(key, collection)
       popped = yield
-      @data_store.delete(key) if list.empty?
+      @data_store.delete(key) if collection.empty?
 
       if popped
-        popped.value
+        popped
       else
-        @logger.warn("Unexpectedly popped from an empty list or a nil value: #{ key }")
+        @logger.warn(
+          "Popped from an empty collection or a nil value: #{ key }/#{ collection.class }")
+
         nil
       end
     end
