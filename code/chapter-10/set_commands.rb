@@ -245,7 +245,13 @@ module BYORedis
       set = @db.lookup_set(key)
 
       if set
-        popped_members = @db.pop_from_set(key, set, count)
+        popped_members = @db.generic_pop(key, set) do
+          if count.nil?
+            set.pop
+          else
+            set.pop_with_count(count)
+          end
+        end
 
         RESPSerializer.serialize(popped_members)
       elsif count.nil?

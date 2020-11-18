@@ -18,8 +18,9 @@ module BYORedis
       popped = []
 
       if sorted_set
-        popped = yield sorted_set, count
-        db.data_store.delete(key) if sorted_set.empty?
+        popped = db.generic_pop(key, sorted_set) do
+          yield sorted_set, count
+        end
       end
 
       RESPArray.new(popped)
@@ -32,8 +33,9 @@ module BYORedis
         sorted_set = db.lookup_sorted_set(set_name)
         next if sorted_set.nil?
 
-        popped = yield sorted_set
-        db.data_store.delete(set_name) if sorted_set.empty?
+        popped = db.generic_pop(set_name, sorted_set) do
+          yield sorted_set
+        end
 
         return RESPArray.new([ set_name ] + popped)
       end
@@ -115,11 +117,15 @@ module BYORedis
 
     def self.validate_number_of_sets(db, args)
       number_of_sets = Utils.validate_integer(args.shift)
-      number_of_sets.times.map do
-        set_key = args.shift
-        raise RESPSyntaxError if set_key.nil?
+      if number_of_sets <= 0
+        raise ValidationError, 'ERR at least 1 input key is needed for ZUNIONSTORE/ZINTERSTORE'
+      else
+        number_of_sets.times.map do
+          set_key = args.shift
+          raise RESPSyntaxError if set_key.nil?
 
-        db.lookup_sorted_set_or_set(set_key)
+          db.lookup_sorted_set_or_set(set_key)
+        end
       end
     end
 
@@ -330,7 +336,7 @@ module BYORedis
         # We peek at the first arg to see if it is an option
         arg = @args[0]
         case arg.downcase
-        when 'nx', 'xx' then set_presence_option(arg.downcase)
+        when 'nx', 'xx' then set_presence_option(arg.downcase.to_sym)
         when 'ch' then @options[:ch] = true
         when 'incr' then @options[:incr] = true
         else
@@ -691,7 +697,7 @@ module BYORedis
     def call
       SortedSetUtils.generic_count(@db, @args) do |sorted_set, min, max|
         range_spec = Utils.validate_score_range_spec(min, max)
-        sorted_set&.count_in_rank_range(range_spec)
+        sorted_set&.count_in_score_range(range_spec)
       end
     end
 

@@ -229,7 +229,7 @@ module BYORedis
         a * b
       end
     rescue FloatDomainError
-      0
+      BigDecimal(0)
     end
 
     def self.add_or_zero_if_nan(a, b)

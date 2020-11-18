@@ -229,9 +229,8 @@ module BYORedis
     end
 
     def remove_lex_range(range_spec)
-      return 0 if range_spec.empty? || no_overlap_with_range?(range_spec) do |pair, _|
-         pair.member
-      end
+      return 0 if range_spec.empty? ||
+                  no_overlap_with_range?(range_spec) { |pair, _| pair.member }
 
       case @underlying
       when List then remove_lex_range_list(range_spec)
@@ -251,9 +250,8 @@ module BYORedis
     end
 
     def remove_score_range(range_spec)
-      return 0 if range_spec.empty? || no_overlap_with_range?(range_spec) do |pair, _|
-         pair.score
-      end
+      return 0 if range_spec.empty? ||
+                  no_overlap_with_range?(range_spec) { |pair, _| pair.score }
 
       case @underlying
       when List then remove_score_range_list(range_spec)
@@ -269,10 +267,7 @@ module BYORedis
 
     def rank(member)
       case @underlying
-      when List
-        find_member_in_list(member) do |_, rank|
-          rank
-        end
+      when List then find_member_in_list(member) { |_, rank| rank }
       when ZSet
         entry = @underlying.dict.get_entry(member)
         return nil unless entry
@@ -284,10 +279,7 @@ module BYORedis
 
     def score(member)
       case @underlying
-      when List
-        find_member_in_list(member) do |pair, _|
-          pair.score
-        end
+      when List then find_member_in_list(member) { |pair, _| pair.score }
       when ZSet then @underlying.dict[member]
       else raise "Unknown type for #{ @underlying }"
       end
@@ -299,47 +291,41 @@ module BYORedis
 
     def each(&block)
       case @underlying
-      when List
-        iterator = List.left_to_right_iterator(@underlying)
-        while iterator.cursor
-          yield iterator.cursor.value
-          iterator.next
-        end
+      when List then @underlying.each(&block)
       when ZSet then @underlying.array.each(&block)
       else raise "Unknown type for #{ @underlying }"
       end
     end
 
     def pop_max(count)
-      generic_pop(count) do
-        case @underlying
-        when List then @underlying.right_pop&.value
-        when ZSet
+      case @underlying
+      when List then generic_pop(count) { @underlying.right_pop&.value }
+      when ZSet
+        generic_pop(count) do
           max = @underlying.array.pop
           @underlying.dict.delete(max.member) if max
           max
-        else raise "Unknown type for #{ @underlying }"
         end
+      else raise "Unknown type for #{ @underlying }"
       end
     end
 
     def pop_min(count)
-      generic_pop(count) do
-        case @underlying
-        when List then @underlying.left_pop&.value
-        when ZSet
+      case @underlying
+      when List then generic_pop(count) { @underlying.left_pop&.value }
+      when ZSet
+        generic_pop(count) do
           min = @underlying.array.shift
           @underlying.dict.delete(min.member) if min
           min
-        else raise "Unknown type for #{ @underlying }"
         end
+      else raise "Unknown type for #{ @underlying }"
       end
     end
 
     def count_in_lex_range(range_spec)
-      return 0 if range_spec.empty? || no_overlap_with_range?(range_spec) do |pair, _|
-         pair.member
-      end
+      return 0 if range_spec.empty? ||
+                  no_overlap_with_range?(range_spec) { |pair, _| pair.member }
 
       case @underlying
       when List then count_in_lex_range_list(range_spec)
@@ -348,14 +334,13 @@ module BYORedis
       end
     end
 
-    def count_in_rank_range(range_spec)
-      return 0 if range_spec.empty? || no_overlap_with_range?(range_spec) do |pair, _|
-        pair.score
-     end
+    def count_in_score_range(range_spec)
+      return 0 if range_spec.empty? ||
+                  no_overlap_with_range?(range_spec) { |pair, _| pair.score }
 
       case @underlying
-      when List then count_in_rank_range_list(range_spec)
-      when ZSet then @underlying.count_in_rank_range(range_spec)
+      when List then count_in_score_range_list(range_spec)
+      when ZSet then @underlying.count_in_score_range(range_spec)
       else raise "Unknown type for #{ @underlying }"
       end
     end
@@ -370,17 +355,19 @@ module BYORedis
     end
 
     def no_overlap_with_range?(range_spec, &block)
+      # Note that in that each condition the "value" is abstract and determined by the return
+      # value of calling the block variable, in practice it's either score, member, or rank
       # There is no overlap under the four following conditions:
-      # 1. the range spec min is greater than the max lex value:
+      # 1. the range spec min is greater than the max value:
       # set  : |---|
       # range:       |---| (min can be inclusive or exclusive, doesn't matter)
-      # 2. the range spec min is exclusive and is equal to the max lex value
+      # 2. the range spec min is exclusive and is equal to the max value
       # set  : |---|
       # range:     (---|   (min is exclusive)
-      # 3. the min lex value is greater than range spec max
+      # 3. the min value is greater than range spec max
       # set  :       |---|
       # range: |---|       (max can be inclusive or exclusive, doesn't matter)
-      # 4. the min lex value is equal to the range spec max which is exclusive
+      # 4. the min value is equal to the range spec max which is exclusive
       # set  :     |---|
       # range: |---(       (max is exclusive)
       max_pair, max_pair_rank = max_pair_with_rank
@@ -390,10 +377,10 @@ module BYORedis
       set_min_range_spec_max_comparison =
         range_spec.compare_with_max(block.call(min_pair, min_pair_rank))
 
-        set_max_range_spec_min_comparison == -1 ||
-      (range_spec.min_exclusive? && set_max_range_spec_min_comparison == 0) ||
-      set_min_range_spec_max_comparison == 1 ||
-      (range_spec.max_exclusive? && set_min_range_spec_max_comparison == 0)
+      set_max_range_spec_min_comparison == -1 || # case 1
+        (range_spec.min_exclusive? && set_max_range_spec_min_comparison == 0) || # case 2
+        set_min_range_spec_max_comparison == 1 || # case 3
+        (range_spec.max_exclusive? && set_min_range_spec_max_comparison == 0) # case 4
     end
 
     private
@@ -422,11 +409,9 @@ module BYORedis
 
     def generic_count_list(range_spec)
       count = 0
-      iterator = List.left_to_right_iterator(@underlying)
       entered_range = false
 
-      while iterator.cursor
-        pair = iterator.cursor.value
+      @underlying.each do |pair|
         in_range = range_spec.in_range?(yield(pair))
 
         if in_range
@@ -435,42 +420,33 @@ module BYORedis
         elsif entered_range
           break
         end
-
-        iterator.next
       end
 
       count
     end
 
     def count_in_lex_range_list(range_spec)
-      generic_count_list(range_spec) do |pair|
-        pair.member
-      end
+      generic_count_list(range_spec, &:member)
     end
 
-    def count_in_rank_range_list(range_spec)
-      generic_count_list(range_spec) do |pair|
-        pair.score
-      end
+    def count_in_score_range_list(range_spec)
+      generic_count_list(range_spec, &:score)
     end
 
     def find_member_in_list(member)
-      iterator = List.left_to_right_iterator(@underlying)
       index = 0
-      while iterator.cursor
-        return yield iterator.cursor.value, index if iterator.cursor.value.member == member
+      @underlying.each do |pair|
+        return yield pair, index if pair.member == member
 
         index += 1
-        iterator.next
       end
 
       nil
     end
 
     def remove_list(member)
-      removed = false
       iterator = List.left_to_right_iterator(@underlying)
-      while !removed && iterator.cursor
+      while iterator.cursor
         if iterator.cursor.value.member == member
           @underlying.remove_node(iterator.cursor)
           return true
@@ -543,14 +519,9 @@ module BYORedis
       raise "#{ @underlying } is not a List" unless @underlying.is_a?(List)
 
       zset = ZSet.new
-      iterator = List.left_to_right_iterator(@underlying)
-
-      while iterator.cursor
-        pair = iterator.cursor.value
+      @underlying.each do |pair|
         zset.dict[pair.member] = pair.score
         zset.array << pair
-
-        iterator.next
       end
 
       @underlying = zset
@@ -559,7 +530,7 @@ module BYORedis
     def add_list(score, member, options: {})
       raise "#{ @underlying } is not a List" unless @underlying.is_a?(List)
 
-      unless [ nil, 'nx', 'xx' ].include?(options[:presence])
+      unless [ nil, :nx, :xx ].include?(options[:presence])
         raise "Unknown presence value: #{ options[:presence] }"
       end
 
@@ -575,7 +546,7 @@ module BYORedis
           if pair.score == score && !options[:incr]
             # We found an exact match, without the INCR option, so we do nothing
             return false
-          elsif options[:presence] == 'nx'
+          elsif options[:presence] == :nx
             # We found an element, but because of the NX option, we do nothing
             return false
           else
@@ -635,7 +606,7 @@ module BYORedis
         end
       end
 
-      return false if options[:presence] == 'xx'
+      return false if options[:presence] == :xx
 
       new_pair = Pair.new(score, member)
       if location
@@ -652,11 +623,8 @@ module BYORedis
     end
 
     def list_find_pair(member)
-      iterator = List.left_to_right_iterator(@underlying)
-      while iterator.cursor
-        return iterator.cursor.value if iterator.cursor.value.member == member
-
-        iterator.next
+      @underlying.each do |pair|
+        return pair if pair.member == member
       end
 
       nil
@@ -684,9 +652,10 @@ module BYORedis
     private
 
     def serialize_zset
-      sub_array = @sorted_set.underlying.array[@range_spec.min..@range_spec.max]
       members = []
-      sub_array.each do |pair|
+      (@range_spec.min..@range_spec.max).each do |rank|
+        pair = @sorted_set.underlying.array[rank]
+
         if @reverse
           members.prepend(Utils.float_to_string(pair.score)) if @withscores
           members.prepend(pair.member)
