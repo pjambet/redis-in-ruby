@@ -216,16 +216,16 @@ Implementing a skiplist is fairly complicated, and Redis uses a modified version
 
 The following is an illustration of what a skiplist looks like, the arrows can be seen as "express lanes". The [skiplist paper][skiplist-paper] goes into more details if you're interested in learning more about this structure:
 
-<!-- ![skiplist illustration](/skiplist.png) -->
+![skiplist illustration](/skiplist.png)
 
 The tl;dr; is that the arrows seen above, the "express lanes", can be used to ignore big chunks of the list when searching for an element. The search process always starts from the top left, and follows arrows as needed. Say that we'd be searching for the number `7`, we'd follow the first arrow, see that nothing is on the other end, so move to the second arrow, it would point us to `4`, which given that we know that the list is sorted, gives us a chance to find `7` if we were to keep looping, following the arrow would take us to `6`, following it again would take us to the end of the list, so we would move to the one below and find `9`, which means that `7` cannot be found if we were to continue over there, so we keep going down, and land on `7`. The image below highlights all the steps that we would take to find `7`, where the red arrows show the paths we chose not to follow and the green ones the ones we did.
 
 
-<!-- ![skiplist illustration 2](/skiplist_highlight_1.png) -->
+![skiplist illustration 2](/skiplist_highlight_1.png)
 
 The next example shows the path we would take if we were to search for `11`:
 
-<!-- ![skiplist illustration 2](/skiplist_highlight_2.png) -->
+![skiplist illustration 2](/skiplist_highlight_2.png)
 
 Note that Redis optimizes a few things such as storing a reference to the tail of the list, which would have sped up the process to find `11`.
 
