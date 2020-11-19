@@ -276,7 +276,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updated `push` method in the `SortedArray` class_
+_listing 10.1 The updated `push` method in the `SortedArray` class_
 
 Note that we added the `Forwardable` module to delegate a bunch of methods directly to the underlying array. The only difference between the new `push` method and the old one is the `else` branch, it used to be:
 
@@ -378,7 +378,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updated `delete` method in the `SortedArray` class_
+_listing 10.2 The updated `delete` method in the `SortedArray` class_
 
 There are two differences between the new `delete` method and the previous one. First, we extracted an `index` method to return the `index` of a member, or `nil` if the element is not present.
 
@@ -437,7 +437,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `by_fields` class method for `SortedArray`_
+_listing 10.3 The `by_fields` class method for `SortedArray`_
 
 We can now easily create a sorted array for `BlockedState` with:
 
@@ -595,7 +595,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZAddCommand` class in `sorted_set_commands.rb`_
+_listing 10.4 The `ZAddCommand` class in `sorted_set_commands.rb`_
 
 Handling all the various options makes the method longer than most other commands, let's slowly step through it. We initially create a hash of default values for the three options, `presence`, which has three possible values, `nil`, the default, `nx`, or `px`. `ch` defaults to `false` and will be set to `true` only we find the `ch` option among the arguments. Finally, `incr` defaults to `false` and will be switched to `true` if we find `incr` among the arguments.
 
@@ -644,7 +644,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `DB#lookup_sorted_set_for_write` method_
+_listing 10.5 The `DB#lookup_sorted_set_for_write` method_
 
 The `@ready_keys[key] = nil` line, under the `if @blocking_keys[key]` condition is similar to what we had to write in `lookup_list_for_write` when adding the `BLPOP` and `BRPOP` commands. We're dealing with a similar situation here, blocking commands such as `BZPOPMIN` and `BZPOPMAX`, which will be implemented later in this chapter, can cause clients to be blocked until a sorted set can be popped from. The same way that Redis never stores empty list, it also never stores empty sorted sets, and the same applies to hashes and sets, which means that whenever we create a new sorted set, we might be able to unblock a client blocked for that key, adding it to `ready_keys` will allow us to check for that. We'll explore this in more details when adding the two blocking commands for sorted sets.
 
@@ -704,7 +704,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#add` method_
+_listing 10.6 The `RedisSortedSet#add` method_
 
 We declare a new `Struct` at the beginning of the class, `Pair`, which will hold the score/member pairs inside the `List` or within the `ZSet`. The `ZSet` class is the class that will coordinate the `Dict` and `SortedArray` instances, as described earlier in the chapter:
 
@@ -721,7 +721,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet` class_
+_listing 10.7 The `ZSet` class_
 
 Back to `RedisSortedSet#add`, we use the tried and true pattern of a `case/when` against `@underlying` to determine which data structure we're currently dealing with. In the `List` case we delegate the logic to the `add_list` private method, and in the `ZSet` case we use the `ZSet#add` method.
 
@@ -747,7 +747,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `List#each` method_
+_listing 10.8 The `List#each` method_
 
 We won't always be able to use the `each` method, there are cases where we'll need to have a hold of the `ListNode` instance, to check the value of its `prev_node` for instance, and in these cases we'll still need to use `List.left_to_right_iterator`. We're about to see an example in the `add_list` method below.
 
@@ -860,7 +860,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#add_list` method_
+_listing 10.9 The `RedisSortedSet#add_list` method_
 
 There is _a lot_ going on in there, let's go through all of it very slowly.
 
@@ -984,7 +984,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `insert_before_node` refactor in the `List` class_
+_listing 10.10 The `insert_before_node` refactor in the `List` class_
 
 We use to be able to only have `insert_before` and `insert_after`, which both operate based on a `pivot` value, which they look for in the list. Both were initially created for the `LINSERT` command. But while we could still use `insert_before` here, it would be wasteful to start iterating from the start of the list if we already had a reference to the node we wanted to use as the insertion point.
 
@@ -1044,7 +1044,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `Utils.add_or_raise_if_nan` method_
+_listing 10.11 The `Utils.add_or_raise_if_nan` method_
 
 We use the `save_exception_mode` so that we don't modify the behavior of `BigDecimal` operations once we're done here, and if it does raise an exception, `FloatDomainError`, we convert it to our own exception, `FloatNaN`, which we added at the top of the `utils.rb` file.
 
@@ -1077,7 +1077,7 @@ elsif pair.score > score || (pair.score == score && pair.member > member)
 elsif pair.score < score # ...
 # ...
 ```
-_listing 10.x The `member_does_not_exist` option handling in the `RedisSortedSet#add_list` method_
+_listing 10.12 The `member_does_not_exist` option handling in the `RedisSortedSet#add_list` method_
 
 Done! That's it, we can add members to a sorted set ... as long as it uses a `List` under the hood, we need to handle the other case, when the strings are either too big, or the sorted set contains too many entries.
 
@@ -1165,7 +1165,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#add` method_
+_listing 10.13 The `ZSet#add` method_
 
 First we use the `Dict#get_entry` method to check for the existence of `member` in the sorted set. Things are already simpler here, we don't have to iterate over anything to determine the presence of the member we're trying to add or update.
 
@@ -1216,7 +1216,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZCardCommand` class_
+_listing 10.14 The `ZCardCommand` class_
 
 We call the `cardinality` method on the `RedisSortedSet` instance, with the "safe navigation" operator, `&.`, which returns `nil` if `sorted_set` itself is `nil`, which would then take us to the right side of the `||` operator and effectively default `cardinality` to `0`. Let's add the `RedisSortedSet#cardinality` method:
 
@@ -1237,7 +1237,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#cardinality` method_
+_listing 10.15 The `RedisSortedSet#cardinality` method_
 
 In the `List` case we return the result of calling `List.size`, and for a `ZSet`, we need to add the `cardinality` method to the class:
 
@@ -1253,7 +1253,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#cardinality` method_
+_listing 10.16 The `ZSet#cardinality` method_
 
 We could have included `Forwardable` and used it to delegate `#size` to `@array`, but there's only one method we need to directly delegate, so the "cost" of manually doing the delegation is really small compared to the "complexity" of including a module, and calling `def_delegators`, which doesn't save us much for only one method.
 
@@ -1478,7 +1478,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRangeCommand` class_
+_listing 10.17 The `ZRangeCommand` class_
 
 The `SortedSetUtils.generic_range` method implements the range logic, including validating the arguments and uses the `SortedSetRankSerializer` class to serialize the result
 
@@ -1608,7 +1608,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `SortedSetRankSerializer` class_
+_listing 10.18 The `SortedSetRankSerializer` class_
 
 The `serialize` method calls `serialize_list` or `serialize_zset` depending on the type of `@underlying`. Let's first look look at the `ZSet` case, we can leverage the array structure inside the `ZSet` to extract the range of elements we need, based on on `min` and `max` attribute of the range spec.
 
@@ -1683,7 +1683,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x Updates to the `ListSerializer` class_
+_listing 10.19 Updates to the `ListSerializer` class_
 
 We extracted most of the `serialize` method to the new `serialize_with_accumulators` method, which allows us to use the same overall logic, while being able to serialize individual list nodes differently. This is what we do in the `SortedSetRankSerializer#serialize_list` method.
 
@@ -1809,7 +1809,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRangeByScoreCommand` class_
+_listing 10.20 The `ZRangeByScoreCommand` class_
 
 We're again anticipating the upcoming reverse command, `ZREVRANGEBYSCORE` in this case, and create `generic_range_by_score` to share the common logic, for now `reverse` is always `false`, so we can ignore the branches where it handles the `true` case.
 
@@ -1843,7 +1843,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `Utils.validate_score_range_spec` method_
+_listing 10.21 The `Utils.validate_score_range_spec` method_
 
 The new method in the `Utils` module, `validate_score_range_spec`, takes care of creating an instance of `GenericRangeSpec`, with the correct exclusive flags set depending on the presence of `(`. Let's add a method to create a range spec with the appropriate comparison function, passed as a block. We're also adding a new method, `no_overlap_with_range?` which will be used to determine when we can avoid to do any work if we can determine that no items match the requested range.
 
@@ -1931,7 +1931,7 @@ module BYORedis
   # ...
 end
 ```
-_listing 10.x The `score_range_spec` and `no_overlap_with_range?` methods_
+_listing 10.22 The `score_range_spec` and `no_overlap_with_range?` methods_
 
 The new class method on `GenericRangeSpec` allows us to create a range specific to score ranges, which handles the exclusive boundaries.
 
@@ -1989,7 +1989,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `empty?`, `compare_with_min` & `in_range?` methods for the `GenericRangeSpec` class_
+_listing 10.23 The `empty?`, `compare_with_min` & `in_range?` methods for the `GenericRangeSpec` class_
 
 We can now use the same class for our different use cases, rank ranges and score ranges, let's quickly play with it in `irb`:
 
@@ -2137,7 +2137,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `serialize_zset` & `serialize_list` methods for the `SortedSetSerializerBy` class_
+_listing 10.24 The `serialize_zset` & `serialize_list` methods for the `SortedSetSerializerBy` class_
 
 We start the `serialize` methods with three checks to return early if we can. In the first one, we test if the `offset` value is negative, if it is, we can return an empty array. We can also return early if the range is empty, or if the range and the set don't overlap.
 
@@ -2446,7 +2446,7 @@ int main(void) {
   return 0;
 }
 ```
-_listing 10.x A C example of integer overflow and the wrapping behavior_
+_listing 10.25 A C example of integer overflow and the wrapping behavior_
 
 ---
 
@@ -2473,7 +2473,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `SortedArray#first_index_in_range` method_
+_listing 10.26 The `SortedArray#first_index_in_range` method_
 
 This method is a generic approach to using the following block:
 
@@ -2663,7 +2663,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRangeByLexCommand` class_
+_listing 10.27 The `ZRangeByLexCommand` class_
 
 The `generic_range_by_lex` method will be useful when we add the reverse variant, `ZREVRANGEBYLEX`, which is why it has a `reverse` flag, which defaults to `false`. We need to validate that `min` and `max` are valid lex range items, and if they are, we create an instance of the range spec class specific to lexicographic order, with `GenericRangeSpec.lex_range_spec`:
 
@@ -2697,7 +2697,7 @@ module BYORedis
     private_class_method :parse_range_item
 end
 ```
-_listing 10.x The `Utils.validate_lex_range_spec` class_
+_listing 10.28 The `Utils.validate_lex_range_spec` class_
 
 `validate_lex_range_spec` checks the format of both range items with `parse_range_item`. In this method we check all the edge cases. `+` and `-` are considered exclusive since no values can actually be equal to them. Let's now create a new class method on `GenericRangeSpec` to create a range spec that uses lex comparison as its ordering mechanism:
 
@@ -2737,7 +2737,7 @@ module BYORedis
   # ...
 end
 ```
-_listing 10.x The `GenericRangeSpec.lex_range_spec` class method_
+_listing 10.29 The `GenericRangeSpec.lex_range_spec` class method_
 
 The comparison of lex items is a bit trickier than previous comparisons we've had to deal with previously and is why we previously created the `compare_with_min` and `compare_with_max` methods. It is implemented in the `lex_compare` and essentially follows these rules:
 
@@ -2962,7 +2962,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZInterCommand` class_
+_listing 10.30 The `ZInterCommand` class_
 
 The `ZInterCommand` is surprisingly short, it essentially amounts to the two statements: "Perform a regular set operation, no store, and use the intersection operation". Using this level of abstraction will allow us to write the following commands in a very concise way as well, but let's look at what `SortedSetUtils.set_operation_command` and `SortedSetUtils.intersection` do.
 
@@ -2987,7 +2987,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `DB#lookup_sorted_set_or_set` method_
+_listing 10.31 The `DB#lookup_sorted_set_or_set` method_
 
 Going back to `set_operation`, the next step is calling `parse_union_or_inter_options`. At this time we've parsed the value of `numkeys` so we know how many sets to expect, which means that if the `WEIGHTS` option is present, we have to validate that the number of weights matches the `numkeys` value. This validation is performed in the `validate_weights` method. We generate the default weight values with the line `Array.new(number_of_sets, 1)`. It initializes an array for which the size is `number_of_sets`, and all the elements are `1`.
 
@@ -3187,7 +3187,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet.intersection` method_
+_listing 10.32 The `RedisSortedSet.intersection` method_
 
 The logic is overall similar to the one we wrote in `RedisSet.intersection`, with the main difference being that we need to handle weights, and how to aggregate them. We start in a similar way, we sort sets from smallest to largest, because that way we will only iterate through the smallest set. If that set is nil, then we don't even have to go further, an empty set in an intersection guarantees that the result is an empty set. Like `0` in a multiplication, it doesn't matter what the other parts of the operation are.
 
@@ -3251,7 +3251,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `add_or_zero_if_nan` & `multiply_or_zero_if_nan` methods_
+_listing 10.33 The `add_or_zero_if_nan` & `multiply_or_zero_if_nan` methods_
 
 If the `aggregate` value is neither of the expected ones we follow the "this is not supposed to happen so throw a generic exception so that bugs are caught in the development cycle" approach.
 
@@ -3315,7 +3315,7 @@ module BYORedis
   # ...
 end
 ```
-_listing 10.x The `ZInterStoreCommand` class_
+_listing 10.34 The `ZInterStoreCommand` class_
 
 Earlier we created the `SortedSetUtils.set_operation_command` method so we could share some of the logic between `ZINTER` and `ZUNION`, because they accept the same arguments, the only difference is that one performs an intersection and one a union. We're doing the same here with `SortedSetUtils.set_operation_store_command`, so that we share some logic between `ZINTERSTORE` and `ZUNIONSTORE`, which are both similar to the non-store commands, but different because they accept an extra key, `destination`.
 
@@ -3385,7 +3385,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZUnionCommand` class_
+_listing 10.35 The `ZUnionCommand` class_
 
 We can already see some of the decisions we made earlier when implementing `ZINTER` paying off. The content of `ZUnionCommand#call` is really concise and very similar to `ZInterCommand#call`, the only difference is the content of the block passed to `SortedSetUtils.set_operation_command`, which is `SortedSetUtils.union` this time.
 
@@ -3438,7 +3438,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet.union` method_
+_listing 10.36 The `RedisSortedSet.union` method_
 
 Set intersection was the complicated one, and we've kept the simpler version of the two for last. `RedisSet.union` was also the simplest of the set operations in the previous chapter, and it is the same here. We need to iterate through all the sets no matter what, there's no shortcut here.
 
@@ -3471,7 +3471,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZUnionStoreCommand` class_
+_listing 10.37 The `ZUnionStoreCommand` class_
 
 By now we're already implemented all these methods! We've seen `SortedSetUtils.set_operation_store_command` when adding `ZINTERSTORE` and we've just seen `SortedSetUtils.union` when adding `ZUNION`. We can reuse the existing, and like Lego bricks, assemble them in a slightly different way and get what we need, sweet!
 
@@ -3509,7 +3509,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRankCommand` class_
+_listing 10.38 The `ZRankCommand` class_
 
 The `ZRANK` command accepts two arguments, `key` and `member`, and nothing else, if we find a `RedisSortedSet` for `key`, we call the new `RedisSortedSet#rank` method:
 
@@ -3548,7 +3548,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#rank` method_
+_listing 10.39 The `RedisSortedSet#rank` method_
 
 To retrieve the rank of a member in `List`, we start iterating from the left with `each`, and count, until we find it. The rank of an element is its 0-based index after all.
 
@@ -3584,7 +3584,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZScoreCommand` class_
+_listing 10.40 The `ZScoreCommand` class_
 
 The `ZSCORE` command has a similar structure to `ZRANK`, it takes two arguments, `key` and `member`. We need to add the `RedisSortedSet#score` method:
 
@@ -3607,7 +3607,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#score` method_
+_listing 10.41 The `RedisSortedSet#score` method_
 
 In the `List` case we use the same method we used earlier, `find_member_in_list`, and we return the `score` value of the element, if we find it.
 
@@ -3641,7 +3641,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZMScoreCommand` class_
+_listing 10.42 The `ZMScoreCommand` class_
 
 `ZMSCORE` can use mostly the same approach we used in `ZSCORE`, with the difference being that we iterate over each member we received in the argument list, and call `RedisSortedSet#score` for each of them, within a block given to `Array#map` so that the return value is a map of scores, potentially containing `nil` values.
 
@@ -3678,7 +3678,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRemCommand` class_
+_listing 10.43 The `ZRemCommand` class_
 
 `ZREM` accepts one or more members, so we iterate over all of them, after shifting the `key` argument from the argument array. For each member, we call `RedisSortedSet#remove` and increment a counter if it returned `true`. Let's add this method:
 
@@ -3718,7 +3718,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#remove` method_
+_listing 10.44 The `RedisSortedSet#remove` method_
 
 In the `List` case, as has been the case a few times already, we delegate the work to a private method `remove_list`. In this method we iterate from left to right, until we find the member we're looking for. If we don't find it, we return `false`, to notify the caller that nothing was deleted.
 
@@ -3748,7 +3748,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#remove_member` method_
+_listing 10.45 The `ZSet#remove_member` method_
 
 We start by calling `Dict#delete_entry`, which will return `false` if it fails to find the key we're looking for, or the `entry` that was removed if it contained it.
 
@@ -3795,7 +3795,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRemRangeByRankCommand` class_
+_listing 10.46 The `ZRemRangeByRankCommand` class_
 
 Validating the number of arguments, checking that `start` and `stop` are both valid integers and looking up the set, once all these steps are successfully completed, we call `remove_rank_range` on the sorted set, which is a new method:
 
@@ -3854,7 +3854,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#remove_rank_range` method_
+_listing 10.47 The `RedisSortedSet#remove_rank_range` method_
 
 We already used `no_overlap_with_range?` earlier, when serializing sub ranges of sorted sets in `SortedSetSerializerBy`, which is used for both `ZRANGEBYSCORE` and `ZRANGEBYLEX`. We can also use it here, since there won't be anything to remove for a rank range that is completely outside the set. For instance, the range `5 10` would not have any overlap with the sorted set `{ < 1, 'a' >, < 2, 'b' > }`. This sorted set only contains two elements, with ranks `0` and `1`. This is why we made `no_overlap_with_range?` calls its `block` argument with two arguments, the `Pair`, and the `rank`, this lets the block we pass from `remove_rank_range` tell the range to use the rank values to compare elements: `return 0 if range_spec.empty? || no_overlap_with_range?(range_spec) { |_, rank| rank }`.
 
@@ -3895,7 +3895,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#remove_rank_range` method_
+_listing 10.48 The `ZSet#remove_rank_range` method_
 
 ### Lex Ranges
 
@@ -3933,7 +3933,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRemRangeByLexCommand` class_
+_listing 10.49 The `ZRemRangeByLexCommand` class_
 
 The `min` and `max` values use the same format used in `ZRANGEBYLEX`, so we reuse the `validate_lex_range_spec` method from the `Utils` module. We pass the range spec it returns, which is a range spec aware of the specificities of lex comparisons, created with `GenericRangeSpec.lex_range_spec`. Let's add the `remove_lex_range` to `RedisSortedSet`:
 
@@ -3966,7 +3966,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#remove_lex_range` method_
+_listing 10.50 The `RedisSortedSet#remove_lex_range` method_
 
 The method starts almost identically to `remove_rank_range`, with the exception that this time we tell `no_overlap_with_range?` to use the `member` attribute from the `pair` variable, instead of the `rank` variable.
 
@@ -4006,7 +4006,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#remove_lex_range` method_
+_listing 10.51 The `ZSet#remove_lex_range` method_
 
 `remove_lex_range` uses the `generic_remove` method, which we'll be able to use when removing score ranges. We use `first_index_in_range`, from `SortedArray`, which we've added earlier when serializing ranges in `ZRANGEBYLEX` and `ZRANGEBYSCORE`. By giving the block that returns the `member` attribute of a `Pair` instance, `first_index_in_range` will be able to find the first element in the array that is in the range.
 
@@ -4048,7 +4048,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRemRangeByScoreCommand` class_
+_listing 10.52 The `ZRemRangeByScoreCommand` class_
 
 We reuse the `validate_score_range_spec` method from the `Utils` module, to create the right type of range, a `GenericRangeSpec` created with `score_range_spec`, we then pass this range spec to `RedisSortedSet#remove_score_range`:
 
@@ -4081,7 +4081,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#remove_score_range` method_
+_listing 10.53 The `RedisSortedSet#remove_score_range` method_
 
 The structure of the method might look pretty familiar by now, this is almost identical to `remove_lex_range`, with the exception of the block given to `no_overlap_with_range?` which returns the `score` attribute this time.
 
@@ -4105,7 +4105,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#remove_score_range` method_
+_listing 10.54 The `ZSet#remove_score_range` method_
 
 With `ZREMRANGEBYSCORE` we have now implemented all the `*REM*` methods, next up, the `*REV*` variants. Did you notice how we did not have to write any _real_ logic this time, we just called a few existing methods with the right block telling them what values to extract!
 
@@ -4139,7 +4139,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRevRangeCommand` class_
+_listing 10.55 The `ZRevRangeCommand` class_
 
 We call the `generic_range` method we created earlier, but this time we set the `reverse` flag to `true`. The flag is used to decide in which order to handle the `start` and `stop` argument. We use a trick to convert `start` and `stop` in a way that will make it easy to reuse, before looking at the code, which is convoluted, let's first look at an example with the following sorted set:
 
@@ -4244,7 +4244,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x The `generic_range` class method for the `SortedSetUtils` module_
+_listing 10.56 The `generic_range` class method for the `SortedSetUtils` module_
 
 If the `reverse` flag is true we convert the indices as described earlier and we swap the values to maintain the order of `start` and `stop`. We propagate the `reverse` flag to `SortedSetRankSerializer`:
 
@@ -4308,7 +4308,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `serialize_zset` & `serialize_list` methods for the `SortedSetRankSerializer` class_
+_listing 10.57 The `serialize_zset` & `serialize_list` methods for the `SortedSetRankSerializer` class_
 
 In the `serialize_list` method we look at the `@reverse` flag and if it set to true we swap the values or `ltr_acc` and `rtl_acc`. Swapping these values has the effect of reverting the order in which elements get serialized. Looking again at the `ZREVRANGE z 0 -1` example from earlier, where the desired result is `z`, `m`, `f`, `c`, `a`, the `ListSerializer` will iterate from `0` to `4`, but instead of appending elements as it finds them, it'll prepend them. It will first find `a`, at index `0`, and will add it to the string serializing the resp array, and it will then find `c`, prepending it and so on, until it prepends `z`. If scores are to be included, it knows how to do that as well, the same way we did earlier for `ZRANGE`.
 
@@ -4343,7 +4343,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRevRangeByLexCommand` class_
+_listing 10.58 The `ZRevRangeByLexCommand` class_
 
 We call `generic_range_by_lex`, but this time we set the `reverse` flag to `true`, which changes how the arguments are read:
 
@@ -4387,7 +4387,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x The `generic_range_by_lex` class method for the `SortedSetUtils` module_
+_listing 10.59 The `generic_range_by_lex` class method for the `SortedSetUtils` module_
 
 We read `min` and `max` in the reverse order, `max` first if `reverse` is true, and this is the only difference. The `reverse` flag is forwarded to `SortedSetSerializerBy` when we call it: `SortedSetSerializerBy.new(sorted_set, range_spec, **options, &:member)`
 
@@ -4459,7 +4459,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `serialize_zset` & `serialize_list` methods in the `SortedSetSerializerBy` class_
+_listing 10.60 The `serialize_zset` & `serialize_list` methods in the `SortedSetSerializerBy` class_
 
 Let's look at `serialize_zset` first. The order of the range items is still what we'd expect, that is `@range_spec.max` is expected to be greater than or equal to `@range_spec.min`, using lexicographic order, but the "first" item in what we want to return is not the first item in the set to match the range, it's the _last_ one. Let's look at an example:
 
@@ -4527,7 +4527,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `SortedArray#last_index_in_range` method_
+_listing 10.61 The `SortedArray#last_index_in_range` method_
 
 We use `bsearch_index` in a similar way we used it in `first_index_in_range` with a few differences. We compare each value with `compare_with_max` instead of `compare_with_min`, and the condition related to the exclusivity of the `max` boundary are reversed. Once again, it's easier to look at an example in `irb`:
 
@@ -4589,7 +4589,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRevRangeByScoreCommand` class_
+_listing 10.62 The `ZRevRangeByScoreCommand` class_
 
 We call `generic_range_by_score` with the `reverse` flag set to `true`, let's look at how the flag is handled in `generic_range_by_score`:
 
@@ -4622,7 +4622,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x Handling of the `reverse` flag in the `SortedSetUtils.generic_range_by_score` class method_
+_listing 10.63 Handling of the `reverse` flag in the `SortedSetUtils.generic_range_by_score` class method_
 
 Things are very similar to `generic_range_by_lex`, if `reverse` is `true`, we read `max` first, and we then create the range spec with these values.
 
@@ -4685,7 +4685,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZRevRankCommand` class_
+_listing 10.64 The `ZRevRankCommand` class_
 
 We nee to add the `rev_rank` method in `RedisSortedSet`:
 
@@ -4705,7 +4705,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#rev_rank` method_
+_listing 10.65 The `RedisSortedSet#rev_rank` method_
 
 We don't need to change the order of the set to get the reversed rank of a member, we can use its "regular" rank, that we get with `rank(member)` and subtract it to the the cardinality of the set, and subtract one to that.
 
@@ -4774,7 +4774,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZPopMaxCommand` class_
+_listing 10.66 The `ZPopMaxCommand` class_
 
 We already know we have to implement two very similar commands, `ZPOPMAX` and `ZPOPMIN`, and both accept the same options, so we use the `generic_zpop` method to encapsulate all the logic that can be shared. The command handles the argument validation, as well as using a default value for `count` and calls `yield` with the `sorted_set` loaded from memory and the `count` value parsed an `Integer`. Elements are always returned with their scores when popped, so we'll need to make sure to include when returning it. The `popped` variable is expected to be an array from the result of `yield` and is returned back to the client. Back in `ZPopMaxCommand#call`, we call `RedisSortedSet#pop_max` from the block with the variables given to us by `generic_zpop`.
 
@@ -4825,7 +4825,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#pop_max` method_
+_listing 10.67 The `RedisSortedSet#pop_max` method_
 
 Once again trying to always be one step ahead, we use a generic method that will be useful when implementing `ZPOPMIN`, `generic_pop`, to which we pass the `count` value.
 
@@ -4852,7 +4852,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZPopMinCommand` class_
+_listing 10.68 The `ZPopMinCommand` class_
 
 The only different with `ZPopMaxCommand` is that the block given to `generic_zpop` calls `pop_min` instead of `pop_max`, let's add the command to `RedisSortedSet`:
 
@@ -4880,7 +4880,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#pop_min` method_
+_listing 10.69 The `RedisSortedSet#pop_min` method_
 
 The block we give to `generic_pop` is the one that actually performs the pop operation and in this case we use `List#left_pop` to remove the element with the smallest rank or `Array#shift` for a `ZSet`. We return the `Pair` instance in either case to let `generic_pop` handle everything for us and return the list of deleted pairs.
 
@@ -4953,7 +4953,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `BZPopMinCommand` & `BZPopMaxCommand` classes_
+_listing 10.70 The `BZPopMinCommand` & `BZPopMaxCommand` classes_
 
 Let's ignore the blocking behavior for now, if any of sets for the given keys exist, we want to pop from it, either with `pop_min` or `pop_max`. We only need to pop one element so we set the count argument to `1` with `.pop_min(1)` and `.pop_max(1)`. This is what we call from the block we give to `generic_bzpop`, but let's look at what this method does in details. Once the `timeout` value is validated, we iterate over all the arguments one by one, each time we load the set, and jump to the next one if it's `nil`. If it is not `nil`, we yield it back to the caller, which as we've just seen will call the appropriate pop method, and we exit the loop, returning the value that was popped. There's no blocking behavior in this case.
 
@@ -5149,7 +5149,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updates to the `BlockedClientHandler` class for sorted sets_
+_listing 10.71 The updates to the `BlockedClientHandler` class for sorted sets_
 
 `handle` is called with the key of a collection, either a sorted set or a list, that was just added. The same way we used to, we get the list of all clients blocked for that key, through the `@db.blocking_keys` dictionary and we also get the actual collection, from `@db.data_store`, which is still of an unknown type at this point. It could either be a `List` or a `SortedSet`. We call `serve_client_blocked_on` with all the variable we just created.
 
@@ -5208,7 +5208,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `pop_min_from` and `pop_max_from` methods in the `DB` class_
+_listing 10.72 The `pop_min_from` and `pop_max_from` methods in the `DB` class_
 
 Both methods wrap the specific pop method from `RedisSet` and use `generic_pop` to make sure that if the popped element was the last one the sorted set is deleted from the database
 
@@ -5262,7 +5262,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZCountCommand` class_
+_listing 10.73 The `ZCountCommand` class_
 
 We use the `generic_count` method from `ZCountCommand`, because we'll be able to use later with `ZLEXCOUNT`. The generic method validates the argument array length, looks up the sorted set and yields the value back to the `call` method, and return what the block returns, as an `Integer`, which is the count value.
 
@@ -5315,7 +5315,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#count_in_score_range` method_
+_listing 10.74 The `RedisSortedSet#count_in_score_range` method_
 
 The first two lines try to return early if the range spec is empty or if there's no overlap with the set, otherwise we call `count_in_score_range_list` or `ZSet#count_in_score_range`. Let's in `RedisSortedSet` and look at the list method.
 
@@ -5352,7 +5352,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#count_in_score_range` method_
+_listing 10.75 The `ZSet#count_in_score_range` method_
 
 `ZSet#count_in_score_range` acts very similarly to `count_in_rank_range_list`, it is a wrapper around the method that actually does the work, `generic_count` in this case, with a block that returns the `score` attribute of a `Pair` instance.
 
@@ -5396,7 +5396,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZLexCountCommand` class_
+_listing 10.76 The `ZLexCountCommand` class_
 
 We call `generic_count` the same way we did with `ZCOUNT`, but this time we use `validate_lex_range_spec` with the `min` and `max` variable, to create an instance of `GenericRangeSpec` specific to lexicographic order. We then call `count_in_lex_range` from `RedisSortedSet`:
 
@@ -5429,7 +5429,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#count_in_lex_range` method_
+_listing 10.77 The `RedisSortedSet#count_in_lex_range` method_
 
 `count_in_lex_range` is very similar to `count_in_rank_range`, with the same early return check, and also delegates to two methods, `count_in_lex_range_list` and `ZSet#count_in_lex_range`. Both have these methods make use of the generic methods we created earlier and are very concise. `count_in_lex_range_list` can use `generic_count_list`, which does the iteration and counting work and only need a block to tell it what attribute to use from `Pair` instances.
 
@@ -5450,7 +5450,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZSet#count_in_range` method_
+_listing 10.78 The `ZSet#count_in_range` method_
 
 This wraps up the `ZLEXCOUNT` method.
 
@@ -5494,7 +5494,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `ZIncrBy` class_
+_listing 10.79 The `ZIncrBy` class_
 
 Once the sorted set is loaded, we call `RedisSortedSet#increment_score_by`:
 
@@ -5518,7 +5518,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The `RedisSortedSet#increment_score_by` method_
+_listing 10.80 The `RedisSortedSet#increment_score_by` method_
 
 If the result of `score(member)` is `nil`, which would happen if `member` is not already in the set, then we default it to `0`. Once loaded, we _safely_ add the `increment` value to it. Redis does not store `NaN` values so we use the method from `Utils` to raise a `FloatNaN` error if this happens. The new score is then either added or updated with the `add` method, depending on whether or not `member` was already in the set, but `add` knows how to take care of that.
 
