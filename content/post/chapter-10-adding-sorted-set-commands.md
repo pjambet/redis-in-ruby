@@ -5494,7 +5494,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.79 The `ZIncrBy` class_
+_listing 10.79 The `ZIncrByCommand` class_
 
 Once the sorted set is loaded, we call `RedisSortedSet#increment_score_by`:
 
