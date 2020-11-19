@@ -276,7 +276,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updated `SortedArray` class for multiple fields_
+_listing 10.x The updated `push` method in the `SortedArray` class_
 
 Note that we added the `Forwardable` module to delegate a bunch of methods directly to the underlying array. The only difference between the new `push` method and the old one is the `else` branch, it used to be:
 
@@ -378,7 +378,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updated `SortedArray` class for multiple fields_
+_listing 10.x The updated `delete` method in the `SortedArray` class_
 
 There are two differences between the new `delete` method and the previous one. First, we extracted an `index` method to return the `index` of a member, or `nil` if the element is not present.
 
@@ -437,7 +437,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x The updated `SortedArray` class for multiple fields_
+_listing 10.x The `by_fields` class method for `SortedArray`_
 
 We can now easily create a sorted array for `BlockedState` with:
 
@@ -704,7 +704,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `RedisSortedSet#add` method_
 
 We declare a new `Struct` at the beginning of the class, `Pair`, which will hold the score/member pairs inside the `List` or within the `ZSet`. The `ZSet` class is the class that will coordinate the `Dict` and `SortedArray` instances, as described earlier in the chapter:
 
@@ -721,7 +721,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `ZSet` class_
 
 Back to `RedisSortedSet#add`, we use the tried and true pattern of a `case/when` against `@underlying` to determine which data structure we're currently dealing with. In the `List` case we delegate the logic to the `add_list` private method, and in the `ZSet` case we use the `ZSet#add` method.
 
@@ -860,7 +860,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `RedisSortedSet#add_list` method_
 
 There is _a lot_ going on in there, let's go through all of it very slowly.
 
@@ -984,7 +984,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `insert_before_node` refactor in the `List` class_
 
 We use to be able to only have `insert_before` and `insert_after`, which both operate based on a `pivot` value, which they look for in the list. Both were initially created for the `LINSERT` command. But while we could still use `insert_before` here, it would be wasteful to start iterating from the start of the list if we already had a reference to the node we wanted to use as the insertion point.
 
@@ -1044,7 +1044,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `Utils.add_or_raise_if_nan` method_
 
 We use the `save_exception_mode` so that we don't modify the behavior of `BigDecimal` operations once we're done here, and if it does raise an exception, `FloatDomainError`, we convert it to our own exception, `FloatNaN`, which we added at the top of the `utils.rb` file.
 
@@ -1077,7 +1077,7 @@ elsif pair.score > score || (pair.score == score && pair.member > member)
 elsif pair.score < score # ...
 # ...
 ```
-_listing 10.x XXX_
+_listing 10.x The `member_does_not_exist` option handling in the `RedisSortedSet#add_list` method_
 
 Done! That's it, we can add members to a sorted set ... as long as it uses a `List` under the hood, we need to handle the other case, when the strings are either too big, or the sorted set contains too many entries.
 
@@ -1165,7 +1165,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `ZSet#add` method_
 
 First we use the `Dict#get_entry` method to check for the existence of `member` in the sorted set. Things are already simpler here, we don't have to iterate over anything to determine the presence of the member we're trying to add or update.
 
@@ -1216,7 +1216,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `ZCardCommand` class_
 
 We call the `cardinality` method on the `RedisSortedSet` instance, with the "safe navigation" operator, `&.`, which returns `nil` if `sorted_set` itself is `nil`, which would then take us to the right side of the `||` operator and effectively default `cardinality` to `0`. Let's add the `RedisSortedSet#cardinality` method:
 
@@ -1237,7 +1237,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `RedisSortedSet#cardinality` method_
 
 In the `List` case we return the result of calling `List.size`, and for a `ZSet`, we need to add the `cardinality` method to the class:
 
@@ -1253,7 +1253,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `ZSet#cardinality` method_
 
 We could have included `Forwardable` and used it to delegate `#size` to `@array`, but there's only one method we need to directly delegate, so the "cost" of manually doing the delegation is really small compared to the "complexity" of including a module, and calling `def_delegators`, which doesn't save us much for only one method.
 
@@ -1989,7 +1989,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `empty?`, `compare_with_min` & `in_range?` methods for the `GenericRangeSpec` class_
 
 We can now use the same class for our different use cases, rank ranges and score ranges, let's quickly play with it in `irb`:
 
@@ -2137,7 +2137,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `serialize_zset` & `serialize_list` methods for the `SortedSetSerializerBy` class_
 
 We start the `serialize` methods with three checks to return early if we can. In the first one, we test if the `offset` value is negative, if it is, we can return an empty array. We can also return early if the range is empty, or if the range and the set don't overlap.
 
@@ -2446,6 +2446,7 @@ int main(void) {
   return 0;
 }
 ```
+_listing 10.x A C example of integer overflow and the wrapping behavior_
 
 ---
 
@@ -2472,7 +2473,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `SortedArray#first_index_in_range` method_
 
 This method is a generic approach to using the following block:
 
@@ -2986,7 +2987,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `DB#lookup_sorted_set_or_set` method_
 
 Going back to `set_operation`, the next step is calling `parse_union_or_inter_options`. At this time we've parsed the value of `numkeys` so we know how many sets to expect, which means that if the `WEIGHTS` option is present, we have to validate that the number of weights matches the `numkeys` value. This validation is performed in the `validate_weights` method. We generate the default weight values with the line `Array.new(number_of_sets, 1)`. It initializes an array for which the size is `number_of_sets`, and all the elements are `1`.
 
@@ -4243,7 +4244,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x The `XXX` class_
+_listing 10.x The `generic_range` class method for the `SortedSetUtils` module_
 
 If the `reverse` flag is true we convert the indices as described earlier and we swap the values to maintain the order of `start` and `stop`. We propagate the `reverse` flag to `SortedSetRankSerializer`:
 
@@ -4307,7 +4308,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `serialize_zset` & `serialize_list` methods for the `SortedSetRankSerializer` class_
 
 In the `serialize_list` method we look at the `@reverse` flag and if it set to true we swap the values or `ltr_acc` and `rtl_acc`. Swapping these values has the effect of reverting the order in which elements get serialized. Looking again at the `ZREVRANGE z 0 -1` example from earlier, where the desired result is `z`, `m`, `f`, `c`, `a`, the `ListSerializer` will iterate from `0` to `4`, but instead of appending elements as it finds them, it'll prepend them. It will first find `a`, at index `0`, and will add it to the string serializing the resp array, and it will then find `c`, prepending it and so on, until it prepends `z`. If scores are to be included, it knows how to do that as well, the same way we did earlier for `ZRANGE`.
 
@@ -4386,7 +4387,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x The `XXX` class_
+_listing 10.x The `generic_range_by_lex` class method for the `SortedSetUtils` module_
 
 We read `min` and `max` in the reverse order, `max` first if `reverse` is true, and this is the only difference. The `reverse` flag is forwarded to `SortedSetSerializerBy` when we call it: `SortedSetSerializerBy.new(sorted_set, range_spec, **options, &:member)`
 
@@ -4458,7 +4459,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `serialize_zset` & `serialize_list` methods in the `SortedSetSerializerBy` class_
 
 Let's look at `serialize_zset` first. The order of the range items is still what we'd expect, that is `@range_spec.max` is expected to be greater than or equal to `@range_spec.min`, using lexicographic order, but the "first" item in what we want to return is not the first item in the set to match the range, it's the _last_ one. Let's look at an example:
 
@@ -4526,7 +4527,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The `SortedArray#last_index_in_range` method_
 
 We use `bsearch_index` in a similar way we used it in `first_index_in_range` with a few differences. We compare each value with `compare_with_max` instead of `compare_with_min`, and the condition related to the exclusivity of the `max` boundary are reversed. Once again, it's easier to look at an example in `irb`:
 
@@ -4621,7 +4622,7 @@ module BYORedis
 
 end
 ```
-_listing 10.x The `XXX` class_
+_listing 10.x Handling of the `reverse` flag in the `SortedSetUtils.generic_range_by_score` class method_
 
 Things are very similar to `generic_range_by_lex`, if `reverse` is `true`, we read `max` first, and we then create the range spec with these values.
 
@@ -5148,7 +5149,7 @@ module BYORedis
   end
 end
 ```
-_listing 10.x XXX_
+_listing 10.x The updates to the `BlockedClientHandler` class for sorted sets_
 
 `handle` is called with the key of a collection, either a sorted set or a list, that was just added. The same way we used to, we get the list of all clients blocked for that key, through the `@db.blocking_keys` dictionary and we also get the actual collection, from `@db.data_store`, which is still of an unknown type at this point. It could either be a `List` or a `SortedSet`. We call `serve_client_blocked_on` with all the variable we just created.
 
