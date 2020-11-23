@@ -8,7 +8,25 @@ keywords: []
 summary: ""
 ---
 
-<!--more-->
+
+## What we'll cover
+
+### Use case examples
+
+## GETBIT
+
+## SETBIT
+
+## BITOP
+
+## BITCOUNT
+
+## BITPOS
+
+## BITFIELD
+
+## Conclusion
+
 
 https://redis.io/topics/data-types-intro#bitmaps
 
