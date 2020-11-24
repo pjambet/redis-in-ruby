@@ -151,9 +151,13 @@ module BYORedis
     end
 
     def self.validate_integer(str)
+      validate_integer_with_message(str, 'ERR value is not an integer or out of range')
+    end
+
+    def self.validate_integer_with_message(str, message)
       string_to_integer(str)
     rescue IntegerOverflow, InvalidIntegerString
-      raise ValidationError, 'ERR value is not an integer or out of range'
+      raise ValidationError, message
     end
 
     def self.validate_float(str, error_message)
