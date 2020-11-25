@@ -1,18 +1,35 @@
 require_relative './bit_ops'
 
 module BYORedis
+  module BitOpsUtils
+    def self.validate_offset(string)
+      error_message = 'ERR bit offset is not an integer or out of range'
+      offset = Utils.validate_integer_with_message(string, error_message)
+
+      if block_given?
+        if yield offset
+          offset
+        else
+          raise ValidationError, error_message
+        end
+      else
+        offset
+      end
+    end
+
+    def self.validate_bit(string)
+      Utils.validate_integer_with_message(
+        string, 'ERR bit is not an integer or out of range')
+    end
+  end
+
   class GetBitCommand < BaseCommand
     def call
       Utils.assert_args_length(2, @args)
       string = @db.lookup_string(@args[0])
-      offset = Utils.validate_integer_with_message(
-        @args[1], 'ERR bit offset is not an integer or out of range')
+      offset = BitOpsUtils.validate_offset(@args[1]) { |offset| offset >= 0 }
 
-      if offset < 0
-        RESPError.new('ERR bit offset is not an integer or out of range')
-      else
-        RESPInteger.new(BitOps.new(string).get_bit(offset))
-      end
+      RESPInteger.new(BitOps.new(string).get_bit(offset))
     end
 
     def self.describe
@@ -23,6 +40,18 @@ module BYORedis
 
   class SetBitCommand < BaseCommand
     def call
+      Utils.assert_args_length(3, @args)
+      string = @db.lookup_string(@args[0])
+      offset = BitOpsUtils.validate_offset(@args[1]) { |offset| offset >= 0 }
+      bit = BitOpsUtils.validate_bit(@args[2])
+
+      if string.nil?
+        string = BitOps.initialize_string_for_offset(offset)
+        @db.data_store[@args[0]] = string
+      end
+      old_value = BitOps.new(string).set_bit(offset, bit)
+
+      RESPInteger.new(old_value)
     end
 
     def self.describe

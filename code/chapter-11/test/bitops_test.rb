@@ -25,12 +25,24 @@ describe 'Bitops Commands' do
     end
 
     it 'returns the bit at offset' do
+      with_server do |socket|
+        socket.write(to_query('SET', 's', 'abc'))
+        assert_equal(read_response(socket), BYORedis::OK_SIMPLE_STRING)
+        # The string abc has the following bytes:
+        # [ "01100001", "01100010", "01100011" ] and this line returns an array of ints:
+        # [0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1]
+        bits = 'abc'.chars.map(&:ord).map { |byte| '%08b' % byte }.flat_map { |s| s.split('') }.map(&:to_i)
+        bits.each_with_index do |bit, index|
+          socket.write(to_query('GETBIT', 's', index.to_s))
+          assert_equal(read_response(socket),  BYORedis::RESPInteger.new(bit).serialize)
+        end
+      end
+    end
+
+    it 'returns 0 if the offset it larger than the string' do
       assert_command_results [
-        [ 'SET s abc', '+OK' ],
-        [ 'GETBIT s 0', ':0' ],
-        [ 'GETBIT s 1', ':1' ],
-        [ 'GETBIT s 2', ':1' ],
-        [ 'GETBIT s 3', ':0' ],
+        [ 'SET s a', '+OK' ],
+        [ 'GETBIT s 100', ':0' ],
       ]
     end
   end
@@ -38,6 +50,16 @@ describe 'Bitops Commands' do
   describe 'SETBIT' do
     it 'handles and unexpected number of arguments'
     it 'returns an error if key is not a string'
+    it 'validates that value is 0 or 1'
+
+    it 'sets the bit at the given offset and return 0 if it did not exist' do
+      assert_command_results [
+        [ 'SETBIT s 0 1', ':0' ],
+        [ 'GETBIT s 0', ':1' ],
+      ]
+    end
+
+    it 'sets the bit at the given offset and return the previous value'
   end
 
   describe 'BITOP' do
