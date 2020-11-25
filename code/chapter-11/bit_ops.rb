@@ -4,7 +4,7 @@ module BYORedis
       @string = string
     end
 
-    def self.initialize_string_for_offset(offset)
+    def self.initialize_string_for_offset(string, offset)
       size = if offset == 0
                1
              elsif offset & 7 == 0
@@ -13,14 +13,12 @@ module BYORedis
                (offset / 8) + 1
              end
 
-      string = String.new('', capacity: size)
       string << "\x00" * size
       string
     end
 
     def get_bit(offset)
       byte_position = offset / 8
-      p @string
       return 0 if @string && byte_position >= @string.length
 
       bit_shift_offset = 7 - (offset & 7) # Equivalent to 7 - offset % 8
@@ -32,14 +30,15 @@ module BYORedis
       bit_shift_offset = 7 - (offset & 7) # Equivalent to 7 - offset % 8
 
       if @string.empty?
-        byte = @string[byte_position].ord
+        BitOps.initialize_string_for_offset(@string, offset)
         old_value = 0
       elsif byte_position >= @string.length
-        byte = ''
+        @string << "\x00" * (byte_position + 1 - @string.length)
         old_value = 0
-        raise "not done yet"
-      else
-        byte = @string[byte_position].ord
+      end
+
+      byte ||= @string[byte_position].ord
+      if old_value.nil?
         old_value = bit_at_offset(byte, bit_shift_offset)
       end
 

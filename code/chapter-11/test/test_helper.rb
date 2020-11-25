@@ -189,48 +189,53 @@ def assert_command_results(command_result_pairs)
 end
 
 def assert_response(expected_result, response)
-  assertion_match = expected_result&.match(/(\d+)\+\/-(\d+)/) if expected_result.is_a?(String)
-  if assertion_match
-    response_match = response.match(/\A:(\d+)\r\n\z/)
-    assert response_match[0]
-    assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
-  else
-    if expected_result&.is_a?(Array)
-      expected_result = BYORedis::RESPArray.new(expected_result).serialize
-    elsif expected_result&.is_a?(UnorderedArray)
-      expected_result = BYORedis::RESPArray.new(expected_result.array.sort).serialize
-      response = response.then do |r|
-        parts = r.split
-        response_size = parts.shift
-        sorted_parts = parts.each_slice(2).sort_by { |p|  p[1]  }
-        sorted_parts.flatten.prepend(response_size).map { |p| p << "\r\n" }.join
-      end
-    elsif expected_result&.is_a?(OneOf)
-      expected = expected_result.array.map do |r|
-        if r.start_with?(':')
-          r + "\r\n"
-        else
-          BYORedis::RESPBulkString.new(r).serialize
-        end
-      end
-      assert_includes(expected, response)
-      return
-    elsif expected_result && !%w(+ - : $ *).include?(expected_result[0])
-      # Convert to a Bulk String unless it is a simple string (starts with a +)
-      # or an error (starts with -)
-      expected_result = BYORedis::RESPBulkString.new(expected_result).serialize
+  begin
+    assertion_match = expected_result&.match(/(\d+)\+\/-(\d+)/) if expected_result.is_a?(String)
+    if assertion_match
+      response_match = response.match(/\A:(\d+)\r\n\z/)
+      assert response_match[0]
+      assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
     end
-
-    if expected_result && !expected_result.end_with?("\r\n")
-      expected_result += "\r\n"
-    end
-
-    if expected_result.nil?
-      assert_nil response
-    else
-      assert_equal expected_result, response
-    end
+  rescue ArgumentError
+    # For cases where expected result is something not utf-8 like 0x80
   end
+
+  if expected_result&.is_a?(Array)
+    expected_result = BYORedis::RESPArray.new(expected_result).serialize
+  elsif expected_result&.is_a?(UnorderedArray)
+    expected_result = BYORedis::RESPArray.new(expected_result.array.sort).serialize
+    response = response.then do |r|
+      parts = r.split
+      response_size = parts.shift
+      sorted_parts = parts.each_slice(2).sort_by { |p|  p[1]  }
+      sorted_parts.flatten.prepend(response_size).map { |p| p << "\r\n" }.join
+    end
+  elsif expected_result&.is_a?(OneOf)
+    expected = expected_result.array.map do |r|
+      if r.start_with?(':')
+        r + "\r\n"
+      else
+        BYORedis::RESPBulkString.new(r).serialize
+      end
+    end
+    assert_includes(expected, response)
+    return
+  elsif expected_result && !%w(+ - : $ *).include?(expected_result[0])
+    # Convert to a Bulk String unless it is a simple string (starts with a +)
+    # or an error (starts with -)
+    expected_result = BYORedis::RESPBulkString.new(expected_result).serialize
+  end
+
+  if expected_result && !expected_result.end_with?("\r\n")
+    expected_result += "\r\n"
+  end
+
+  if expected_result.nil?
+    assert_nil response
+  else
+    assert_equal expected_result, response
+  end
+
 end
 
 def read_response(server_socket, read_timeout: 0.2)

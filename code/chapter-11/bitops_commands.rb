@@ -46,7 +46,7 @@ module BYORedis
       bit = BitOpsUtils.validate_bit(@args[2])
 
       if string.nil?
-        string = BitOps.initialize_string_for_offset(offset)
+        string = ''
         @db.data_store[@args[0]] = string
       end
       old_value = BitOps.new(string).set_bit(offset, bit)

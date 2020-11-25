@@ -59,7 +59,28 @@ describe 'Bitops Commands' do
       ]
     end
 
-    it 'sets the bit at the given offset and return the previous value'
+    it 'increases the string size if necessary' do
+      assert_command_results [
+        [ 'SETBIT s 0 1', ':0' ], # s has 8 bits, 1 byte, size 1
+        [ 'GETBIT s 0', ':1' ],
+        [ 'SETBIT s 8 1', ':0' ], # s has 16 bits, 2 bytes
+        [ 'GETBIT s 8', ':1' ],
+        [ 'GET s', "\x80\x80" ],
+        [ 'SETBIT s 1048576 1', ':0' ],
+        [ 'STRLEN s', ':131073' ],
+      ]
+    end
+
+    it 'sets the bit at the given offset and returns the previous value' do
+      assert_command_results [
+        [ 'SETBIT s 6 1', ':0' ],
+        [ 'GETBIT s 6', ':1' ],
+        [ 'SETBIT s 6 1', ':1' ],
+        [ 'GETBIT s 6', ':1' ],
+        [ 'SETBIT s 6 0', ':1' ],
+        [ 'GETBIT s 6', ':0' ],
+      ]
+    end
   end
 
   describe 'BITOP' do

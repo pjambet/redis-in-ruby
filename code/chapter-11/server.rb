@@ -28,6 +28,7 @@ require_relative './bitops_commands'
 require_relative './config_command'
 require_relative './get_command'
 require_relative './set_command'
+require_relative './str_len_command'
 require_relative './ttl_command'
 require_relative './pttl_command'
 require_relative './list_commands'
@@ -48,6 +49,7 @@ module BYORedis
     COMMANDS.set('flushdb', FlushDBCommand)
     COMMANDS.set('get', GetCommand)
     COMMANDS.set('set', SetCommand)
+    COMMANDS.set('strlen', StrLenCommand)
     COMMANDS.set('ttl', TtlCommand)
     COMMANDS.set('pttl', PttlCommand)
     COMMANDS.set('lrange', LRangeCommand)
@@ -403,8 +405,6 @@ module BYORedis
       else
         formatted_args = args.map { |arg| "`#{ arg }`," }.join(' ')
 
-
-        # sd lfjsda fshfl sjk flksjahf lksajhf lkjsahf lkjsahlkfjhslkfjaslkfjhas kljfdh sa kldfjasdf d d d d d d d d
         message = "ERR unknown command `#{ command_str }`, with args beginning with: #{ formatted_args }"
         RESPError.new(message)
       end
