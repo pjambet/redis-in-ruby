@@ -17,6 +17,30 @@ module BYORedis
       string
     end
 
+    def self.and(strings)
+      result = nil
+
+      strings.each do |other_string|
+        next if other_string.nil?
+
+        if result.nil?
+          result = other_string
+          next
+        end
+
+        i = 0
+        while i < result.length || i < other_string.length
+          res_byte = result[i]&.ord || 0
+          other_byte = other_string[i]&.ord || 0
+
+          result[i] = (res_byte & other_byte).chr
+          i += 1
+        end
+      end
+
+      result
+    end
+
     def get_bit(offset)
       byte_position = offset / 8
       return 0 if @string && byte_position >= @string.length

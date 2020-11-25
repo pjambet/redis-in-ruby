@@ -66,41 +66,21 @@ module BYORedis
     def call
       Utils.assert_args_length_greater_than(2, @args)
       operation = @args.shift
+      dest = @args.shift
+      rest = @args.map { |key| @db.lookup_string(key) }
+
       case operation.downcase
       when 'and'
-        dest = @args.shift
-        first_key = @args.shift
-        rest = @args.map { |key| @db.lookup_string(key) }
-        first_string = @db.lookup_string(first_key)
-
-        if first_string.nil?
-          res = nil
-          raise 'not done yet'
+        result = BitOps.and(rest)
+        if result.nil?
+          @db.data_store.delete(dest)
+          length = 0
         else
-          res = first_string.dup
-          rest.each do |other_string|
-            i = 0
-            while i < res.length && i < other_string.length
-              res_byte = res[i].ord
-              other_byte = other_string[i].ord
-              res[i] = (res_byte & other_byte).chr
-              i += 1
-            end
-
-            while i < res.length || i < other_string.length
-              res_byte = res[i]&.ord || 0
-              other_byte = other_string[i]&.ord || 0
-
-              res[i] = (res_byte & other_byte).chr
-              i += 1
-            end
-            # Check for leftovers, fill with 0s since 0 & whatever is 0
-          end
-          @db.data_store[dest] = res
-          # RESPBulkString.new(res)
-          RESPInteger.new(res.length)
+          @db.data_store[dest] = result
+          length = result.length
         end
 
+        RESPInteger.new(length)
       when 'or' then 1
       when 'xor' then 1
       when 'not' then 1

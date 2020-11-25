@@ -116,12 +116,12 @@ describe 'Bitops Commands' do
       ]
     end
 
-    # it 'returns an error if key is not a string' do
-    #   assert_command_results [
-    #     [ 'HSET not-a-string a b', ':1' ],
-    #     [ 'BITOP not-a-string 0 1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
-    #   ]
-    # end
+    it 'returns an error if key is not a string' do
+      assert_command_results [
+        [ 'HSET not-a-string a b', ':1' ],
+        [ 'BITOP AND dest not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
 
     it 'works with the example from redis.io' do
       assert_command_results [
@@ -132,7 +132,13 @@ describe 'Bitops Commands' do
       ]
     end
 
-    # it 'works with AND a non existing key'
+    it 'works with AND a non existing key' do
+      assert_command_results [
+        [ 'SET dest something', '+OK' ],
+        [ 'BITOP AND dest s', ':0' ],
+        [ 'GET dest', BYORedis::NULL_BULK_STRING ],
+      ]
+    end
 
     it 'works with AND and multiple arguments' do
       assert_command_results [
@@ -181,8 +187,11 @@ describe 'Bitops Commands' do
   #   it 'can SET with all types of formats'
   #   it 'can INCRBY with all types of formats'
   #   it 'handles changing the OVERFLOW behavior in the same command'
-  #   it 'handles the WRAP overflow'
-  #   it 'handles the SAT overflow'
-  #   it 'handles the FAIL overlow'
+  #   it 'handles the WRAP overflow with incr'
+  #   it 'handles the SAT overflow with incr'
+  #   it 'handles the FAIL overlow with incr'
+  #   it 'handles the WRAP overflow with set'
+  #   it 'handles the SAT overflow with set'
+  #   it 'handles the FAIL overlow with set'
   # end
 end
