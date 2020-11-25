@@ -6,20 +6,22 @@ module BYORedis
       error_message = 'ERR bit offset is not an integer or out of range'
       offset = Utils.validate_integer_with_message(string, error_message)
 
-      if block_given?
-        if yield offset
-          offset
-        else
-          raise ValidationError, error_message
-        end
-      else
+      if offset >= 0
         offset
+      else
+        raise ValidationError, error_message
       end
     end
 
     def self.validate_bit(string)
-      Utils.validate_integer_with_message(
-        string, 'ERR bit is not an integer or out of range')
+      error_message = 'ERR bit is not an integer or out of range'
+      bit_value = Utils.validate_integer_with_message(string, error_message)
+
+      if (bit_value & ~1) == 0 # equivalent to bit_value == 0 || bit_value == 1
+        bit_value
+      else
+        raise ValidationError, error_message
+      end
     end
   end
 
@@ -27,7 +29,7 @@ module BYORedis
     def call
       Utils.assert_args_length(2, @args)
       string = @db.lookup_string(@args[0])
-      offset = BitOpsUtils.validate_offset(@args[1]) { |offset| offset >= 0 }
+      offset = BitOpsUtils.validate_offset(@args[1])
 
       RESPInteger.new(BitOps.new(string).get_bit(offset))
     end
@@ -42,7 +44,7 @@ module BYORedis
     def call
       Utils.assert_args_length(3, @args)
       string = @db.lookup_string(@args[0])
-      offset = BitOpsUtils.validate_offset(@args[1]) { |offset| offset >= 0 }
+      offset = BitOpsUtils.validate_offset(@args[1])
       bit = BitOpsUtils.validate_bit(@args[2])
 
       if string.nil?
