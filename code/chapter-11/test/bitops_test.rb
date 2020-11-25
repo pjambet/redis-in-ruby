@@ -48,9 +48,34 @@ describe 'Bitops Commands' do
   end
 
   describe 'SETBIT' do
-    it 'handles and unexpected number of arguments'
-    it 'returns an error if key is not a string'
-    it 'validates that value is 0 or 1'
+    it 'handles and unexpected number of arguments' do
+      assert_command_results [
+        [ 'SETBIT', '-ERR wrong number of arguments for \'SETBIT\' command' ],
+        [ 'SETBIT s', '-ERR wrong number of arguments for \'SETBIT\' command' ],
+      ]
+    end
+
+    it 'returns an error if key is not a string' do
+      assert_command_results [
+        [ 'HSET not-a-string a b', ':1' ],
+        [ 'SETBIT not-a-string 0 1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'validates that offset is a positive integer' do
+      assert_command_results [
+        [ 'SETBIT s a 0', '-ERR bit offset is not an integer or out of range' ],
+        [ 'SETBIT s -1 0', '-ERR bit offset is not an integer or out of range' ],
+      ]
+    end
+
+    it 'validates that value is 0 or 1' do
+      assert_command_results [
+        [ 'SETBIT s 0 2', '-ERR bit is not an integer or out of range' ],
+        [ 'SETBIT s 0 a', '-ERR bit is not an integer or out of range' ],
+        [ 'SETBIT s 0 -1', '-ERR bit is not an integer or out of range' ],
+      ]
+    end
 
     it 'sets the bit at the given offset and return 0 if it did not exist' do
       assert_command_results [
@@ -88,7 +113,7 @@ describe 'Bitops Commands' do
     it 'returns an error if key is not a string'
   end
 
-  describe 'BICOUNT' do
+  describe 'BITCOUNT' do
     it 'handles and unexpected number of arguments'
     it 'returns an error if key is not a string'
   end

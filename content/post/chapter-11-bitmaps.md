@@ -8,6 +8,7 @@ keywords: []
 summary: ""
 ---
 
+open q: why >> 3 in redis? add println and debug
 
 ## What we'll cover
 
