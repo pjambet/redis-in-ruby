@@ -109,22 +109,80 @@ describe 'Bitops Commands' do
   end
 
   describe 'BITOP' do
-    it 'handles and unexpected number of arguments'
-    it 'returns an error if key is not a string'
+    it 'handles and unexpected number of arguments' do
+      assert_command_results [
+        [ 'BITOP', '-ERR wrong number of arguments for \'BITOP\' command' ],
+        [ 'BITOP s', '-ERR wrong number of arguments for \'BITOP\' command' ],
+      ]
+    end
+
+    # it 'returns an error if key is not a string' do
+    #   assert_command_results [
+    #     [ 'HSET not-a-string a b', ':1' ],
+    #     [ 'BITOP not-a-string 0 1', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+    #   ]
+    # end
+
+    it 'works with the example from redis.io' do
+      assert_command_results [
+        [ 'SET key1 foobar', '+OK' ],
+        [ 'SET key2 abcdef', '+OK' ],
+        [ 'BITOP AND dest key1 key2', ':6' ],
+        [ 'GET dest', '`bc`ab' ],
+      ]
+    end
+
+    # it 'works with AND a non existing key'
+
+    it 'works with AND and multiple arguments' do
+      assert_command_results [
+        [ 'SETBIT s1 1 1', ':0' ],
+        [ 'SETBIT s2 1 1', ':0' ],
+        [ 'SETBIT s3 1 0', ':0' ],
+        [ 'BITOP AND dest s1', ':1' ],
+        [ 'GET dest', '@' ], # The byte 64, \x40
+        [ 'SETBIT s4 17 0', ':0' ], # 3 bytes \x00\x00\x80, TODO doesn't work with 16, need to debug that
+        [ 'BITOP AND dest s1 s4', ':3' ],
+        [ 'GET dest', "\x00\x00\x00" ],
+      ]
+    end
+
+    # it 'works with OR and multiple arguments'
+    # it 'works with XOR and multiple arguments'
+    # it 'works with NOT and one argument'
+    # it 'returns an error with NOT and more than one argument'
   end
 
-  describe 'BITCOUNT' do
-    it 'handles and unexpected number of arguments'
-    it 'returns an error if key is not a string'
-  end
+  # describe 'BITCOUNT' do
+  #   it 'handles and unexpected number of arguments'
+  #   it 'returns an error if key is not a string'
 
-  describe 'BITPOS' do
-    it 'handles and unexpected number of arguments'
-    it 'returns an error if key is not a string'
-  end
+  #   it 'counts the number of 1s in the whole string without a range'
+  #   it 'counts the number of 1s within the given byte range'
+  # end
 
-  describe 'BITFIELD' do
-    it 'handles and unexpected number of arguments'
-    it 'returns an error if key is not a string'
-  end
+  # describe 'BITPOS' do
+  #   it 'handles and unexpected number of arguments'
+  #   it 'returns an error if key is not a string'
+
+  #   it 'returns the position of the first 1 (as a 0 based bit offset) in the whole string without a range'
+  #   it 'returns the position of the first 0 (as a 0 based bit offset) in the whole string without a range'
+  #   it 'returns the position of the first 1 (as a 0 based bit offset) in the given byte range'
+  #   it 'returns the position of the first 0 (as a 0 based bit offset) in the given byte range'
+  # end
+
+  # describe 'BITFIELD' do
+  #   it 'handles and unexpected number of arguments'
+  #   it 'returns an error if key is not a string'
+
+  #   it 'is a no-op and return an empty array with no operations'
+  #   it 'can GET with all types of formats'
+  #   it 'can GET with pound-prefixed offsets'
+  #   it 'can SET with all types of formats'
+  #   it 'can INCRBY with all types of formats'
+  #   it 'handles changing the OVERFLOW behavior in the same command'
+  #   it 'handles the WRAP overflow'
+  #   it 'handles the SAT overflow'
+  #   it 'handles the FAIL overlow'
+  # end
 end
