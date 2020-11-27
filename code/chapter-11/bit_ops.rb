@@ -5,37 +5,66 @@ module BYORedis
     end
 
     def self.initialize_string_for_offset(string, offset)
-      size = if offset == 0
-               1
-             elsif offset & 7 == 0
-               offset / 8
-             else
-               (offset / 8) + 1
-             end
+      # example, with 7, size should be 1
+      # 7 is 0000 0111, >> 3 = 0, size is 1
+      # with 16, size should be 3
+      # 16 is 0001 0000, >> 3 = 0000 0010, 2, size is 3
+      # Taken from: https://github.com/antirez/redis/blob/6.0.0/src/bitops.c#L479
+      size = (offset >> 3) + 1
 
       string << "\x00" * size
       string
     end
 
-    def self.and(strings)
-      result = nil
+    def self.bitwise_op(operation, left_operand, right_operand)
+      case operation
+      when :and then left_operand & right_operand
+      when :or  then left_operand | right_operand
+      when :xor then left_operand ^ right_operand
+      else raise "Operation not supported: #{ operation }"
+      end
+    end
+    private_class_method :bitwise_op
 
-      strings.each do |other_string|
-        next if other_string.nil?
+    def self.op(operation, strings)
+      # There is always at least one string, so it's safe to call .dup without a null check
+      max_length = strings.reduce(0) do |max, string|
+        next max if string.nil?
 
-        if result.nil?
-          result = other_string
-          next
+        if string.length > max
+          max = string.length
+        end
+        max
+      end
+      return if max_length == 0
+
+      result = String.new('', capacity: max_length)
+      result << "\x00" * max_length
+
+      0.upto(max_length - 1) do |i|
+        output = if strings[0].nil?
+                   0
+                 else
+                   strings[0][i]&.ord || 0
+                 end
+
+        if operation == :not
+          result[i] = (~output & 0xff).chr
+          break # A litte bit unnecessary but hey
         end
 
-        i = 0
-        while i < result.length || i < other_string.length
-          res_byte = result[i]&.ord || 0
-          other_byte = other_string[i]&.ord || 0
-
-          result[i] = (res_byte & other_byte).chr
-          i += 1
+        1.upto(strings.size - 1) do |j|
+          other_string = strings[j]
+          other_byte =
+            if other_string.nil?
+              0
+            else
+              other_string[i]&.ord || 0
+            end
+          output = bitwise_op(operation, output, other_byte)
         end
+
+        result[i] = output.chr
       end
 
       result

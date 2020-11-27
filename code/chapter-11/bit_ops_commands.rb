@@ -65,27 +65,25 @@ module BYORedis
   class BitOpCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(2, @args)
-      operation = @args.shift
+      operation = @args.shift.downcase
       dest = @args.shift
       rest = @args.map { |key| @db.lookup_string(key) }
 
-      case operation.downcase
-      when 'and'
-        result = BitOps.and(rest)
-        if result.nil?
-          @db.data_store.delete(dest)
-          length = 0
-        else
-          @db.data_store[dest] = result
-          length = result.length
-        end
-
-        RESPInteger.new(length)
-      when 'or' then 1
-      when 'xor' then 1
-      when 'not' then 1
-      else raise SyntaxError
+      raise RESPSyntaxError unless [ 'and', 'or', 'xor', 'not' ].include?(operation)
+      if operation == 'not' && rest.size > 1
+        raise ValidationError, 'ERR BITOP NOT must be called with a single source key.'
       end
+
+      result = BitOps.op(operation.to_sym, rest)
+      if result.nil?
+        @db.data_store.delete(dest)
+        length = 0
+      else
+        @db.data_store[dest] = result
+        length = result.length
+      end
+
+      RESPInteger.new(length)
     end
 
     def self.describe

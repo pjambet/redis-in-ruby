@@ -71,6 +71,10 @@ Same same same
 
 ## BITOP
 
+https://github.com/redis/redis/commit/d866803818fb47a851e5730ccff634f993ce6f68
+https://github.com/redis/redis/commit/b3391fd853d55b3da04ede024adcc6bf017c78f1
+https://github.com/redis/redis/commit/7329cc39818a05c168e7d1e791afb03c089f1933
+
 ### and
 
 ### or
@@ -81,7 +85,22 @@ Same same same
 
 ## BITCOUNT
 
+current algo: http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+
+https://github.com/redis/redis/commit/dbbbe49ef57c5c000469e206c81e5da58bf604ba
+https://github.com/redis/redis/commit/343d3bd287b701ff3900527b5c920092f66fb592
+https://github.com/redis/redis/commit/7c34643f154f543e1eef7c9855fb8d657146c646
+
+https://github.com/redis/redis/pull/2179
+https://github.com/redis/redis/commit/0ec7672a5dc2966962f33d55f959ed63da450bbd
+
+
 ## BITPOS
+
+``` ruby
+'abcd'.unpack 'B*'
+=> ["01100001011000100110001101100100"]
+```
 
 ## BITFIELD
 

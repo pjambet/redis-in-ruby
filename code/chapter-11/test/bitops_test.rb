@@ -91,8 +91,12 @@ describe 'Bitops Commands' do
         [ 'SETBIT s 8 1', ':0' ], # s has 16 bits, 2 bytes
         [ 'GETBIT s 8', ':1' ],
         [ 'GET s', "\x80\x80" ],
+        [ 'SETBIT s 16 0', ':0' ],
+        [ 'GET s', "\x80\x80\x00" ],
         [ 'SETBIT s 1048576 1', ':0' ],
         [ 'STRLEN s', ':131073' ],
+        [ 'SETBIT s2 16 0', ':0' ], # a new string, of size 3
+        [ 'GET s2', "\x00\x00\x00" ],
       ]
     end
 
@@ -120,6 +124,15 @@ describe 'Bitops Commands' do
       assert_command_results [
         [ 'HSET not-a-string a b', ':1' ],
         [ 'BITOP AND dest not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'BITOP OR dest not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'BITOP XOR dest not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+        [ 'BITOP NOT dest not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'returns an error with an invalid operation' do
+      assert_command_results [
+        [ 'BITOP not-a-thing dest s', '-ERR syntax error' ],
       ]
     end
 
@@ -132,10 +145,16 @@ describe 'Bitops Commands' do
       ]
     end
 
-    it 'works with AND a non existing key' do
+    it 'returns an empty string for any operations and a non existing key' do
       assert_command_results [
         [ 'SET dest something', '+OK' ],
-        [ 'BITOP AND dest s', ':0' ],
+        [ 'BITOP AND dest s1 s2', ':0' ],
+        [ 'GET dest', BYORedis::NULL_BULK_STRING ],
+        [ 'BITOP OR dest s1 s2', ':0' ],
+        [ 'GET dest', BYORedis::NULL_BULK_STRING ],
+        [ 'BITOP XOR dest s', ':0' ],
+        [ 'GET dest', BYORedis::NULL_BULK_STRING ],
+        [ 'BITOP NOT dest s', ':0' ],
         [ 'GET dest', BYORedis::NULL_BULK_STRING ],
       ]
     end
@@ -146,17 +165,63 @@ describe 'Bitops Commands' do
         [ 'SETBIT s2 1 1', ':0' ],
         [ 'SETBIT s3 1 0', ':0' ],
         [ 'BITOP AND dest s1', ':1' ],
-        [ 'GET dest', '@' ], # The byte 64, \x40
-        [ 'SETBIT s4 17 0', ':0' ], # 3 bytes \x00\x00\x80, TODO doesn't work with 16, need to debug that
+        [ 'GET dest', '@' ], # The byte 64, \x40, 0100 000
+        [ 'BITOP AND dest s1 s2 s3', ':1' ],
+        [ 'GET dest', "\x00" ],
+        [ 'SETBIT s4 17 1', ':0' ], # 3 bytes \x00\x00\x80
         [ 'BITOP AND dest s1 s4', ':3' ],
         [ 'GET dest', "\x00\x00\x00" ],
       ]
     end
 
-    # it 'works with OR and multiple arguments'
-    # it 'works with XOR and multiple arguments'
-    # it 'works with NOT and one argument'
-    # it 'returns an error with NOT and more than one argument'
+    it 'works with OR and multiple arguments' do
+      assert_command_results [
+        [ 'SETBIT s1 1 1', ':0' ],
+        [ 'SETBIT s2 1 1', ':0' ],
+        [ 'SETBIT s3 1 0', ':0' ],
+        [ 'BITOP OR dest s1', ':1' ],
+        [ 'GET dest', '@' ], # The byte 64, \x40, 0100 0000
+        [ 'BITOP OR dest s1 s2 s3', ':1' ],
+        [ 'GET dest', '@' ],
+        [ 'SETBIT s4 17 1', ':0' ], # 3 bytes \x00\x00\x80,
+        [ 'BITOP OR dest s1 s4', ':3' ],
+        [ 'GET dest', "\x40\x00\x40" ], # ['01000000', '00000000', '01000000'].pack('B8B8B8')
+      ]
+    end
+
+    it 'works with XOR and multiple arguments' do
+      assert_command_results [
+        [ 'SETBIT s1 1 1', ':0' ],
+        [ 'SETBIT s2 1 1', ':0' ],
+        [ 'SETBIT s3 1 0', ':0' ],
+        [ 'BITOP XOR dest s1', ':1' ],
+        [ 'GET dest', '@' ], # The byte 64, \x40, 0100 0000
+        [ 'BITOP XOR dest s1 s2', ':1' ],
+        [ 'GET dest', "\x00" ],
+        [ 'BITOP XOR dest s1 s3', ':1' ],
+        [ 'GET dest', "\x40" ],
+        [ 'BITOP XOR dest s1 s2 s3', ':1' ],
+        [ 'GET dest', "\x00" ],
+        [ 'SETBIT s4 17 1', ':0' ], # 3 bytes \x00\x00\x80,
+        [ 'BITOP XOR dest s1 s4', ':3' ],
+        [ 'GET dest', "\x40\x00\x40" ], # ['01000000', '00000000', '01000000'].pack('B8B8B8')
+      ]
+    end
+
+    it 'works with NOT and one argument' do
+      assert_command_results [
+        [ 'SETBIT s1 1 1', ':0' ],
+        [ 'SETBIT s2 1 0', ':0' ],
+        [ 'BITOP NOT dest s1', ':1' ],
+        [ 'GET dest', "\xBF" ], # 10111111
+      ]
+    end
+
+    it 'returns an error with NOT and more than one argument' do
+      assert_command_results [
+        [ 'BITOP NOT dest s1 s2', '-ERR BITOP NOT must be called with a single source key.' ],
+      ]
+    end
   end
 
   # describe 'BITCOUNT' do
