@@ -102,6 +102,26 @@ module BYORedis
       old_value
     end
 
+    def bit_count(start_byte, end_byte)
+      end_byte = @string.size + end_byte if end_byte < 0
+      start_byte = @string.size + end_byte if start_byte < 0
+
+      end_byte = @string.size - 1 if end_byte >= @string.size
+      start_byte = 0 if start_byte < 0
+
+      count = 0
+
+      start_byte.upto(end_byte) do |byte_i|
+        byte = @string[byte_i].ord
+        8.times do
+          byte >>= 1
+          count += byte & 1
+        end
+      end
+
+      count
+    end
+
     private
 
     # say byte is 111, so 0110 1111 in binary

@@ -224,13 +224,56 @@ describe 'Bitops Commands' do
     end
   end
 
-  # describe 'BITCOUNT' do
-  #   it 'handles and unexpected number of arguments'
-  #   it 'returns an error if key is not a string'
+  describe 'BITCOUNT' do
+    it 'handles and unexpected number of arguments' do
+      assert_command_results [
+        [ 'BITCOUNT', '-ERR wrong number of arguments for \'BITCOUNT\' command' ],
+      ]
+    end
 
-  #   it 'counts the number of 1s in the whole string without a range'
-  #   it 'counts the number of 1s within the given byte range'
-  # end
+    it 'returns an error if key is not a string' do
+      assert_command_results [
+        [ 'HSET not-a-string a b', ':1' ],
+        [ 'BITCOUNT not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'ignores everything past key if it does not exist' do
+      assert_command_results [
+        [ 'BITCOUNT s a a a a', ':0' ],
+      ]
+    end
+
+    it 'validates that start & end are integers' do
+      assert_command_results [
+        [ 'SET s abc', '+OK' ],
+        [ 'BITCOUNT s a', '-ERR syntax error' ],
+        [ 'BITCOUNT s a a', '-ERR value is not an integer or out of range' ],
+      ]
+    end
+
+    it 'counts the number of 1s in the whole string without a range' do
+      assert_command_results [
+        [ 'SETBIT s 16 0', ':0' ],
+        [ 'BITCOUNT s', ':0' ],
+        [ 'SETBIT s 256 1', ':0' ],
+        [ 'BITCOUNT s', ':1' ],
+      ]
+    end
+
+    it 'counts the number of 1s within the given byte range' do
+      assert_command_results [
+        [ 'SETBIT s 16 0', ':0' ],
+        [ 'BITCOUNT s 0 -1', ':0' ],
+        [ 'SETBIT s 256 1', ':0' ],
+        [ 'BITCOUNT s 0 -1', ':1' ],
+        [ 'BITCOUNT s 0 -2', ':0' ],
+        [ 'BITCOUNT s 0 31', ':0' ],
+        [ 'BITCOUNT s 31 32', ':1' ],
+        [ 'BITCOUNT s 31 33', ':1' ],
+      ]
+    end
+  end
 
   # describe 'BITPOS' do
   #   it 'handles and unexpected number of arguments'

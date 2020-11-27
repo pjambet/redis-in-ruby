@@ -94,6 +94,21 @@ module BYORedis
 
   class BitCountCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
+      string = @db.lookup_string(@args.shift)
+      return RESPInteger.new(0) if string.nil?
+
+      if @args.length == 0
+        start_byte = 0
+        end_byte = string.length - 1
+      elsif @args.length == 2
+        start_byte = Utils.validate_integer(@args[0])
+        end_byte = Utils.validate_integer(@args[1])
+      else
+        raise RESPSyntaxError
+      end
+
+      RESPInteger.new(BitOps.new(string).bit_count(start_byte, end_byte))
     end
 
     def self.describe
