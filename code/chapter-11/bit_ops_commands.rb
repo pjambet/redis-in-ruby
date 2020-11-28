@@ -98,7 +98,7 @@ module BYORedis
       string = @db.lookup_string(@args.shift)
       return RESPInteger.new(0) if string.nil?
 
-      if @args.length == 0
+      if @args.empty?
         start_byte = 0
         end_byte = string.length - 1
       elsif @args.length == 2
@@ -119,6 +119,36 @@ module BYORedis
 
   class BitPosCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(1, @args)
+      string = @db.lookup_string(@args.shift)
+
+      bit_value = Utils.validate_integer_with_message(@args.shift, 'ERR value is not an integer or out of range')
+
+      if (bit_value & ~1) == 0 # equivalent to bit_value == 0 || bit_value == 1
+        bit_value
+      else
+        raise ValidationError, 'ERR The bit argument must be 1 or 0.'
+      end
+
+      if string.nil?
+        index = bit_value == 0 ? 0 : -1
+        return RESPInteger.new(index)
+      end
+
+      if @args.empty?
+        start_byte = 0
+        end_byte = string.length - 1
+      elsif @args.length == 1
+        start_byte = Utils.validate_integer(@args[0])
+        end_byte = string.length - 1
+      elsif @args.length == 2
+        start_byte = Utils.validate_integer(@args[0])
+        end_byte = Utils.validate_integer(@args[1])
+      else
+        raise RESPSyntaxError
+      end
+
+      RESPInteger.new(BitOps.new(string).bit_pos(bit_value, start_byte, end_byte))
     end
 
     def self.describe

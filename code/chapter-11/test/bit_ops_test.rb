@@ -258,6 +258,15 @@ describe 'Bitops Commands' do
         [ 'BITCOUNT s', ':0' ],
         [ 'SETBIT s 256 1', ':0' ],
         [ 'BITCOUNT s', ':1' ],
+        [ 'SETBIT s2 0 1', ':0' ],
+        [ 'SETBIT s2 1 1', ':0' ],
+        [ 'SETBIT s2 2 1', ':0' ],
+        [ 'SETBIT s2 3 1', ':0' ],
+        [ 'SETBIT s2 4 1', ':0' ],
+        [ 'SETBIT s2 5 1', ':0' ],
+        [ 'SETBIT s2 6 1', ':0' ],
+        [ 'SETBIT s2 7 1', ':0' ],
+        [ 'BITCOUNT s2', ':8' ],
       ]
     end
 
@@ -275,15 +284,136 @@ describe 'Bitops Commands' do
     end
   end
 
-  # describe 'BITPOS' do
-  #   it 'handles and unexpected number of arguments'
-  #   it 'returns an error if key is not a string'
+  describe 'BITPOS' do
+    it 'handles and unexpected number of arguments' do
+      assert_command_results [
+        [ 'BITPOS', '-ERR wrong number of arguments for \'BITPOS\' command' ],
+        [ 'BITPOS s', '-ERR wrong number of arguments for \'BITPOS\' command' ],
+        [ 'SET s s', '+OK' ], # it would otherwise shortcut the response and return early if nil
+        [ 'BITPOS s 0 0 -1 a', '-ERR syntax error' ],
+        [ 'BITPOS s 0 0 -1 1', '-ERR syntax error' ],
+      ]
+    end
 
-  #   it 'returns the position of the first 1 (as a 0 based bit offset) in the whole string without a range'
-  #   it 'returns the position of the first 0 (as a 0 based bit offset) in the whole string without a range'
-  #   it 'returns the position of the first 1 (as a 0 based bit offset) in the given byte range'
-  #   it 'returns the position of the first 0 (as a 0 based bit offset) in the given byte range'
-  # end
+    it 'returns an error if key is not a string' do
+      assert_command_results [
+        [ 'HSET not-a-string a b', ':1' ],
+        [ 'BITPOS not-a-string 0', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'validates that bit is 0 or 1' do
+      assert_command_results [
+        [ 'BITPOS s a', '-ERR value is not an integer or out of range' ],
+        [ 'BITPOS s -1', '-ERR The bit argument must be 1 or 0.' ],
+      ]
+    end
+
+    it 'ignores everything past key if it does not exist' do
+      assert_command_results [
+        [ 'BITPOS s 0 a a a', ':0' ],
+      ]
+    end
+
+    it 'validates that start & end are integers' do
+      assert_command_results [
+        [ 'SET s abc', '+OK' ],
+        [ 'BITPOS s 0 a a', '-ERR value is not an integer or out of range' ],
+        [ 'BITPOS s 0 a 1', '-ERR value is not an integer or out of range' ],
+        [ 'BITPOS s 0 1 a', '-ERR value is not an integer or out of range' ],
+      ]
+    end
+
+    it 'returns 0 for 0 and an empty string' do
+      assert_command_results [
+        [ 'BITPOS s 0', ':0' ],
+      ]
+    end
+
+    it 'returns -1 for 1 and an empty string' do
+      assert_command_results [
+        [ 'BITPOS s 1', ':-1' ],
+      ]
+    end
+
+    it 'accepts start without end for the range definition' do
+      assert_command_results [
+        [ 'SETBIT s 64 1', ':0' ],
+        [ 'BITPOS s 0 0', ':0' ],
+        [ 'BITPOS s 1 0', ':64' ],
+        [ 'BITPOS s 0 8', ':65' ],
+        [ 'BITPOS s 1 8', ':64' ],
+        [ 'BITPOS s 0 9', ':-1' ],
+        [ 'BITPOS s 1 9', ':-1' ],
+      ]
+    end
+
+    # Special case because the string is always assumed to be 0-padded to the right
+    it 'returns the first index outside the string if bit is 0 and the string is only 1s' do
+      assert_command_results [
+        [ 'SETBIT s 0 1', ':0' ],
+        [ 'SETBIT s 1 1', ':0' ],
+        [ 'SETBIT s 2 1', ':0' ],
+        [ 'SETBIT s 3 1', ':0' ],
+        [ 'SETBIT s 4 1', ':0' ],
+        [ 'SETBIT s 5 1', ':0' ],
+        [ 'SETBIT s 6 1', ':0' ],
+        [ 'SETBIT s 7 1', ':0' ],
+        [ 'BITPOS s 0', ':-1' ],
+      ]
+    end
+
+    it 'returns the position of the first 1 (as a 0 based bit offset) in the whole string without a range' do
+      assert_command_results [
+        [ 'SETBIT s 64 1', ':0' ],
+        [ 'BITPOS s 0', ':0' ],
+        [ 'BITPOS s 1', ':64' ],
+      ]
+    end
+
+    it 'returns the position of the first 0 (as a 0 based bit offset) in the whole string without a range' do
+      with_server do |socket|
+        socket.write(to_query('SET', 's', "\xff\xff\xff\xf0"))
+        assert_equal(read_response(socket), BYORedis::OK_SIMPLE_STRING)
+
+        socket.write(to_query('BITPOS', 's', '0'))
+        assert_equal(read_response(socket), ":28\r\n")
+      end
+    end
+
+    it 'returns the position of the first 1 (as a 0 based bit offset) in the given byte range' do
+      assert_command_results [
+        [ 'SETBIT s 64 1', ':0' ],
+        [ 'BITPOS s 1 1 0', ':-1' ],
+        [ 'BITPOS s 1 0 1', ':-1' ],
+        [ 'BITPOS s 1 8 8', ':64' ],
+        [ 'BITPOS s 1 8 9', ':64' ],
+        [ 'BITPOS s 1 8 -1', ':64' ],
+        [ 'BITPOS s 1 -2 -1', ':64' ],
+        [ 'BITPOS s 1 9 -1', ':-1' ],
+      ]
+    end
+
+    it 'returns the position of the first 0 (as a 0 based bit offset) in the given byte range' do
+      with_server do |socket|
+        socket.write(to_query('SET', 's', "\xff\xff\xff\xf0"))
+        assert_equal(read_response(socket), BYORedis::OK_SIMPLE_STRING)
+
+        socket.write(to_query('BITPOS', 's', '0', '1', '0'))
+        assert_equal(read_response(socket), ":-1\r\n")
+        socket.write(to_query('BITPOS', 's', '0', '0', '1'))
+        assert_equal(read_response(socket), ":-1\r\n")
+        socket.write(to_query('BITPOS', 's', '0', '3', '4'))
+        assert_equal(read_response(socket), ":28\r\n")
+        socket.write(to_query('BITPOS', 's', '0', '3', '-1'))
+        assert_equal(read_response(socket), ":28\r\n")
+        socket.write(to_query('BITPOS', 's', '0', '-2', '-1'))
+        assert_equal(read_response(socket), ":28\r\n")
+        socket.write(to_query('BITPOS', 's', '0', '4', '4'))
+        assert_equal(read_response(socket), ":-1\r\n")
+      end
+    end
+  end
 
   # describe 'BITFIELD' do
   #   it 'handles and unexpected number of arguments'

@@ -103,26 +103,62 @@ module BYORedis
     end
 
     def bit_count(start_byte, end_byte)
-      end_byte = @string.size + end_byte if end_byte < 0
-      start_byte = @string.size + end_byte if start_byte < 0
-
-      end_byte = @string.size - 1 if end_byte >= @string.size
-      start_byte = 0 if start_byte < 0
+      start_byte, end_byte = sanitize_start_and_end(start_byte, end_byte)
 
       count = 0
 
       start_byte.upto(end_byte) do |byte_i|
         byte = @string[byte_i].ord
         8.times do
-          byte >>= 1
           count += byte & 1
+          byte >>= 1
         end
       end
 
       count
     end
 
+    def bit_pos(bit, start_byte, end_byte)
+      start_byte, end_byte = sanitize_start_and_end(start_byte, end_byte)
+      pos = 8 * start_byte
+
+      start_byte.upto(end_byte) do |byte_i|
+        byte = @string[byte_i].ord
+        if bit == 0 && byte == 0xff || bit == 1 && byte == 0
+          pos += 8
+          next
+        end
+
+        one = 2**8 - 1 # 255
+        one >>= 1
+        one = ~one & 0xff # all zeroes except the MSB
+        bit_as_boolean = bit == 1 ? true : false
+
+        # We start with one = 1000 0000
+        8.times do |i|
+          # The result will be different from 0 if both bytes have a 1 at the same index
+          # so if it's not 0, we found a 1, if the result is 0, we found a 0
+          return pos if ((one & byte) != 0) == bit_as_boolean
+
+          pos += 1
+          one >>= 1
+        end
+      end
+
+      -1
+    end
+
     private
+
+    def sanitize_start_and_end(start_byte, end_byte)
+      end_byte = @string.size + end_byte if end_byte < 0
+      start_byte = @string.size + start_byte if start_byte < 0
+
+      end_byte = @string.size - 1 if end_byte >= @string.size
+      start_byte = 0 if start_byte < 0
+
+      return start_byte, end_byte
+    end
 
     # say byte is 111, so 0110 1111 in binary
     # with offset 0, we do 0110 1111 >> 7, 0000 0000 & 1 => 0
