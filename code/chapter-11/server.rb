@@ -255,7 +255,7 @@ module BYORedis
     end
 
     def safe_read(client)
-      client.socket.read_nonblock(1024, exception: false)
+      client.socket.read_nonblock(4096, exception: false)
     rescue Errno::ECONNRESET, Errno::EPIPE
       disconnect_client(client)
     end

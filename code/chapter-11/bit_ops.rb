@@ -160,6 +160,8 @@ module BYORedis
           bytes[i] = @string[i + start_byte]&.ord || 0
         end
 
+        # operation.offset is the whole offset, so if it's 8, we're starting at the first bit of
+        # the first byte
         bit_offset = operation.offset - (start_byte * 8)
         value = 0
         p @string.unpack("B*")[0].chars.each_slice(8).to_a.map(&:join).join(' ')
@@ -168,6 +170,7 @@ module BYORedis
           p "bit_offset=#{bit_offset}"
           byte = bit_offset >> 3 # divide by 8, get byte index
           p "byte=#{byte}"
+          # 0x7 is 0111, so we essentially do bit_offset % 8
           bit = 7 - (bit_offset & 0x7) # get bit index from the left
           p "bit=#{bit}"
           byteval = bytes[byte]

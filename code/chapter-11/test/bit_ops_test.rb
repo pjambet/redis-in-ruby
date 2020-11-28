@@ -467,59 +467,65 @@ describe 'Bitops Commands' do
     end
 
     it 'can GET with all types of formats' do
-      assert_command_results [
-        [ 'SETBIT s 0 1', ':0' ],
-        [ 'SETBIT s 2 1', ':0' ],
-        [ 'SETBIT s 4 1', ':0' ],
-        [ 'SETBIT s 6 1', ':0' ],
-        [ 'SETBIT s 8 1', ':0' ],
-        [ 'SETBIT s 10 1', ':0' ],
-        [ 'SETBIT s 12 1', ':0' ],
-        [ 'SETBIT s 14 1', ':0' ],
-        [ 'SETBIT s 16 1', ':0' ],
-        [ 'SETBIT s 18 1', ':0' ],
-        [ 'SETBIT s 20 1', ':0' ],
-        [ 'SETBIT s 22 1', ':0' ],
-        [ 'SETBIT s 24 1', ':0' ],
-        [ 'SETBIT s 26 1', ':0' ],
-        [ 'SETBIT s 28 1', ':0' ],
-        [ 'SETBIT s 30 1', ':0' ],
-        [ 'SETBIT s 32 1', ':0' ],
-        [ 'SETBIT s 34 1', ':0' ],
-        [ 'SETBIT s 36 1', ':0' ],
-        [ 'SETBIT s 38 1', ':0' ],
-        [ 'SETBIT s 40 1', ':0' ],
-        [ 'SETBIT s 42 1', ':0' ],
-        [ 'SETBIT s 44 1', ':0' ],
-        [ 'SETBIT s 46 1', ':0' ],
-        [ 'SETBIT s 48 1', ':0' ],
-        [ 'SETBIT s 50 1', ':0' ],
-        [ 'SETBIT s 52 1', ':0' ],
-        [ 'SETBIT s 54 1', ':0' ],
-        [ 'SETBIT s 56 1', ':0' ],
-        [ 'SETBIT s 58 1', ':0' ],
-        [ 'SETBIT s 60 1', ':0' ],
-        [ 'SETBIT s 62 1', ':0' ],
-        [ 'SETBIT s 64 1', ':0' ],
-        [ 'BITFIELD s GET i1 0', ':0' ],
-      ]
+      with_server do |socket|
+        # \xaa is 1010 1010
+        socket.write(to_query('SET', 's', "\xaa" * 10))
+        assert_equal(read_response(socket), BYORedis::OK_SIMPLE_STRING)
+        operations = []
+
+        operations.push('GET', 'i64', '2')
+        63.times do |i|
+          operations.push('GET', "i#{ 63 - i }", (i + 3).to_s)
+          operations.push('GET', "u#{ 63 - i }", (i + 2).to_s)
+        end
+
+        expected_responses = [
+          -6148914691236517206, 3074457345618258602, 6148914691236517205, -1537228672809129302,
+           1537228672809129301, 768614336404564650, 1537228672809129301, -384307168202282326,
+           384307168202282325, 192153584101141162, 384307168202282325, -96076792050570582,
+           96076792050570581, 48038396025285290, 96076792050570581, -24019198012642646,
+           24019198012642645, 12009599006321322, 24019198012642645, -6004799503160662,
+           6004799503160661, 3002399751580330, 6004799503160661, -1501199875790166,
+           1501199875790165, 750599937895082, 1501199875790165, -375299968947542,
+           375299968947541, 187649984473770, 375299968947541, -93824992236886, 93824992236885,
+           46912496118442, 93824992236885, -23456248059222, 23456248059221, 11728124029610,
+           23456248059221, -5864062014806, 5864062014805, 2932031007402, 5864062014805,
+           -1466015503702, 1466015503701, 733007751850, 1466015503701, -366503875926,
+           366503875925, 183251937962, 366503875925, -91625968982, 91625968981, 45812984490,
+           91625968981, -22906492246, 22906492245, 11453246122, 22906492245, -5726623062,
+           5726623061, 2863311530, 5726623061, -1431655766, 1431655765, 715827882, 1431655765,
+           -357913942, 357913941, 178956970, 357913941, -89478486, 89478485, 44739242, 89478485,
+           -22369622, 22369621, 11184810, 22369621, -5592406, 5592405, 2796202, 5592405,
+           -1398102, 1398101, 699050, 1398101, -349526, 349525, 174762, 349525, -87382, 87381,
+           43690, 87381, -21846, 21845, 10922, 21845, -5462, 5461, 2730, 5461, -1366, 1365, 682,
+           1365, -342, 341, 170, 341, -86, 85, 42, 85, -22, 21, 10, 21, -6, 5, 2, 5, -2, 1, 0, 1,
+        ]
+
+        socket.write(to_query('BITFIELD', 's', *operations))
+        response = read_response(socket, read_timeout: 0.5)
+        response_parts = response.split("\r\n")
+        assert_equal('*127', response_parts.shift)
+        response_parts.each_with_index do |response_part, i|
+          assert_equal(":#{ expected_responses[i] }", response_part, "Failure for #{ operations[i * 3, 3] }")
+        end
+      end
     end
 
-    it 'can SET with all types of formats' do
-      assert_command_results [
-        [ 'BITFIELD s SET u8 0 128', ':0' ],
-        [ 'BITFIELD s SET u16 4 1024', ':0' ],
-        [ 'BITFIELD s SET u16 0 2048', ':32832' ],
-      ]
-    end
+    # it 'can SET with all types of formats' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s SET u8 0 128', ':0' ],
+    #     [ 'BITFIELD s SET u16 4 1024', ':0' ],
+    #     [ 'BITFIELD s SET u16 0 2048', ':32832' ],
+    #   ]
+    # end
 
-    it 'can INCRBY with all types of formats' do
-      assert_command_results [
-        [ 'BITFIELD s INCRBY i4 0 64', ':0' ],
-        [ 'BITFIELD s INCRBY i4 2 64', ':0' ],
-        [ 'BITFIELD s INCRBY i7 1 32', ':32' ],
-      ]
-    end
+    # it 'can INCRBY with all types of formats' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s INCRBY i4 0 64', ':0' ],
+    #     [ 'BITFIELD s INCRBY i4 2 64', ':0' ],
+    #     [ 'BITFIELD s INCRBY i7 1 32', ':32' ],
+    #   ]
+    # end
 
     # it 'handles changing the OVERFLOW behavior in the same command' do
     #   assert_command_results [
