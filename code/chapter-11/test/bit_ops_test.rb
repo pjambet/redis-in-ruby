@@ -466,19 +466,114 @@ describe 'Bitops Commands' do
       ]
     end
 
-    # it 'can GET with all types of formats' do
+    it 'can GET with all types of formats' do
+      assert_command_results [
+        [ 'SETBIT s 0 1', ':0' ],
+        [ 'SETBIT s 2 1', ':0' ],
+        [ 'SETBIT s 4 1', ':0' ],
+        [ 'SETBIT s 6 1', ':0' ],
+        [ 'SETBIT s 8 1', ':0' ],
+        [ 'SETBIT s 10 1', ':0' ],
+        [ 'SETBIT s 12 1', ':0' ],
+        [ 'SETBIT s 14 1', ':0' ],
+        [ 'SETBIT s 16 1', ':0' ],
+        [ 'SETBIT s 18 1', ':0' ],
+        [ 'SETBIT s 20 1', ':0' ],
+        [ 'SETBIT s 22 1', ':0' ],
+        [ 'SETBIT s 24 1', ':0' ],
+        [ 'SETBIT s 26 1', ':0' ],
+        [ 'SETBIT s 28 1', ':0' ],
+        [ 'SETBIT s 30 1', ':0' ],
+        [ 'SETBIT s 32 1', ':0' ],
+        [ 'SETBIT s 34 1', ':0' ],
+        [ 'SETBIT s 36 1', ':0' ],
+        [ 'SETBIT s 38 1', ':0' ],
+        [ 'SETBIT s 40 1', ':0' ],
+        [ 'SETBIT s 42 1', ':0' ],
+        [ 'SETBIT s 44 1', ':0' ],
+        [ 'SETBIT s 46 1', ':0' ],
+        [ 'SETBIT s 48 1', ':0' ],
+        [ 'SETBIT s 50 1', ':0' ],
+        [ 'SETBIT s 52 1', ':0' ],
+        [ 'SETBIT s 54 1', ':0' ],
+        [ 'SETBIT s 56 1', ':0' ],
+        [ 'SETBIT s 58 1', ':0' ],
+        [ 'SETBIT s 60 1', ':0' ],
+        [ 'SETBIT s 62 1', ':0' ],
+        [ 'SETBIT s 64 1', ':0' ],
+        [ 'BITFIELD s GET i1 0', ':0' ],
+      ]
+    end
+
+    it 'can SET with all types of formats' do
+      assert_command_results [
+        [ 'BITFIELD s SET u8 0 128', ':0' ],
+        [ 'BITFIELD s SET u16 4 1024', ':0' ],
+        [ 'BITFIELD s SET u16 0 2048', ':32832' ],
+      ]
+    end
+
+    it 'can INCRBY with all types of formats' do
+      assert_command_results [
+        [ 'BITFIELD s INCRBY i4 0 64', ':0' ],
+        [ 'BITFIELD s INCRBY i4 2 64', ':0' ],
+        [ 'BITFIELD s INCRBY i7 1 32', ':32' ],
+      ]
+    end
+
+    # it 'handles changing the OVERFLOW behavior in the same command' do
     #   assert_command_results [
-    #     [ 'BITFIELD s GET i1 0', ':0' ],
+    #     [ 'BITFIELD s INCRBY i4 0 6 OVERFLOW SAT INCRBY i4 0 10 OVERFLOW FAIL INCRBY i4 0 1', [ 0, 7, nil ] ],
+    #     [ 'BITFIELD s SET i4 0 6 OVERFLOW SAT SET i4 0 10 OVERFLOW FAIL SET i4 0 10', [ 0, 6, nil ] ],
     #   ]
     # end
-  #   it 'can SET with all types of formats'
-  #   it 'can INCRBY with all types of formats'
-  #   it 'handles changing the OVERFLOW behavior in the same command'
-  #   it 'handles the WRAP overflow with incr'
-  #   it 'handles the SAT overflow with incr'
-  #   it 'handles the FAIL overlow with incr'
-  #   it 'handles the WRAP overflow with set'
-  #   it 'handles the SAT overflow with set'
-  #   it 'handles the FAIL overlow with set'
+
+    # it 'handles the WRAP overflow with incr' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW WRAP INCRBY i4 0 10', ':-6' ],
+    #     [ 'BITFIELD s OVERFLOW WARP INCRBY u4 0 10', ':4' ],
+    #   ]
+    # end
+
+    # it 'handles the SAT overflow with incr' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW SAT INCRBY i4 0 10', ':7' ],
+    #     [ 'BITFIELD s OVERFLOW SAT INCRBY u4 0 10', ':15' ],
+    #   ]
+    # end
+
+    # it 'handles the FAIL overlow with incr' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW FAIL INCRBY i4 0 10', ':7' ],
+    #     [ 'BITFIELD s OVERFLOW FAIL INCRBY u4 0 16', ':15' ],
+    #   ]
+    # end
+
+    # it 'handles the WRAP overflow with set' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW WRAP SET i4 0 10', ':7' ],
+    #     [ 'BITFIELD s OVERFLOW WRAP GET i4 0', ':-6' ],
+    #     [ 'BITFIELD s OVERFLOW WRAP SET u4 0 18', ':15' ],
+    #     [ 'BITFIELD s OVERFLOW WRAP GET u4 0', ':2' ],
+    #   ]
+    # end
+
+    # it 'handles the SAT overflow with set' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW SAT SET i4 0 10', ':7' ],
+    #     [ 'BITFIELD s GET i4 0', ':7' ],
+    #     [ 'BITFIELD s OVERFLOW SAT SET u4 0 18', ':7' ],
+    #     [ 'BITFIELD s GET u4 0', ':15' ],
+    #   ]
+    # end
+
+    # it 'handles the FAIL overlow with set' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s OVERFLOW FAIL SET i4 0 10', BYORedis::NULL_BULK_STRING ],
+    #     [ 'BITFIELD s GET i4 0', ':0' ],
+    #     [ 'BITFIELD s OVERFLOW FAIL SET u4 0 18', BYORedis::NULL_BULK_STRING ],
+    #     [ 'BITFIELD s GET u4 0', ':0' ],
+    #   ]
+    # end
   end
 end
