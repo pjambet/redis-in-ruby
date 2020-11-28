@@ -148,6 +148,46 @@ module BYORedis
       -1
     end
 
+    def field_op(operation)
+      case operation.name
+      when :get
+        p operation
+        start_byte = (operation.offset >> 3) # / 8
+        leftover_bits = operation.offset % 8 # maybe we can do a bitshift?
+        bytes = []
+        # Load 9 bytes, to make sure we have all the bits in case not aligned
+        9.times do |i|
+          bytes[i] = @string[i + start_byte]&.ord || 0
+        end
+
+        bit_offset = operation.offset - (start_byte * 8)
+        value = 0
+        p @string.unpack("B*")[0].chars.each_slice(8).to_a.map(&:join).join(' ')
+
+        operation.size.times do |bit_index|
+          p "bit_offset=#{bit_offset}"
+          byte = bit_offset >> 3 # divide by 8, get byte index
+          p "byte=#{byte}"
+          bit = 7 - (bit_offset & 0x7) # get bit index from the left
+          p "bit=#{bit}"
+          byteval = bytes[byte]
+          p "byteval=#{byteval}"
+          bitval = (byteval >> bit) & 1
+          p "bitval=#{bitval}"
+          value = (value<<1) | bitval
+          p "value=#{value}"
+          bit_offset += 1
+          p '---'
+        end
+
+        if operation.type == :signed && (value & (1 << (operation.size - 1))) != 0
+          value = -1 * ((~value & (2**(operation.size) - 1)) + 1)
+        end
+
+        value
+      end
+    end
+
     private
 
     def sanitize_start_and_end(start_byte, end_byte)

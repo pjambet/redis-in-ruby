@@ -157,13 +157,73 @@ module BYORedis
     end
   end
 
+  Operation = Struct.new(:name, :type, :size, :offset, :overflow)
+
   class BitFieldCommand < BaseCommand
     def call
+      Utils.assert_args_length_greater_than(0, @args)
+      string = @db.lookup_string(@args.shift)
+
+      operations = parse_operations
+      result = []
+      bit_ops = BitOps.new(string)
+      operations.each do |operation|
+        result << (string.nil? ? 0 : bit_ops.field_op(operation))
+      end
+
+      RESPArray.new(result)
     end
 
     def self.describe
       Describe.new('bitfield', -2, [ 'write', 'denyoom' ], 1, 1, 1,
                    [ '@read', '@bitmap', '@slow' ])
+    end
+
+    private
+
+    def parse_operations
+      operations = []
+      current_overflow = :wrap
+      while arg = @args.shift
+        case arg.downcase
+        when 'get'
+          type, size = validate_type(@args.shift)
+          offset = validate_offset(@args.shift, size)
+
+          operations << Operation.new(:get, type, size, offset, current_overflow)
+        else raise RESPSyntaxError
+        end
+      end
+
+      operations
+    end
+
+    def validate_type(integer_type)
+      error_message =
+        'ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.'
+      type =
+        case integer_type[0].downcase
+        when 'i' then :signed
+        when 'u' then :unsigned
+        else raise ValidationError, error_message
+        end
+
+      size = Utils.validate_integer_with_message(integer_type[1..-1], error_message)
+      if size < 0 || (type == :signed && size > 64) || (type == :unsigned && size > 63)
+        raise ValidationError, error_message
+      else
+        return type, size
+      end
+    end
+
+    def validate_offset(offset, size)
+      if offset[0] == '#'
+        offset = Utils.validate_integer(offset[1..-1]) * size
+      else
+        offset = Utils.validate_integer(offset)
+      end
+
+      offset
     end
   end
 end

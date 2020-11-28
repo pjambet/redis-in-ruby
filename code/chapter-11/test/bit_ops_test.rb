@@ -415,13 +415,62 @@ describe 'Bitops Commands' do
     end
   end
 
-  # describe 'BITFIELD' do
-  #   it 'handles and unexpected number of arguments'
-  #   it 'returns an error if key is not a string'
+  describe 'BITFIELD' do
+    it 'handles and unexpected number of arguments' do
+      assert_command_results [
+        [ 'BITFIELD', '-ERR wrong number of arguments for \'BITFIELD\' command' ],
+      ]
+    end
 
-  #   it 'is a no-op and return an empty array with no operations'
-  #   it 'can GET with all types of formats'
-  #   it 'can GET with pound-prefixed offsets'
+    it 'returns an error if key is not a string' do
+      assert_command_results [
+        [ 'HSET not-a-string a b', ':1' ],
+        [ 'BITFIELD not-a-string', '-WRONGTYPE Operation against a key holding the wrong kind of value' ],
+      ]
+    end
+
+    it 'is a no-op and return an empty array with no operations' do
+      assert_command_results [
+        [ 'BITFIELD s', [] ],
+      ]
+    end
+
+    it 'can GET signed and unsigned integers' do
+      assert_command_results [
+        [ 'BITFIELD s GET i8 0', [ 0 ] ],
+        [ 'BITFIELD s GET u8 0', [ 0 ] ],
+        [ 'SETBIT s 8 1', ':0' ],
+        [ 'BITFIELD s GET u8 8', [ 128 ] ],
+        [ 'BITFIELD s GET i8 8', [ -128 ] ],
+        [ 'BITFIELD s GET u8 4', [ 8 ] ],
+        [ 'BITFIELD s GET i8 4', [ 8 ] ],
+        [ 'SETBIT s 4 1', ':0' ],
+        [ 'BITFIELD s GET u8 4', [ 136 ] ],
+        [ 'BITFIELD s GET i8 4', [ -120 ] ],
+        [ 'BITFIELD s GET u8 3', [ 68 ] ],
+        [ 'BITFIELD s GET i8 3', [ 68 ] ],
+      ]
+    end
+
+    it 'can GET with pound-prefixed offsets' do
+      assert_command_results [
+        [ 'SETBIT s 0 1', ':0' ],
+        [ 'SETBIT s 4 1', ':0' ],
+        [ 'SETBIT s 8 1', ':0' ],
+        [ 'BITFIELD s GET u8 #0', [ 136 ] ],
+        [ 'BITFIELD s GET u8 #1', [ 128 ] ],
+        [ 'BITFIELD s GET u8 #2', [ 0 ] ],
+        [ 'BITFIELD s GET i8 #0', [ -120 ] ],
+        [ 'BITFIELD s GET i8 #1', [ -128 ] ],
+        [ 'BITFIELD s GET i8 #2', [ 0 ] ],
+      ]
+    end
+
+    # it 'can GET with all types of formats' do
+    #   assert_command_results [
+    #     [ 'BITFIELD s GET i1 0', ':0' ],
+    #   ]
+    # end
   #   it 'can SET with all types of formats'
   #   it 'can INCRBY with all types of formats'
   #   it 'handles changing the OVERFLOW behavior in the same command'
@@ -431,5 +480,5 @@ describe 'Bitops Commands' do
   #   it 'handles the WRAP overflow with set'
   #   it 'handles the SAT overflow with set'
   #   it 'handles the FAIL overlow with set'
-  # end
+  end
 end
