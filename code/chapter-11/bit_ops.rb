@@ -154,9 +154,9 @@ module BYORedis
     def field_op(op)
       p op
       case op.name
-      when :get then get_op(op.offset, op.size, op.type)
-      when :set
-        set_op(op.offset, op.size, op.type, op.new_value, op.overflow)
+      when :get    then get_op(op.offset, op.size, op.type)
+      when :set    then set_op(op.offset, op.size, op.type, op.new_value, op.overflow)
+      when :incrby then incrby_op(op.offset, op.size, op.type, op.incr, op.overflow)
       else raise "Unknown op: #{ op }"
       end
     end
@@ -255,12 +255,39 @@ module BYORedis
     end
 
     def set_op(offset, size, type, new_value, overflow)
+      old_value = get_op(offset, size, type)
+      p "old_value=#{ old_value }"
+
+      res = set_value(offset, size, type, new_value, overflow)
+
+      if res.nil?
+        nil
+      else
+        old_value
+      end
+    end
+
+    def incrby_op(offset, size, type, incr, overflow)
+      p @string
+      p @string.object_id
+      old_value = get_op(offset, size, type)
+      p "OLD VALUE: #{ old_value }"
+      1
+      new_value = old_value + incr
+      res = set_value(offset, size, type, new_value, overflow)
+
+      if res.nil?
+        nil
+      else
+        new_value
+      end
+    end
+
+    def set_value(offset, size, type, new_value, overflow)
       p '===='
       p type
       p type == :signed
       p @string
-      old_value = get_op(offset, size, type)
-      p "old_value=#{ old_value }"
 
       # if type == :signed
       #   p "Converting #{ new_value } to #{ new_value & (2**size - 1) }"
@@ -302,7 +329,7 @@ module BYORedis
         offset += 1
       end
 
-      old_value
+      new_value
     end
   end
 end

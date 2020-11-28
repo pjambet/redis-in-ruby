@@ -545,20 +545,22 @@ describe 'Bitops Commands' do
       ]
     end
 
-    # it 'can INCRBY with all types of formats' do
-    #   assert_command_results [
-    #     [ 'BITFIELD s INCRBY i4 0 64', ':0' ],
-    #     [ 'BITFIELD s INCRBY i4 2 64', ':0' ],
-    #     [ 'BITFIELD s INCRBY i7 1 32', ':32' ],
-    #   ]
-    # end
+    it 'can INCRBY with all types of formats' do
+      assert_command_results [
+        [ 'BITFIELD s INCRBY i4 0 6 GET i4 0', [ 6, 6 ] ],
+        [ 'BITFIELD s INCRBY i4 0 -2 GET i4 0', [ 4, 4 ] ],
+        [ 'BITFIELD s INCRBY i3 0 1 GET i3 1', [ 3, -2 ] ],
+        [ 'BITFIELD s INCRBY i9 3 63 GET i9 3', [ 63, 63 ] ],
+        [ 'BITFIELD s INCRBY i7 4 10 GET i7 4', [ 41, 41 ] ],
+      ]
+    end
 
-    # it 'handles changing the OVERFLOW behavior in the same command' do
-    #   assert_command_results [
-    #     [ 'BITFIELD s INCRBY i4 0 6 OVERFLOW SAT INCRBY i4 0 10 OVERFLOW FAIL INCRBY i4 0 1', [ 0, 7, nil ] ],
-    #     [ 'BITFIELD s SET i4 0 6 OVERFLOW SAT SET i4 0 10 OVERFLOW FAIL SET i4 0 10', [ 0, 6, nil ] ],
-    #   ]
-    # end
+    it 'handles changing the OVERFLOW behavior in the same command' do
+      assert_command_results [
+        [ 'BITFIELD s INCRBY i4 0 8 OVERFLOW SAT INCRBY i4 0 20 OVERFLOW FAIL INCRBY i4 0 1', [ -8, 7, nil ] ],
+        [ 'BITFIELD s INCRBY u4 0 17 OVERFLOW SAT INCRBY u4 0 20 OVERFLOW FAIL INCRBY u4 0 1', [ 1, 15, nil ] ],
+      ]
+    end
 
     # it 'handles the WRAP overflow with incr' do
     #   assert_command_results [

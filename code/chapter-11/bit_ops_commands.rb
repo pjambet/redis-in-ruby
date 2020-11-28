@@ -157,7 +157,7 @@ module BYORedis
     end
   end
 
-  Operation = Struct.new(:name, :type, :size, :offset, :new_value, :overflow)
+  Operation = Struct.new(:name, :type, :size, :offset, :overflow, :new_value, :incr, keyword_init: true)
 
   class BitFieldCommand < BaseCommand
     def call
@@ -170,8 +170,10 @@ module BYORedis
       bit_ops = BitOps.new(string)
 
       operations.each do |operation|
-        if bit_ops.string.nil? && operation.name == :set || operation.name == :incrby
+        if bit_ops.string.nil? && (operation.name == :set || operation.name == :incrby)
+          p "INITIALIZATION"
           string = ''
+          p "object_id: #{ string.object_id }"
           bit_ops.string = string
           @db.data_store[key] = string
         end
@@ -198,13 +200,31 @@ module BYORedis
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
 
-          operations << Operation.new(:get, type, size, offset)
+          operations << Operation.new(name: :get, type: type, size: size, offset: offset)
         when 'set'
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
           new_value = Utils.validate_integer(@args.shift)
 
-          operations << Operation.new(:set, type, size, offset, new_value, current_overflow)
+          operations << Operation.new(
+            name: :set,
+            type: type,
+            size: size,
+            offset: offset,
+            new_value: new_value,
+            overflow: current_overflow)
+        when 'incrby'
+          type, size = validate_type(@args.shift)
+          offset = validate_offset(@args.shift, size)
+          incr = Utils.validate_integer(@args.shift)
+
+          operations << Operation.new(
+            name: :incrby,
+            type: type,
+            size: size,
+            offset: offset,
+            incr: incr,
+            overflow: current_overflow)
         when 'overflow'
           overflow_type = @args.shift&.downcase
           if [ 'sat', 'wrap', 'fail' ].include?(overflow_type)
