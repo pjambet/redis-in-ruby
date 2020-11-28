@@ -148,46 +148,13 @@ module BYORedis
       -1
     end
 
-    def field_op(operation)
-      case operation.name
-      when :get
-        p operation
-        start_byte = (operation.offset >> 3) # / 8
-        leftover_bits = operation.offset % 8 # maybe we can do a bitshift?
-        bytes = []
-        # Load 9 bytes, to make sure we have all the bits in case not aligned
-        9.times do |i|
-          bytes[i] = @string[i + start_byte]&.ord || 0
-        end
-
-        # operation.offset is the whole offset, so if it's 8, we're starting at the first bit of
-        # the first byte
-        bit_offset = operation.offset - (start_byte * 8)
-        value = 0
-        p @string.unpack("B*")[0].chars.each_slice(8).to_a.map(&:join).join(' ')
-
-        operation.size.times do |bit_index|
-          p "bit_offset=#{bit_offset}"
-          byte = bit_offset >> 3 # divide by 8, get byte index
-          p "byte=#{byte}"
-          # 0x7 is 0111, so we essentially do bit_offset % 8
-          bit = 7 - (bit_offset & 0x7) # get bit index from the left
-          p "bit=#{bit}"
-          byteval = bytes[byte]
-          p "byteval=#{byteval}"
-          bitval = (byteval >> bit) & 1
-          p "bitval=#{bitval}"
-          value = (value<<1) | bitval
-          p "value=#{value}"
-          bit_offset += 1
-          p '---'
-        end
-
-        if operation.type == :signed && (value & (1 << (operation.size - 1))) != 0
-          value = -1 * ((~value & (2**(operation.size) - 1)) + 1)
-        end
-
-        value
+    def field_op(op)
+      p op
+      case op.name
+      when :get then get_op(op.offset, op.size, op.type)
+      when :set
+        set_op(op.offset, op.size, op.type, op.new_value, op.overflow)
+      else raise "Unknown op: #{ op }"
       end
     end
 
@@ -211,6 +178,78 @@ module BYORedis
     # etc ...
     def bit_at_offset(byte, bit_shift_offset)
       (byte >> bit_shift_offset) & 1
+    end
+
+    def get_op(offset, size, type)
+      start_byte = (offset >> 3) # / 8
+      leftover_bits = offset % 8 # maybe we can do a bitshift?
+      bytes = []
+      # Load 9 bytes, to make sure we have all the bits in case not aligned
+      9.times do |i|
+        bytes[i] = @string[i + start_byte]&.ord || 0
+      end
+
+      # offset is the whole offset, so if it's 8, we're starting at the first bit of
+      # the first byte
+      bit_offset = offset - (start_byte * 8)
+      value = 0
+      p @string.unpack("B*")[0].chars.each_slice(8).to_a.map(&:join).join(' ')
+
+      size.times do |bit_index|
+        p "bit_offset=#{bit_offset}"
+        byte = bit_offset >> 3 # divide by 8, get byte index
+        p "byte=#{byte}"
+        # 0x7 is 0111, so we essentially do bit_offset % 8
+        bit = 7 - (bit_offset & 0x7) # get bit index from the left
+        p "bit=#{bit}"
+        byteval = bytes[byte]
+        p "byteval=#{byteval}"
+        bitval = (byteval >> bit) & 1
+        p "bitval=#{bitval}"
+        value = (value<<1) | bitval
+        p "value=#{value}"
+        bit_offset += 1
+        p '---'
+      end
+
+      if type == :signed && (value & (1 << (size - 1))) != 0
+        value = -1 * ((~value & (2**(size) - 1)) + 1)
+      end
+
+      value
+    end
+
+    def set_op(offset, size, type, new_value, overflow)
+      old_value = get_op(offset, size, type)
+      p "old_value=#{ old_value }"
+
+      # if type == :signed
+      #   p "Converting #{ new_value } to #{ new_value & (2**size - 1) }"
+      #   format = "%0#{size}b"
+      #   p format % new_value
+      #   new_value = new_value & (2**size - 1)
+      #   p format % new_value
+      # end
+
+      overflow = check_signed_overflow(new_value, size, overflow)
+
+      # set field
+      size.times do |bit_index|
+        p 'playing with bits'
+        bit_value = (new_value & (1 << (size - 1 - bit_index))) != 0 ? 1 : 0
+        byte = offset >> 3
+        bit = 7 - (offset & 0x7)
+        byte_value = @string[byte].ord
+        byte_value &= ~(1 << bit)
+        byte_value |= (bit_value << bit) # & 0xff
+        @string[byte] = (byte_value & 0xff).chr
+        offset += 1
+      end
+
+      old_value
+    end
+
+    def check_signed_overflow(value, size, overflow)
     end
   end
 end

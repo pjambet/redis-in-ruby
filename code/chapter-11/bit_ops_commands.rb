@@ -157,7 +157,7 @@ module BYORedis
     end
   end
 
-  Operation = Struct.new(:name, :type, :size, :offset, :overflow)
+  Operation = Struct.new(:name, :type, :size, :offset, :new_value, :overflow)
 
   class BitFieldCommand < BaseCommand
     def call
@@ -167,6 +167,7 @@ module BYORedis
       operations = parse_operations
       result = []
       bit_ops = BitOps.new(string)
+
       operations.each do |operation|
         result << (string.nil? ? 0 : bit_ops.field_op(operation))
       end
@@ -190,7 +191,13 @@ module BYORedis
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
 
-          operations << Operation.new(:get, type, size, offset, current_overflow)
+          operations << Operation.new(:get, type, size, offset)
+        when 'set'
+          type, size = validate_type(@args.shift)
+          offset = validate_offset(@args.shift, size)
+          new_value = Utils.validate_integer(@args.shift)
+
+          operations << Operation.new(:set, type, size, offset, new_value, current_overflow)
         else raise RESPSyntaxError
         end
       end

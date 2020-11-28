@@ -437,18 +437,11 @@ describe 'Bitops Commands' do
 
     it 'can GET signed and unsigned integers' do
       assert_command_results [
-        [ 'BITFIELD s GET i8 0', [ 0 ] ],
-        [ 'BITFIELD s GET u8 0', [ 0 ] ],
+        [ 'BITFIELD s GET i8 0 GET u8 0', [ 0, 0 ] ],
         [ 'SETBIT s 8 1', ':0' ],
-        [ 'BITFIELD s GET u8 8', [ 128 ] ],
-        [ 'BITFIELD s GET i8 8', [ -128 ] ],
-        [ 'BITFIELD s GET u8 4', [ 8 ] ],
-        [ 'BITFIELD s GET i8 4', [ 8 ] ],
+        [ 'BITFIELD s GET u8 8 GET i8 8 GET u8 4 GET i8 4', [ 128, -128, 8, 8 ] ],
         [ 'SETBIT s 4 1', ':0' ],
-        [ 'BITFIELD s GET u8 4', [ 136 ] ],
-        [ 'BITFIELD s GET i8 4', [ -120 ] ],
-        [ 'BITFIELD s GET u8 3', [ 68 ] ],
-        [ 'BITFIELD s GET i8 3', [ 68 ] ],
+        [ 'BITFIELD s GET u8 4 GET i8 4 GET u8 3 GET i8 3', [ 136, -120, 68, 68 ] ],
       ]
     end
 
@@ -457,12 +450,8 @@ describe 'Bitops Commands' do
         [ 'SETBIT s 0 1', ':0' ],
         [ 'SETBIT s 4 1', ':0' ],
         [ 'SETBIT s 8 1', ':0' ],
-        [ 'BITFIELD s GET u8 #0', [ 136 ] ],
-        [ 'BITFIELD s GET u8 #1', [ 128 ] ],
-        [ 'BITFIELD s GET u8 #2', [ 0 ] ],
-        [ 'BITFIELD s GET i8 #0', [ -120 ] ],
-        [ 'BITFIELD s GET i8 #1', [ -128 ] ],
-        [ 'BITFIELD s GET i8 #2', [ 0 ] ],
+        [ 'BITFIELD s GET u8 #0 GET u8 #1 GET u8 #2', [ 136, 128, 0 ] ],
+        [ 'BITFIELD s GET i8 #0 GET i8 #1 GET i8 #2', [ -120, -128, 0 ] ],
       ]
     end
 
@@ -511,13 +500,19 @@ describe 'Bitops Commands' do
       end
     end
 
-    # it 'can SET with all types of formats' do
-    #   assert_command_results [
-    #     [ 'BITFIELD s SET u8 0 128', ':0' ],
-    #     [ 'BITFIELD s SET u16 4 1024', ':0' ],
-    #     [ 'BITFIELD s SET u16 0 2048', ':32832' ],
-    #   ]
-    # end
+    it 'can SET with all types of formats' do
+      assert_command_results [
+        [ 'SETBIT s 4 1', ':0' ],
+        [ 'SETBIT s 24 1', ':0' ],
+        [ 'BITFIELD s SET u8 0 128 GET u8 0', [ 8, 128 ] ],
+        [ 'BITFIELD s SET u16 4 1065 GET u16 4', [ 0, 1065 ] ],
+        [ 'BITFIELD s SET u16 0 2047 GET u16 0', [ 32834, 2047 ] ],
+        [ 'BITFIELD s SET i8 0 127 GET i8 0', [ 7, 127 ] ],
+        [ 'BITFIELD s SET i16 4 1065 GET i16 4', [ -7, 1065 ] ],
+        [ 'BITFIELD s SET i16 0 2047 GET i16 0', [ 28738, 2047 ] ],
+        [ 'BITFIELD s SET i14 3 -200 GET i14 3', [ 4095, -200 ] ],
+      ]
+    end
 
     # it 'can INCRBY with all types of formats' do
     #   assert_command_results [
