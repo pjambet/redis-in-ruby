@@ -139,7 +139,7 @@ _listing 6.2: Pseudo-code hash table_
 
 The `new_node` function acts as the entry point of a linked list. A node contains a key, a value, and a next node value. If the next node value is null, the element is the last one in the list.
 
-Prepending — a fancy word for "adding at the beginning" — an element to such list is done by first creating a single node list and then a second one, with the `next_node` value set to the first one:
+Prepending - a fancy word for "adding at the beginning" - an element to such list is done by first creating a single node list and then a second one, with the `next_node` value set to the first one:
 
 ```
 node1 = new_node(key1, value1, null)
@@ -572,9 +572,9 @@ Digest::MD5.hexdigest("a") # => 0cc175b9c0f1b6a831c399e269772661
 
 The result is a 32 character string representing a 128-bit (16 bytes) result. Because most CPUs use 64-bit integers as their largest types, the result we just saw is actually the hex representation of two 64 bit integers. Let's illustrate this with the `pack` and `unpack` method.
 
-The string is a hex string, so we need to look at each pair of characters. We call `hex` on each pair, which returns the integer value. For instance `'00'.hex` returns `0`, `'ff'.hex` returns `255`, the maximum value of an 8-bit integer — a byte. We then call `.pack('c16')` which returns a string representing all the bits concatenated together. We use `'c16'` because the result of `.map(&:hex)` is an array of 16 bytes.
+The string is a hex string, so we need to look at each pair of characters. We call `hex` on each pair, which returns the integer value. For instance `'00'.hex` returns `0`, `'ff'.hex` returns `255`, the maximum value of an 8-bit integer - a byte. We then call `.pack('c16')` which returns a string representing all the bits concatenated together. We use `'c16'` because the result of `.map(&:hex)` is an array of 16 bytes.
 
-Finally `.unpack('QQ')` looks at the string of bytes and tries to convert to two 64 bit integers. We use `'QQ'`, which is identical to `'Q2'`, because a string of 16 bytes can be unpacked to two 64-bit integer. One 64-bit integer is composed of 8 bytes — a byte contains 8 bits, so 8 bytes contain 64 bits — so 16 bytes can be unpacked to two 64-bit integers.
+Finally `.unpack('QQ')` looks at the string of bytes and tries to convert to two 64 bit integers. We use `'QQ'`, which is identical to `'Q2'`, because a string of 16 bytes can be unpacked to two 64-bit integer. One 64-bit integer is composed of 8 bytes - a byte contains 8 bits, so 8 bytes contain 64 bits - so 16 bytes can be unpacked to two 64-bit integers.
 
 ``` ruby
 bytes = "0cc175b9c0f1b6a831c399e269772661".scan(/../).map(&:hex).pack('c16') # => "\f\xC1u\xB9\xC0\xF1\xB6\xA81\xC3\x99\xE2iw&a"
