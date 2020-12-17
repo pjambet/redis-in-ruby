@@ -24,7 +24,7 @@ Let's get to it.
 
 ## Maps, Dictionaries, Associative Arrays
 
-This chapter covers hash tables, which is one way of implementing a data structure commonly called Map, Dictionary or Associate Array. I will use the term "Dictionary" as I find that "Map" can be confusing, especially when working with languages providing a `map` function/method, such as Ruby! From my experience the term associative array, while very explicit, is not as common.
+This chapter covers hash tables, which is one way of implementing a data structure commonly called Map, Dictionary or Associative Array. I will use the term "Dictionary" as I find that "Map" can be confusing, especially when working with languages providing a `map` function/method, such as Ruby! From my experience the term associative array, while very explicit, is not as common.
 
 The basic definition of such data structure is one that holds zero or more key/value pairs, where a key cannot appear more than once.
 
