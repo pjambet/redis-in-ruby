@@ -134,7 +134,7 @@ module BYORedis
         end
         # Otherwise, keep
         if present_in_all_other_sets
-          intersection_set.add(weighted_pair_score, pair.member, {})
+          intersection_set.add(weighted_pair_score, pair.member, options: {})
         end
       end
 
