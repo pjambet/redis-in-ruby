@@ -1540,7 +1540,7 @@ In the [next Chapter][chapter-7] we will add new commands to handle a new data t
 
 ## Appendix A: Array from scratch in Ruby
 
-This implementation use the fiddle gem, that comes with Ruby. Fiddle provides an interface to libffi, which is a C library that allows code in one language to call code in another language. Here we use the `Fiddle::Pointer` class with the `malloc` method to explicitly allocate memory.
+This implementation use the fiddle gem which is packaged alongside Ruby. Fiddle provides an interface to libffi, which is a C library that allows code in one language to call code in another language. Here we use the `Fiddle::Pointer` class with the `malloc` method to explicitly allocate memory.
 
 This implementation only works with strings and does not support resizing.
 
@@ -1612,6 +1612,24 @@ ary = BYOArray.new(2)
 ::Kernel.puts ary.get(2)
 ::Kernel.puts ary.add("bar")
 ```
+
+_Note that this is a very very rough sketch of how `Fiddle` can be used to allocate memory from Ruby in an array-like manner. Among probably other issues, a huge problem with this implementation is that the memory allocated in the constructor is never de-allocated. `Fiddle` exposes a `free` method, but since Ruby objects are deallocated by the Garbage Collector, it is non-trivial to figure out how and when to call `free`. The `ObjectSpace` module has a `define_finalizer` method which can be used to define a proc that will be called when the object is garbage collected. This [StackOverflow answer][stack-overflow-object-finalizer] shows an example of how it can be used:_
+
+```ruby
+class MyClass
+  def initialize
+    ObjectSpace.define_finalizer(
+      self,
+      self.class.method(:finalize).to_proc
+    )
+  end
+
+  def MyClass.finalize(id)
+    puts "Object #{id} dying at #{Time.new}"
+  end
+end
+```
+_listing 6.28: Using define\_finalizer to register a callback on object destruction_
 
 ## Appendix B: A Ruby implementation of SipHash
 
@@ -1835,7 +1853,7 @@ class SipHash
   end
 end
 ```
-_listing 6.28: A Ruby implementation of the siphash 1-2 algorithm_
+_listing 6.29: A Ruby implementation of the siphash 1-2 algorithm_
 
 [java-doc-tree-map]:https://docs.oracle.com/javase/8/docs/api/java/util/TreeMap.html
 [wikipedia-hash-table]:https://en.wikipedia.org/wiki/Hash_table
@@ -1871,3 +1889,4 @@ _listing 6.28: A Ruby implementation of the siphash 1-2 algorithm_
 [redis-doc-del]:https://redis.io/commands/del
 [redis-source-get-random-bytes]:https://github.com/antirez/redis/blob/6.0.0/src/util.c#L620
 [chapter-3]:/post/chapter-3-multiple-clients/
+[stack-overflow-object-finalizer]:https://stackoverflow.com/a/156264/919641
