@@ -1,5 +1,8 @@
 module BYORedis
   class BitOps
+
+    attr_accessor :string
+
     def initialize(string)
       @string = string
     end
@@ -151,9 +154,9 @@ module BYORedis
     def field_op(op)
       p op
       case op.name
-      when :get then get_op(op.offset, op.size, op.type)
-      when :set
-        set_op(op.offset, op.size, op.type, op.new_value, op.overflow)
+      when :get    then get_op(op.offset, op.size, op.type)
+      when :set    then set_op(op.offset, op.size, op.type, op.new_value, op.overflow)
+      when :incrby then incrby_op(op.offset, op.size, op.type, op.incr, op.overflow)
       else raise "Unknown op: #{ op }"
       end
     end
@@ -219,9 +222,72 @@ module BYORedis
       value
     end
 
+    def check_signed_overflow(new_value, size, overflow)
+      p '--------'
+      max = (1 << (size - 1)) - 1
+      min = -max -1
+
+      max_incr = max - new_value
+      min_incr = min - new_value
+
+      if new_value > max # || incr ...
+        if overflow == :sat
+          max
+        end
+      elsif new_value < min # || incr ...
+        if overflow == :sat
+          min
+        end
+      else
+        nil
+      end
+    end
+
+    def check_unsigned_overflow(new_value, size, overflow)
+      max = (1 << size) - 1
+
+      if new_value > max # incr
+        if overflow == :sat
+          max
+        end
+      elsif false # incr stuff with neg shit
+      end
+    end
+
     def set_op(offset, size, type, new_value, overflow)
       old_value = get_op(offset, size, type)
       p "old_value=#{ old_value }"
+
+      res = set_value(offset, size, type, new_value, overflow)
+
+      if res.nil?
+        nil
+      else
+        old_value
+      end
+    end
+
+    def incrby_op(offset, size, type, incr, overflow)
+      p @string
+      p @string.object_id
+      old_value = get_op(offset, size, type)
+      p "OLD VALUE: #{ old_value }"
+      1
+      new_value = old_value + incr
+      res = set_value(offset, size, type, new_value, overflow)
+
+      if res.nil?
+        nil
+      else
+        new_value
+      end
+    end
+
+    def set_value(offset, size, type, new_value, overflow)
+      p '===='
+      p type
+      p type == :signed
+      p @string
 
       # if type == :signed
       #   p "Converting #{ new_value } to #{ new_value & (2**size - 1) }"
@@ -230,8 +296,25 @@ module BYORedis
       #   new_value = new_value & (2**size - 1)
       #   p format % new_value
       # end
+      if type == :unsigned && new_value < 0
+        # Conversion from long long to uint64_t
+        new_value = new_value & (2**64 - 1)
+      end
 
-      overflow = check_signed_overflow(new_value, size, overflow)
+      p type
+      value_after_overflow =
+        case type
+        when :signed then check_signed_overflow(new_value, size, overflow)
+        when :unsigned then check_unsigned_overflow(new_value, size, overflow)
+        else raise "Unknow type: #{ type }"
+        end
+
+      p "NEW VALUE: #{ value_after_overflow }"
+      if value_after_overflow != nil
+        new_value = value_after_overflow & (2**size - 1)
+      elsif value_after_overflow == nil && overflow == :fail
+        return nil
+      end
 
       # set field
       size.times do |bit_index|
@@ -239,17 +322,14 @@ module BYORedis
         bit_value = (new_value & (1 << (size - 1 - bit_index))) != 0 ? 1 : 0
         byte = offset >> 3
         bit = 7 - (offset & 0x7)
-        byte_value = @string[byte].ord
+        byte_value = @string[byte]&.ord || 0
         byte_value &= ~(1 << bit)
         byte_value |= (bit_value << bit) # & 0xff
         @string[byte] = (byte_value & 0xff).chr
         offset += 1
       end
 
-      old_value
-    end
-
-    def check_signed_overflow(value, size, overflow)
+      new_value
     end
   end
 end
