@@ -151,6 +151,7 @@ module BYORedis
     end
 
     def self.validate_integer(str)
+      raise RESPSyntaxError if str.nil?
       validate_integer_with_message(str, 'ERR value is not an integer or out of range')
     end
 

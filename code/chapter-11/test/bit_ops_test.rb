@@ -419,6 +419,24 @@ describe 'Bitops Commands' do
     it 'handles and unexpected number of arguments' do
       assert_command_results [
         [ 'BITFIELD', '-ERR wrong number of arguments for \'BITFIELD\' command' ],
+        [ 'BITFIELD s SET u1', '-ERR syntax error' ],
+        [ 'BITFIELD s SET u1 0', '-ERR syntax error' ],
+        [ 'BITFIELD s GET u1', '-ERR syntax error' ],
+        [ 'BITFIELD s INCRBY u1', '-ERR syntax error' ],
+        [ 'BITFIELD s INCRBY u1 0', '-ERR syntax error' ],
+        [ 'BITFIELD s OVERLFOW', '-ERR syntax error' ],
+      ]
+    end
+
+    it 'returns an error with invalid overflow types' do
+      assert_command_results [
+        [ 'BITFIELD s OVERFLOW foo', '-ERR syntax error' ],
+      ]
+    end
+
+    it 'is a no-op with just an overflow sub command' do
+      assert_command_results [
+        [ 'BITFIELD s OVERFLOW SAT', [] ],
       ]
     end
 

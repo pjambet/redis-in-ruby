@@ -199,6 +199,7 @@ module BYORedis
         when 'get'
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
+          raise RESPSyntaxError if offset.nil?
 
           operations << Operation.new(name: :get, type: type, size: size, offset: offset)
         when 'set'
@@ -212,7 +213,8 @@ module BYORedis
             size: size,
             offset: offset,
             new_value: new_value,
-            overflow: current_overflow)
+            overflow: current_overflow,
+          )
         when 'incrby'
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
@@ -224,7 +226,8 @@ module BYORedis
             size: size,
             offset: offset,
             incr: incr,
-            overflow: current_overflow)
+            overflow: current_overflow,
+          )
         when 'overflow'
           overflow_type = @args.shift&.downcase
           if [ 'sat', 'wrap', 'fail' ].include?(overflow_type)
@@ -240,6 +243,7 @@ module BYORedis
     end
 
     def validate_type(integer_type)
+      raise RESPSyntaxError if integer_type.nil?
       error_message =
         'ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.'
       type =
