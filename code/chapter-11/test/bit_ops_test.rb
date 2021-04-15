@@ -583,6 +583,7 @@ describe 'Bitops Commands' do
         [ 'BITFIELD s OVERFLOW WRAP INCRBY i4 0 -7', [ 3 ] ],
         [ 'BITFIELD s OVERFLOW WRAP INCRBY u4 0 15', [ 2 ] ],
         [ 'BITFIELD s OVERFLOW WRAP INCRBY u4 0 -3', [ 15 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP INCRBY i4 0 17', [ 0 ] ],
       ]
     end
 

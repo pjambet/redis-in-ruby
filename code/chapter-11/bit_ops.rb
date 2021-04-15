@@ -196,23 +196,15 @@ module BYORedis
       # the first byte
       bit_offset = offset - (start_byte * 8)
       value = 0
-      p @string.unpack("B*")[0].chars.each_slice(8).to_a.map(&:join).join(' ')
 
       size.times do |bit_index|
-        p "bit_offset=#{bit_offset}"
         byte = bit_offset >> 3 # divide by 8, get byte index
-        p "byte=#{byte}"
         # 0x7 is 0111, so we essentially do bit_offset % 8
         bit = 7 - (bit_offset & 0x7) # get bit index from the left
-        p "bit=#{bit}"
         byteval = bytes[byte]
-        p "byteval=#{byteval}"
         bitval = (byteval >> bit) & 1
-        p "bitval=#{bitval}"
         value = (value<<1) | bitval
-        p "value=#{value}"
         bit_offset += 1
-        p '---'
       end
 
       if type == :signed && (value & (1 << (size - 1))) != 0
@@ -223,63 +215,42 @@ module BYORedis
     end
 
     def check_signed_overflow(value, incr, size, overflow)
-      p '--------'
-      p 'overflow checking for signed num'
       max = size == 64 ? (2**63 - 1) : (1 << (size - 1)) - 1
       min = -max - 1
-      p min
-      p max
-      p value
-      p incr
 
       max_incr = max - value
       min_incr = min - value
-
-      p size != 64 && incr < min_incr
-      p overflow
 
       if value > max || (size != 64 && incr > max_incr) || (value >= 0 && incr > 0 && incr > max_incr)
         if overflow == :sat
           max
         elsif overflow == :wrap
-          msb = 1 << (size - 1)
-          c = value + incr
-          if size < 64
-            mask = -1 << size
-            if c & msb
-              c |= mask
-            else
-              c &= ~mask
-            end
-          end
-
-          c
+          wrap_around_for_signed_integers(value, incr, size)
         end
       elsif value < min || (size != 64 && incr < min_incr) || (value < 0 && incr < 0 && incr < min_incr)
         if overflow == :sat
           min
         elsif overflow == :wrap
-          msb = 1 << (size - 1)
-          c = value + incr
-          p "C: #{ c }"
-          p "msb: #{ msb }"
-          if size < 64
-            mask = -1 << size
-            p "Mask: #{ mask }"
-            p mask
-            if c & msb != 0
-              c |= mask
-            else
-              c &= ~mask
-            end
-          end
-
-          p "C: #{ c }"
-          c
+          wrap_around_for_signed_integers(value, incr, size)
         end
       else
         nil
       end
+    end
+
+    def wrap_around_for_signed_integers(value, incr, size)
+      msb = 1 << (size - 1)
+      c = (value + incr) # TODO: Careful, this will never overflow in Ruby
+      if size < 64
+        mask = -1 << size
+        if c & msb != 0
+          c |= mask
+        else
+          c &= ~mask
+        end
+      end
+
+      c
     end
 
     def check_unsigned_overflow(value, incr, size, overflow)
@@ -291,33 +262,27 @@ module BYORedis
         if overflow == :sat
           max
         elsif overflow == :wrap
-          # handle_wrap
-          mask = -1 << size
-          res = value + incr
-          res & ~mask
+          wrap_around_for_unsigned_integers(value, incr, size)
         end
       elsif incr < 0 && incr < min_incr
         if overflow == :sat
           0
         elsif overflow == :wrap
-          # handle_wrap
-          mask = -1 << size
-          res = value + incr
-          res & ~mask
+          wrap_around_for_unsigned_integers(value, incr, size)
         end
       else
         nil
       end
     end
 
+    def wrap_around_for_unsigned_integers(value, incr, size)
+      mask = -1 << size
+      res = value + incr
+      res & ~mask
+    end
+
     def set_op(offset, size, type, new_value, overflow)
       old_value = get_op(offset, size, type)
-      p "old_value=#{ old_value }"
-
-      p '===='
-      p type
-      p type == :signed
-      p @string
 
       if type == :unsigned && new_value < 0
         # If the value is negative and we're dealing with an unsigned format (prefixed with u), then we
@@ -326,7 +291,6 @@ module BYORedis
         new_value = new_value & (2**64 - 1)
       end
 
-      p type
       value_after_overflow =
         case type
         when :signed then check_signed_overflow(new_value, 0, size, overflow)
@@ -334,7 +298,6 @@ module BYORedis
         else raise "Unknow type: #{ type }"
         end
 
-      p "NEW VALUE: #{ value_after_overflow }"
       if value_after_overflow != nil
         # TODO: Do we need this?!
         # new_value = value_after_overflow & (2**size - 1)
@@ -353,10 +316,7 @@ module BYORedis
     end
 
     def incrby_op(offset, size, type, incr, overflow)
-      p @string
-      p @string.object_id
       old_value = get_op(offset, size, type)
-      p "OLD VALUE: #{ old_value }"
 
       value_after_overflow =
         case type
@@ -364,8 +324,6 @@ module BYORedis
         when :unsigned then check_unsigned_overflow(old_value, incr, size, overflow)
         else raise "Unknow type: #{ type }"
         end
-
-      p "Value after overflow: #{ value_after_overflow }"
 
       if value_after_overflow != nil
         # new_value = value_after_overflow & (2**size - 1)
@@ -386,10 +344,7 @@ module BYORedis
     end
 
     def set_value(offset, size, new_value)
-      p "Setting #{ new_value } at #{ offset }"
-      # set field
       size.times do |bit_index|
-        p 'playing with bits'
         bit_value = (new_value & (1 << (size - 1 - bit_index))) != 0 ? 1 : 0
         byte = offset >> 3
         bit = 7 - (offset & 0x7)
