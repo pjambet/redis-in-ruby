@@ -291,26 +291,8 @@ module BYORedis
         new_value = new_value & (2**64 - 1)
       end
 
-      value_after_overflow =
-        case type
-        when :signed then check_signed_overflow(new_value, 0, size, overflow)
-        when :unsigned then check_unsigned_overflow(new_value, 0, size, overflow)
-        else raise "Unknow type: #{ type }"
-        end
-
-      if value_after_overflow != nil
-        # TODO: Do we need this?!
-        # new_value = value_after_overflow & (2**size - 1)
-        new_value = value_after_overflow
-      elsif value_after_overflow == nil && overflow == :fail
-        return nil
-      end
-
-      res = set_value(offset, size, new_value)
-
-      if res.nil?
-        nil
-      else
+      with_overflow_check(new_value, size, type, 0, overflow) do |new_value|
+        set_value(offset, size, new_value)
         old_value
       end
     end
@@ -318,28 +300,27 @@ module BYORedis
     def incrby_op(offset, size, type, incr, overflow)
       old_value = get_op(offset, size, type)
 
+      with_overflow_check(old_value, size, type, incr, overflow) do |new_value|
+        set_value(offset, size, new_value)
+        new_value
+      end
+    end
+
+    def with_overflow_check(value, size, type, incr, overflow)
       value_after_overflow =
         case type
-        when :signed then check_signed_overflow(old_value, incr, size, overflow)
-        when :unsigned then check_unsigned_overflow(old_value, incr, size, overflow)
+        when :signed then check_signed_overflow(value, incr, size, overflow)
+        when :unsigned then check_unsigned_overflow(value, incr, size, overflow)
         else raise "Unknow type: #{ type }"
         end
 
       if value_after_overflow != nil
         # new_value = value_after_overflow & (2**size - 1)
-        new_value = value_after_overflow
+        yield value_after_overflow
       elsif value_after_overflow == nil && overflow == :fail
         return nil
       else
-        new_value = old_value + incr
-      end
-
-      res = set_value(offset, size, new_value)
-
-      if res.nil?
-        nil
-      else
-        new_value
+        yield value + incr
       end
     end
 
