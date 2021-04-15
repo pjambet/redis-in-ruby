@@ -524,21 +524,26 @@ describe 'Bitops Commands' do
 
     it 'handles the WRAP overflow with set' do
       assert_command_results [
-        [ 'BITFIELD s SET i4 0 10 GET i4 0', [ 0, -6 ] ],
-        [ 'GET s', "\xa0" ],
-        [ 'BITFIELD s SET u4 0 18 GET u4 0', [ 10, 2 ] ],
+        [ 'BITFIELD s SET i4 4 10 GET i4 4', [ 0, -6 ] ],
+        [ 'BITFIELD s SET i4 4 -10 GET i4 4', [ -6, 6 ] ],
+        [ 'GET s', "\x06" ],
+        [ 'BITFIELD s SET u4 4 18 GET u4 4', [ 6, 2 ] ],
+        [ 'BITFIELD s SET u4 4 -5 GET u4 4', [ 2, 11 ] ],
       ]
       assert_command_results [
         [ 'DEL s', ':1' ],
         [ 'BITFIELD s OVERFLOW WRAP SET i4 0 10 GET i4 0', [ 0, -6 ] ],
-        [ 'BITFIELD s OVERFLOW WRAP SET u4 0 18 GET u4 0', [ 10, 2 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP SET i4 0 -10 GET i4 0', [ -6, 6 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP SET u4 0 18 GET u4 0', [ 6, 2 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP SET u4 0 -5 GET u4 0', [ 2, 11 ] ],
       ]
     end
 
     it 'handles the SAT overflow with set' do
       assert_command_results [
         [ 'BITFIELD s OVERFLOW SAT SET i4 0 10 GET i4 0', [ 0, 7 ] ],
-        [ 'BITFIELD s OVERFLOW SAT SET u4 0 18 GET u4 0', [ 7, 15 ] ],
+        [ 'BITFIELD s OVERFLOW SAT SET i4 0 -10 GET i4 0', [ 7, -8 ] ],
+        [ 'BITFIELD s OVERFLOW SAT SET u4 0 18 GET u4 0', [ 8, 15 ] ],
         [ 'BITFIELD s OVERFLOW SAT SET u4 0 -2 GET u4 0', [ 15, 15 ] ],
       ]
     end
@@ -547,8 +552,10 @@ describe 'Bitops Commands' do
       assert_command_results [
         [ 'SETBIT s 7 1', ':0' ],
         [ 'BITFIELD s OVERFLOW FAIL SET i4 0 10 GET i4 0', [ nil, 0 ] ],
+        [ 'BITFIELD s OVERFLOW FAIL SET i4 0 -10 GET i4 0', [ nil, 0 ] ], 
         [ 'GET s', "\x01" ],
         [ 'BITFIELD s OVERFLOW FAIL SET u4 0 18 GET u4 0', [ nil, 0 ] ],
+        [ 'BITFIELD s OVERFLOW FAIL SET u4 0 -2 GET u4 0', [ nil, 0 ] ],
         [ 'GET s', "\x01" ],
       ]
     end
@@ -573,7 +580,9 @@ describe 'Bitops Commands' do
     it 'handles the WRAP overflow with incr' do
       assert_command_results [
         [ 'BITFIELD s OVERFLOW WRAP INCRBY i4 0 10', [ -6 ] ],
-        [ 'BITFIELD s OVERFLOW WRAP INCRBY u4 0 10', [ 4 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP INCRBY i4 0 -7', [ 3 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP INCRBY u4 0 15', [ 2 ] ],
+        [ 'BITFIELD s OVERFLOW WRAP INCRBY u4 0 -3', [ 15 ] ],
       ]
     end
 

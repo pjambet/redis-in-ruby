@@ -224,6 +224,7 @@ module BYORedis
 
     def check_signed_overflow(value, incr, size, overflow)
       p '--------'
+      p 'overflow checking for signed num'
       max = size == 64 ? (2**63 - 1) : (1 << (size - 1)) - 1
       min = -max - 1
       p min
@@ -233,6 +234,9 @@ module BYORedis
 
       max_incr = max - value
       min_incr = min - value
+
+      p size != 64 && incr < min_incr
+      p overflow
 
       if value > max || (size != 64 && incr > max_incr) || (value >= 0 && incr > 0 && incr > max_incr)
         if overflow == :sat
@@ -251,9 +255,27 @@ module BYORedis
 
           c
         end
-      elsif value < min # || incr ...
+      elsif value < min || (size != 64 && incr < min_incr) || (value < 0 && incr < 0 && incr < min_incr)
         if overflow == :sat
           min
+        elsif overflow == :wrap
+          msb = 1 << (size - 1)
+          c = value + incr
+          p "C: #{ c }"
+          p "msb: #{ msb }"
+          if size < 64
+            mask = -1 << size
+            p "Mask: #{ mask }"
+            p mask
+            if c & msb != 0
+              c |= mask
+            else
+              c &= ~mask
+            end
+          end
+
+          p "C: #{ c }"
+          c
         end
       else
         nil
@@ -274,7 +296,17 @@ module BYORedis
           res = value + incr
           res & ~mask
         end
-      elsif false # incr stuff with neg shit
+      elsif incr < 0 && incr < min_incr
+        if overflow == :sat
+          0
+        elsif overflow == :wrap
+          # handle_wrap
+          mask = -1 << size
+          res = value + incr
+          res & ~mask
+        end
+      else
+        nil
       end
     end
 
@@ -287,15 +319,10 @@ module BYORedis
       p type == :signed
       p @string
 
-      # if type == :signed
-      #   p "Converting #{ new_value } to #{ new_value & (2**size - 1) }"
-      #   format = "%0#{size}b"
-      #   p format % new_value
-      #   new_value = new_value & (2**size - 1)
-      #   p format % new_value
-      # end
       if type == :unsigned && new_value < 0
-        # Conversion from long long to uint64_t
+        # If the value is negative and we're dealing with an unsigned format (prefixed with u), then we
+        # need to convert it to a positive integer, which we do with a mask of 64 1s
+        # This is equivalent to casting an int64_t to an uint64_t in C
         new_value = new_value & (2**64 - 1)
       end
 
