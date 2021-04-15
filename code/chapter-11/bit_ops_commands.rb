@@ -264,6 +264,9 @@ module BYORedis
         offset = Utils.validate_integer(offset[1..-1]) * size
       else
         offset = Utils.validate_integer(offset)
+        if offset < 0
+          raise ValidationError, 'ERR bit offset is not an integer or out of range'
+        end
       end
 
       offset

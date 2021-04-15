@@ -309,7 +309,9 @@ module BYORedis
 
       p "NEW VALUE: #{ value_after_overflow }"
       if value_after_overflow != nil
-        new_value = value_after_overflow & (2**size - 1)
+        # TODO: Do we need this?!
+        # new_value = value_after_overflow & (2**size - 1)
+        new_value = value_after_overflow
       elsif value_after_overflow == nil && overflow == :fail
         return nil
       end

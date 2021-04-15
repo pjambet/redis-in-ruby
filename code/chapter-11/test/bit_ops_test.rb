@@ -514,6 +514,14 @@ describe 'Bitops Commands' do
       ]
     end
 
+    it 'rejects operations with negative offsets' do
+      assert_command_results [
+        [ 'BITFIELD s SET u4 -2 0', '-ERR bit offset is not an integer or out of range' ],
+        [ 'BITFIELD s GET u4 -2', '-ERR bit offset is not an integer or out of range' ],
+        [ 'BITFIELD s INCRBY u4 -2 1', '-ERR bit offset is not an integer or out of range' ],
+      ]
+    end
+
     it 'handles the WRAP overflow with set' do
       assert_command_results [
         [ 'BITFIELD s SET i4 0 10 GET i4 0', [ 0, -6 ] ],
