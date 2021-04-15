@@ -195,6 +195,7 @@ def assert_response(expected_result, response)
       response_match = response.match(/\A:(\d+)\r\n\z/)
       assert response_match[0]
       assert_in_delta assertion_match[1].to_i, response_match[1].to_i, assertion_match[2].to_i
+      # TODO: Do we need this?
       return
     end
   rescue ArgumentError

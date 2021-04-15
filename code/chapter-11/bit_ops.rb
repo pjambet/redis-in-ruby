@@ -222,19 +222,36 @@ module BYORedis
       value
     end
 
-    def check_signed_overflow(new_value, size, overflow)
+    def check_signed_overflow(value, incr, size, overflow)
       p '--------'
-      max = (1 << (size - 1)) - 1
-      min = -max -1
+      max = size == 64 ? (2**63 - 1) : (1 << (size - 1)) - 1
+      min = -max - 1
+      p min
+      p max
+      p value
+      p incr
 
-      max_incr = max - new_value
-      min_incr = min - new_value
+      max_incr = max - value
+      min_incr = min - value
 
-      if new_value > max # || incr ...
+      if value > max || (size != 64 && incr > max_incr) || (value >= 0 && incr > 0 && incr > max_incr)
         if overflow == :sat
           max
+        elsif overflow == :wrap
+          msb = 1 << (size - 1)
+          c = value + incr
+          if size < 64
+            mask = -1 << size
+            if c & msb
+              c |= mask
+            else
+              c &= ~mask
+            end
+          end
+
+          c
         end
-      elsif new_value < min # || incr ...
+      elsif value < min # || incr ...
         if overflow == :sat
           min
         end
@@ -243,12 +260,19 @@ module BYORedis
       end
     end
 
-    def check_unsigned_overflow(new_value, size, overflow)
-      max = (1 << size) - 1
+    def check_unsigned_overflow(value, incr, size, overflow)
+      max = size == 64 ? (2**64 - 1) : (1 << size) - 1
+      max_incr = max - value
+      min_incr = -value
 
-      if new_value > max # incr
+      if value > max || (incr > 0 && incr > max_incr)
         if overflow == :sat
           max
+        elsif overflow == :wrap
+          # handle_wrap
+          mask = -1 << size
+          res = value + incr
+          res & ~mask
         end
       elsif false # incr stuff with neg shit
       end
@@ -258,32 +282,6 @@ module BYORedis
       old_value = get_op(offset, size, type)
       p "old_value=#{ old_value }"
 
-      res = set_value(offset, size, type, new_value, overflow)
-
-      if res.nil?
-        nil
-      else
-        old_value
-      end
-    end
-
-    def incrby_op(offset, size, type, incr, overflow)
-      p @string
-      p @string.object_id
-      old_value = get_op(offset, size, type)
-      p "OLD VALUE: #{ old_value }"
-      1
-      new_value = old_value + incr
-      res = set_value(offset, size, type, new_value, overflow)
-
-      if res.nil?
-        nil
-      else
-        new_value
-      end
-    end
-
-    def set_value(offset, size, type, new_value, overflow)
       p '===='
       p type
       p type == :signed
@@ -304,8 +302,8 @@ module BYORedis
       p type
       value_after_overflow =
         case type
-        when :signed then check_signed_overflow(new_value, size, overflow)
-        when :unsigned then check_unsigned_overflow(new_value, size, overflow)
+        when :signed then check_signed_overflow(new_value, 0, size, overflow)
+        when :unsigned then check_unsigned_overflow(new_value, 0, size, overflow)
         else raise "Unknow type: #{ type }"
         end
 
@@ -316,6 +314,50 @@ module BYORedis
         return nil
       end
 
+      res = set_value(offset, size, new_value)
+
+      if res.nil?
+        nil
+      else
+        old_value
+      end
+    end
+
+    def incrby_op(offset, size, type, incr, overflow)
+      p @string
+      p @string.object_id
+      old_value = get_op(offset, size, type)
+      p "OLD VALUE: #{ old_value }"
+
+      value_after_overflow =
+        case type
+        when :signed then check_signed_overflow(old_value, incr, size, overflow)
+        when :unsigned then check_unsigned_overflow(old_value, incr, size, overflow)
+        else raise "Unknow type: #{ type }"
+        end
+
+      p "Value after overflow: #{ value_after_overflow }"
+
+      if value_after_overflow != nil
+        # new_value = value_after_overflow & (2**size - 1)
+        new_value = value_after_overflow
+      elsif value_after_overflow == nil && overflow == :fail
+        return nil
+      else
+        new_value = old_value + incr
+      end
+
+      res = set_value(offset, size, new_value)
+
+      if res.nil?
+        nil
+      else
+        new_value
+      end
+    end
+
+    def set_value(offset, size, new_value)
+      p "Setting #{ new_value } at #{ offset }"
       # set field
       size.times do |bit_index|
         p 'playing with bits'

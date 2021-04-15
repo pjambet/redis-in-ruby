@@ -157,19 +157,28 @@ module BYORedis
     end
   end
 
-  Operation = Struct.new(:name, :type, :size, :offset, :new_value, :overflow)
+  Operation = Struct.new(:name, :type, :size, :offset, :overflow, :new_value, :incr, keyword_init: true)
 
   class BitFieldCommand < BaseCommand
     def call
       Utils.assert_args_length_greater_than(0, @args)
-      string = @db.lookup_string(@args.shift)
+      key = @args.shift
+      string = @db.lookup_string(key)
 
       operations = parse_operations
       result = []
       bit_ops = BitOps.new(string)
 
-      operations.each do |operation|
-        result << (string.nil? ? 0 : bit_ops.field_op(operation))
+      result = operations.map do |operation|
+        if bit_ops.string.nil? && (operation.name == :set || operation.name == :incrby)
+          p "INITIALIZATION"
+          string = ''
+          p "object_id: #{ string.object_id }"
+          bit_ops.string = string
+          @db.data_store[key] = string
+        end
+
+        string.nil? ? 0 : bit_ops.field_op(operation)
       end
 
       RESPArray.new(result)
@@ -191,13 +200,38 @@ module BYORedis
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
 
-          operations << Operation.new(:get, type, size, offset)
+          operations << Operation.new(name: :get, type: type, size: size, offset: offset)
         when 'set'
           type, size = validate_type(@args.shift)
           offset = validate_offset(@args.shift, size)
           new_value = Utils.validate_integer(@args.shift)
 
-          operations << Operation.new(:set, type, size, offset, new_value, current_overflow)
+          operations << Operation.new(
+            name: :set,
+            type: type,
+            size: size,
+            offset: offset,
+            new_value: new_value,
+            overflow: current_overflow)
+        when 'incrby'
+          type, size = validate_type(@args.shift)
+          offset = validate_offset(@args.shift, size)
+          incr = Utils.validate_integer(@args.shift)
+
+          operations << Operation.new(
+            name: :incrby,
+            type: type,
+            size: size,
+            offset: offset,
+            incr: incr,
+            overflow: current_overflow)
+        when 'overflow'
+          overflow_type = @args.shift&.downcase
+          if [ 'sat', 'wrap', 'fail' ].include?(overflow_type)
+            current_overflow = overflow_type.to_sym
+          else
+            raise RESPSyntaxError
+          end
         else raise RESPSyntaxError
         end
       end
@@ -224,6 +258,8 @@ module BYORedis
     end
 
     def validate_offset(offset, size)
+      raise RESPSyntaxError if offset.nil? # TODO: add a test for this
+
       if offset[0] == '#'
         offset = Utils.validate_integer(offset[1..-1]) * size
       else
