@@ -588,6 +588,22 @@ describe 'Bitops Commands' do
       ]
     end
 
+    it 'can INCRBY on the max integer value, INT64_MAX, on an i64' do
+      assert_command_results [
+        [ 'BITFIELD s INCRBY i64 0 1 INCRBY i64 0 9223372036854775807', [ 1, -9223372036854775808 ] ],
+        [ 'BITFIELD s INCRBY i64 0 -3', [ 9223372036854775805 ] ],
+        [ 'BITFIELD s INCRBY i64 0 10', [ -9223372036854775801 ] ],
+      ]
+    end
+
+    it 'can INCRBY on the max integer value, INT64_MAX, on an u63' do
+      assert_command_results [
+        [ 'BITFIELD s INCRBY u63 0 1 INCRBY u63 0 9223372036854775807', [ 1, 0 ] ],
+        [ 'BITFIELD s INCRBY u63 0 -3', [ 9223372036854775805 ] ],
+        [ 'BITFIELD s INCRBY u63 0 10', [ 7 ] ],
+      ]
+    end
+
     it 'handles changing the OVERFLOW behavior in the same command' do
       assert_command_results [
         [ 'BITFIELD s INCRBY i4 0 8 OVERFLOW SAT INCRBY i4 0 20 OVERFLOW FAIL INCRBY i4 0 1', [ -8, 7, nil ] ],

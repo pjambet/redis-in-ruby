@@ -1,6 +1,9 @@
 module BYORedis
   class BitOps
 
+    INT64_MAX = (2**63) - 1
+    INT64_MIN = -(2**63)
+
     attr_accessor :string
 
     def initialize(string)
@@ -225,32 +228,51 @@ module BYORedis
         if overflow == :sat
           max
         elsif overflow == :wrap
-          wrap_around_for_signed_integers(value, incr, size)
+          positive_wrap_around(value, incr, size)
         end
       elsif value < min || (size != 64 && incr < min_incr) || (value < 0 && incr < 0 && incr < min_incr)
         if overflow == :sat
           min
         elsif overflow == :wrap
-          wrap_around_for_signed_integers(value, incr, size)
+          negative_wrap_around(value, incr, size)
         end
       else
         nil
       end
     end
 
+    # These two methods are not necessary in Ruby, because we can do math
+    # outside the 64 bit range, which is required for the sum in `wrap_around_for_signed_integers`
+    # but we do it, to force us to understand how wrap around works
+    def negative_wrap_around(value, incr, size)
+      if size == 64
+        carry = INT64_MIN - value - incr - 1
+        INT64_MAX - carry
+      else
+        wrap_around_for_signed_integers(value, incr, size)
+      end
+    end
+
+    def positive_wrap_around(value, incr, size)
+      if size == 64
+        carry = INT64_MAX - value - incr + 1
+        INT64_MIN - carry
+      else
+        wrap_around_for_signed_integers(value, incr, size)
+      end
+    end
+
     def wrap_around_for_signed_integers(value, incr, size)
       msb = 1 << (size - 1)
-      c = (value + incr) # TODO: Careful, this will never overflow in Ruby
-      if size < 64
-        mask = -1 << size
-        if c & msb != 0
-          c |= mask
-        else
-          c &= ~mask
-        end
+      sum = (value + incr)
+      mask = -1 << size
+      if sum & msb != 0
+        sum |= mask
+      else
+        sum &= ~mask
       end
 
-      c
+      sum
     end
 
     def check_unsigned_overflow(value, incr, size, overflow)
@@ -299,7 +321,6 @@ module BYORedis
 
     def incrby_op(offset, size, type, incr, overflow)
       old_value = get_op(offset, size, type)
-
       with_overflow_check(old_value, size, type, incr, overflow) do |new_value|
         set_value(offset, size, new_value)
         new_value
