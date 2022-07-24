@@ -14,7 +14,7 @@ By the end of this chapter `RedisServer` will speak [the Redis Protocol, `RESP v
 
 One such client is the `redis-cli` utility that ships with Redis, it'll look like this:
 
-![redis-cli-gif](/img/redis.gif/)
+![redis-cli-gif](/img/redis.gif)
 
 [RESP v2][resp-spec] has been the protocol used by Redis since version 2.0, to quote the documentation:
 
