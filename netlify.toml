@@ -28,3 +28,8 @@ HUGO_VERSION = "0.70.0"
 
 [context.next.environment]
 HUGO_ENABLEGITINFO = "true"
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+  cache-control = "public,max-age=604800"

@@ -285,7 +285,7 @@ Now that we know what a hash function is, how it used to implement a hash table,
 
 Redis uses three data structures to implement a dictionary, `dict`, `dictht` & `dictEntry`, the following diagram, from [wjin.org][wjin-blog], shows how they each relate to each other:
 
-![Diagram of Redis' dict data structure](/redis_dict.png)
+![Diagram of Redis' dict data structure](/img/redis_dict.png)
 
 It's important to note that dictionaries are used in multiple places in the Redis codebase, but there are two main ones for each database, the one holding all the top-level key/value pairs, such as the ones added with `SET` and other commands creating pairs, and the `expires` dictionary, used to store key TTLs.
 
