@@ -430,7 +430,7 @@ Redis uses different multiplexers (`select` is described in the man page as doin
 
 It turns out that there are better alternatives, [kqueue][kqueue] on macOS and BSD, [epoll][epoll] on linux and evport on Solaris (I could not find a link for it).
 
-Redis defines its own even library, [`ae`][redis-ae], in the [`ae.c` file][redis-source-ae]. The interface for `ae` is then implemented with each of the libraries mentioned above, [in `ae_epoll.c`][ae-epoll], [in `ae_kqueue.c`][ae-kqueue], [in `ae_evport.c`][ae-evport] and [in `ae_select.c`][ae-select].
+Redis defines its own event library, [`ae`][redis-ae], in the [`ae.c` file][redis-source-ae]. The interface for `ae` is then implemented with each of the libraries mentioned above, [in `ae_epoll.c`][ae-epoll], [in `ae_kqueue.c`][ae-kqueue], [in `ae_evport.c`][ae-evport] and [in `ae_select.c`][ae-select].
 
 Redis [defines constants depending on what is available at compile time][redis-source-multiplexer-constants] and chooses the implementation [in server.c][redis-source-multiplexer-choice].
 
