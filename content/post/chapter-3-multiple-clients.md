@@ -82,7 +82,7 @@ server_accepted = true
 
 We create a new thread that will loop as long as the `server.accept` has not returned or until five seconds have elapsed. This means that the call to accept will not run for more than five seconds. The `abort_on_exception` setting is necessary, otherwise an uncaught exception in a Thread does not propagate to the parent thread, the thread would silently fail, not interrupting the `accept` call.
 
-Any clients connecting to the server within five seconds will prevent the `"Timeout!"` exception from being thrown, beecause the `server_accepted` flag will be set to `true`.
+Any clients connecting to the server within five seconds will prevent the `"Timeout!"` exception from being thrown, because the `server_accepted` flag will be set to `true`.
 
 As it turns out, we don't have to write this, Ruby gives us the [`Timeout` module][ruby-doc-timeout], which does pretty much the same thing, and throws an exception if the block hasn't finished after the given timeout:
 
