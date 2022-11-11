@@ -403,7 +403,7 @@ module BYORedis
       distance_to_head = @start
       distance_to_tail = @list.size - @stop
 
-      if distance_to_head <= distance_to_tail
+      if true || distance_to_head <= distance_to_tail
         iterator = List.left_to_right_iterator(@list)
         within_bounds = ->(index) { index >= @start }
         stop_condition = ->(index) { index > @stop }

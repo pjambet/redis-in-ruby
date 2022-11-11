@@ -297,7 +297,7 @@ module BYORedis
         if response.is_a?(BlockedState)
           block_client(client, response)
         else
-          @logger.debug "Response: #{ response.class } / #{ response.inspect }"
+          # @logger.debug "Response: #{ response.class } / #{ response.inspect }"
           serialized_response = response.serialize
           @logger.debug "Writing: '#{ serialized_response.inspect }'"
           unless Utils.safe_write(client.socket, serialized_response)
