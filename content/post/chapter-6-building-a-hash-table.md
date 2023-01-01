@@ -545,7 +545,7 @@ If you want to dig deeper in the Redis implementation, here are few interesting 
 - [`dictExpand`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L147)
 - [`dictAdd`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L265)
 - [`dictFind`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L476)
-- [`dictResie`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L135)
+- [`dictResize`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L135)
 - [`dictRehash`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L188)
 - [`dictRehashMillisecond`](https://github.com/redis/redis/blob/6.0.0/src/dict.c#L241)
 
